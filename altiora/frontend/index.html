@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Altiora — 你理想中的自己</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+</head>
+<body>
+    <!-- 顶部凝视条 -->
+    <header class="gaze-bar">
+        <span class="gaze-text">未来的你：</span>
+        <span id="gaze-progress">偏差 -15%</span>
+        <span id="gaze-status" class="gaze-status">● 今日 2 处冲突</span>
+    </header>
+
+    <!-- Tab 导航 -->
+    <nav class="tabs">
+        <button class="tab-btn active" data-tab="plan">Plan · 规划</button>
+        <button class="tab-btn" data-tab="chat">Chat · 聊天</button>
+        <button class="tab-btn" data-tab="clone">Clone · 分身</button>
+        <button class="tab-btn" data-tab="me">Me · 画像</button>
+    </nav>
+
+    <main class="main">
+        <!-- Plan Tab -->
+        <section id="tab-plan" class="tab-content active">
+            <div class="gantt-header">
+                <h2>今天（<span id="gantt-date"></span>）</h2>
+            </div>
+            <div id="gantt-chart"></div>
+            <div id="light-bar" class="light-bar"></div>
+
+            <!-- 分身 -->
+            <div class="avatar-row">
+                <div class="avatar" id="avatar">🧑‍💻</div>
+                <div class="avatar-info">
+                    <span class="avatar-label">Altiora</span>
+                    <span id="avatar-status">今天 2 处冲突 · 完成率 60%</span>
+                </div>
+                <div id="avatar-halo" class="halo halo-green"></div>
+            </div>
+
+            <!-- 冲突卡片 -->
+            <div id="conflict-container" class="conflict-container"></div>
+        </section>
+
+        <!-- Chat Tab -->
+        <section id="tab-chat" class="tab-content">
+            <div id="chat-messages" class="chat-messages"></div>
+            <div class="chat-input-row">
+                <input id="chat-input" type="text" placeholder="跟 Altiora 说点什么...（课表、吐槽、目标都行）">
+                <button id="chat-send" class="btn-primary">发送</button>
+            </div>
+        </section>
+
+        <!-- Clone Tab -->
+        <section id="tab-clone" class="tab-content">
+            <h2>Clone 你的 Altiora</h2>
+            <p class="hint">告诉 Altiora 你是谁、你要什么、你有哪些规矩。这些就是它帮你守住的底线。</p>
+            <form id="clone-form">
+                <div class="form-card">
+                    <label>① 你的名字</label>
+                    <input type="text" id="clone-name" placeholder="同学">
+                </div>
+                <div class="form-card">
+                    <label>② 睡觉不能晚于几点？（硬约束）</label>
+                    <input type="time" id="clone-sleep" value="23:00">
+                </div>
+                <div class="form-card">
+                    <label>③ 你精力最好的时段？</label>
+                    <input type="text" id="clone-focus" placeholder="09:00-12:00">
+                </div>
+                <div class="form-card">
+                    <label>④ 你知道自己的什么弱点？（每行一个）</label>
+                    <textarea id="clone-weakness" rows="3" placeholder="晚上容易刷手机&#10;连续学3小时会垮"></textarea>
+                </div>
+                <div class="form-card">
+                    <label>⑤ 你的长期目标？（一句话）</label>
+                    <input type="text" id="clone-goal" placeholder="拿传智杯奖 / 考研985 / 找实习">
+                </div>
+                <div class="form-card">
+                    <label>⑥ 选一个分身 emoji</label>
+                    <div class="emoji-picker">
+                        <button type="button" class="emoji-btn active">🧑‍💻</button>
+                        <button type="button" class="emoji-btn">📚</button>
+                        <button type="button" class="emoji-btn">🏃</button>
+                        <button type="button" class="emoji-btn">😴</button>
+                        <button type="button" class="emoji-btn">💻</button>
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary">生成我的 Altiora</button>
+            </form>
+        </section>
+
+        <!-- Me Tab -->
+        <section id="tab-me" class="tab-content">
+            <h2>我的 Altiora 画像</h2>
+            <div id="profile-display" class="profile-display"></div>
+        </section>
+    </main>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
