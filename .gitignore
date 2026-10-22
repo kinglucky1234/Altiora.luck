@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+node_modules/
+.DS_Store
+*.log
+.env
+.vscode/
+.idea/
+*.zip
+.screenshots/
+.uploads/
+.trae-html-share-packages/
