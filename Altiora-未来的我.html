@@ -1327,6 +1327,32 @@ const EMOTIONS=[
   ]}
 ];
 function randPick(a){return a[Math.floor(Math.random()*a.length)];}
+// 从一句话里抠出「目标本身」：去掉寒暄、连接词、语气词，动词归一
+function extractGoal(t){
+  let s=t.trim()
+    .replace(/^(你好|您好|嗨|哈喽|在吗|那个|就是|嗯+|诶|哎|嘿)[，,。！!？?、\s]*/,"")
+    .replace(/[。！!？?]+$/,"");
+  const M=/(我的目标|目标是|我以后要|以后要|我希望|我打算|我想|我要)/;
+  const m=s.match(M);
+  if(!m)return "";
+  let g=s.slice(m.index+m[1].length).trim().replace(/^[，,、\s]+/,"");
+  // 时间词不算目标本体
+  g=g.replace(/^(明年|后年|将来|未来|以后|过几年|毕业前)[，,、\s]*/,"");
+  // 冒头的连词
+  g=g.replace(/^(能|能够|可以|会|得|去)[，,、\s]*/,"");
+  // 动词归一：当/做/干/变成 → 成为
+  const v=g.match(/^(成为|变成|当|做|干)/);
+  if(v){
+    g="成为"+g.slice(v[0].length).replace(/^[，,、\s]*/,"").replace(/^一(名|个|位|只)/,"");
+  }
+  g=g.replace(/[啊呀吧呢哦啦哈嘛]+$/,"").replace(/[，,、\s]+$/,"").trim();
+  // 情绪动词、日常琐事、当天的事，都不算长期目标
+  if(!g||g.length<2||g.length>40)return "";
+  if(/^(哭|睡觉|睡|吃|吃饭|玩|死|消失|放弃|休息|回家|逃|躺|摆烂)/.test(g))return "";
+  if(/今天|明天|后天|下周|周末|今晚/.test(g))return "";
+  return g;
+}
+
 function replyTo(v){
   const t=v.trim();
 
@@ -1350,11 +1376,11 @@ function replyTo(v){
   }
   // 3) 情绪优先——先当人，再当工具
   for(const e of EMOTIONS) if(e.k.test(t)) return randPick(e.r);
-  // 4) 长期目标：收下，但不逼你现在就干
-  if(/想拿|想考|想成|目标是|我希望|我打算|我要考|我要拿|以后要/.test(t)){
-    const g=t.replace(/[。！.!]+$/,"");
-    DATA.profile.long_term_goal=g;renderMe();updStats();saveData();
-    return `「${g}」——这个我收进目标里了。<br>它今天不用开始。往后每次撞车，我先保它。`;
+  // 4) 长期目标：收下目标本身，但不逼你现在就干
+  const goal=extractGoal(t);
+  if(goal){
+    DATA.profile.long_term_goal=goal;renderMe();updStats();saveData();
+    return `「${esc(goal)}」——这个我收进目标里了。<br>它今天不用开始。往后每次撞车，我先保它。`;
   }
   // 5) 行为规矩
   if(/以后不|以后别|再也不|不许|别再|不要再/.test(t)){
