@@ -120,6 +120,7 @@ async def understand(req: dict = Body(...)):
         base=req.get("base_url"),
         model=req.get("model"),
         headers=req.get("headers"),
+        history=req.get("history"),
     )
 
 

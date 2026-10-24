@@ -249,7 +249,8 @@ def _profile_brief(profile: dict) -> str:
 
 def understand(text: str, profile: dict | None = None,
                key: str | None = None, base: str | None = None,
-               model: str | None = None, headers=None) -> dict:
+               model: str | None = None, headers=None,
+               history: list | None = None) -> dict:
     """自然语言 → 结构化字段。失败一律返回 ok=False，由前端兜底。
 
     key/base/model/headers 由调用方传入时优先使用（用户自带 Key 模式），
@@ -272,10 +273,17 @@ def understand(text: str, profile: dict | None = None,
     )
 
     try:
-        content = _chat([
-            {"role": "system", "content": SYSTEM},
-            {"role": "user", "content": user},
-        ], api_key, base_url, model_id, headers)
+        # 聊天记忆只带最近 3 轮，够接住「就那个」「三点」这种半句，不堆历史
+        msgs = [{"role": "system", "content": SYSTEM}]
+        for h in (history or [])[-6:]:
+            if not isinstance(h, dict):
+                continue
+            role = "assistant" if str(h.get("role")) == "assistant" else "user"
+            content = str(h.get("text") or "").strip()[:120]
+            if content:
+                msgs.append({"role": role, "content": content})
+        msgs.append({"role": "user", "content": user})
+        content = _chat(msgs, api_key, base_url, model_id, headers)
     except urllib.error.HTTPError as e:
         return {"ok": False, "source": "rule", "reason": f"http_{e.code}"}
     except (urllib.error.URLError, TimeoutError, OSError):

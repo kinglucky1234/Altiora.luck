@@ -332,6 +332,9 @@ pre.json .n{color:#FDBA74}
 .note-item .del:hover{color:var(--red)}
 .empty{font-size:12px;color:var(--t3);padding:14px 0;text-align:center}
 .dash{color:var(--t3)}
+.kv small{color:var(--t3);font-size:11px;margin-left:6px}
+.diary-h{font-size:11.5px;color:var(--t3);margin:12px 0 2px}
+.diary-line{font-size:12.5px;color:var(--t2);padding:7px 0;border-top:1px dashed var(--line);font-variant-numeric:tabular-nums}
 
 @media(max-width:720px){
   .kv{grid-template-columns:110px 1fr}
@@ -515,6 +518,11 @@ pre.json .n{color:#FDBA74}
       <div id="noteList"></div>
     </div>
     <div class="card">
+      <div class="ttl">记忆 <small>三层，各管各的</small></div>
+      <div class="kv" id="memKv"></div>
+      <div id="diaryList"></div>
+    </div>
+    <div class="card">
       <div class="ttl">UserProfile JSON <small>确定性计算器的输入</small></div>
       <pre class="json" id="jsonBox"></pre>
     </div>
@@ -638,21 +646,110 @@ const DATA = {
   },
   events:[],
   conflicts:[],
-  notes:[]
+  notes:[],
+  /* 记忆分三层，各管各的：
+     long  长期记忆 = 上面的 profile。用户亲口说的事实，计算器唯一的输入。
+     chat  聊天记忆 = 最近 3 轮。只为接住半句话，超过就滚掉，不沉淀。
+     diary 日记     = 每次聊完一行「日期：摘要」。平时不出现，只在久别回来时翻。 */
+  memory:{chat:[],diary:[],last_seen:"",pending:null}
 };
 
-/* 画像与日程持久化：刷新不丢（只存用户自己的事实，不存聊天记录） */
+/* 持久化：画像、日程、三层记忆。刷新不丢 */
 const SAVE_KEY="altiora_state_v2";
+const CHAT_KEEP=6;      // 聊天记忆 6 条 = 3 轮，超了滚掉
+const DIARY_KEEP=180;   // 日记最多留半年
 // 旧版本的内置示例数据不再沿用，清掉，第一次打开就是一张白纸
 try{localStorage.removeItem("altiora_state_v1");}catch(e){}
 function saveData(){
-  try{localStorage.setItem(SAVE_KEY,JSON.stringify({profile:DATA.profile,events:DATA.events}));}catch(e){}
+  try{localStorage.setItem(SAVE_KEY,JSON.stringify({
+    profile:DATA.profile,events:DATA.events,
+    memory:{chat:DATA.memory.chat,diary:DATA.memory.diary,
+            last_seen:DATA.memory.last_seen,pending:DATA.memory.pending}
+  }));}catch(e){}
 }
 try{
   const s=JSON.parse(localStorage.getItem(SAVE_KEY)||"null");
   if(s&&s.profile)Object.assign(DATA.profile,s.profile);
   if(s&&Array.isArray(s.events))DATA.events=s.events;
+  if(s&&s.memory){
+    const m=s.memory;
+    if(Array.isArray(m.chat))DATA.memory.chat=m.chat.slice(-CHAT_KEEP);
+    if(Array.isArray(m.diary))DATA.memory.diary=m.diary.slice(-DIARY_KEEP);
+    if(typeof m.last_seen==="string")DATA.memory.last_seen=m.last_seen;
+    if(m.pending&&m.pending.name)DATA.memory.pending=m.pending;
+  }
 }catch(e){}
+
+/* ════════ 记忆三层 ════════ */
+function todayStr(d){
+  d=d||new Date();
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+function daysBetween(fromIso,toIso){
+  const a=new Date(fromIso+"T00:00:00"),b=new Date(toIso+"T00:00:00");
+  if(isNaN(a)||isNaN(b))return 0;
+  return Math.round((b-a)/86400000);
+}
+function cuteDate(iso){
+  const p=iso.split("-");
+  return (+p[1])+"月"+(+p[2])+"日";
+}
+/* 聊天记忆：只留最近 3 轮，多了就丢——短，是为了接得上，不是为了记住你 */
+function memPush(r,t){
+  const s=String(t||"").replace(/\s+/g," ").trim().slice(0,120);
+  if(!s)return;
+  const last=DATA.memory.chat[DATA.memory.chat.length-1];
+  if(last&&last.r===r&&last.t===s)return;      // 同一句不重复记
+  DATA.memory.chat.push({r,t:s,ts:Date.now()});
+  while(DATA.memory.chat.length>CHAT_KEEP)DATA.memory.chat.shift();
+  saveData();
+}
+function memRecent(n){return DATA.memory.chat.slice(-(n||CHAT_KEEP));}
+/* 日记：一行一条，攒着，不掺和日常对话 */
+function diaryWrite(summary){
+  const s=String(summary||"").trim().slice(0,60);
+  if(!s)return;
+  const d=todayStr();
+  DATA.memory.diary.push({d,s});
+  while(DATA.memory.diary.length>DIARY_KEEP)DATA.memory.diary.shift();
+  DATA.memory.last_seen=d;
+  saveData();
+  renderMe();
+}
+/* 久别回来：翻最近一条日记，接一句「后来怎么样了」 */
+function diaryRecall(){
+  const last=DATA.memory.last_seen;
+  if(!last)return "";
+  const gap=daysBetween(last,todayStr());
+  if(gap<3)return "";
+  const e=[].concat(DATA.memory.diary).reverse().find(x=>x.d<=last);
+  if(!e)return "";
+  const frag=e.s.split(/[，,；;]/)[0].replace(/[。.]$/,"").slice(0,18);
+  if(!frag)return "";
+  return `上次（${cuteDate(e.d)}）你说${esc(frag)}，后来怎么样了？`;
+}
+
+/* 本次会话：聊完攒成一行日记 */
+const SESS={t0:Date.now(),last:Date.now(),users:[],topics:[],events:[],goal:"",mood:""};
+function sessBegin(){
+  const now=Date.now();
+  if(now-SESS.last>30*60000)sessFlush();      // 隔了半小时，上一次就算聊完了
+  SESS.last=now;
+}
+function sessFlush(){
+  if(!SESS.users.length&&!SESS.events.length&&!SESS.goal)return;
+  const bits=[];
+  if(SESS.goal)bits.push(`想${SESS.goal.startsWith("成为")?SESS.goal:"成为"+SESS.goal}`);
+  if(SESS.events.length)bits.push(`排了${SESS.events.slice(0,2).join("、")}`);
+  if(SESS.mood)bits.push(`那会儿${SESS.mood}`);
+  if(!bits.length&&SESS.topics.length)bits.push(`聊了${SESS.topics.slice(-2).join("、")}`);
+  diaryWrite(bits.join("，")||"聊了几句，没说什么具体的");
+  SESS.users.length=0;SESS.topics.length=0;SESS.events.length=0;SESS.goal="";SESS.mood="";
+  SESS.t0=Date.now();
+}
+setInterval(()=>{if(Date.now()-SESS.last>5*60000)sessFlush();},60000);
+window.addEventListener("pagehide",sessFlush);
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")sessFlush();});
 
 const COLORS={class:"#3B82F6",work:"#06B6D4",meeting:"#F97316",study:"#10B981",sleep:"#6B7280"};
 const T0=360, T1=1560, SPAN=T1-T0;
@@ -826,6 +923,7 @@ function addStructuredEvent(ev){
     name,type:ev.type||"work",
     start:ev.start,end:ev.end,loc:ev.loc||"",priority:ev.priority||2,wage:ev.wage||0};
   DATA.events.push(e);
+  SESS.events.push(name+" "+e.start+"-"+e.end);
   saveData();
   const before=DATA.conflicts.length;
   DATA.conflicts=detectConflicts();
@@ -917,7 +1015,7 @@ function push(who,html){
   HISTORY.push({who,html,id});
   if(document.getElementById("fullChat").classList.contains("on")) renderHistory();
   else if(who==="ai") showPeek(html);
-  if(who==="ai")maybeSpeak(html);
+  if(who==="ai"){maybeSpeak(html);memPush("a",stripTags(html));}
   return {who,html,id};
 }
 function showPeek(html){
@@ -1054,6 +1152,12 @@ const HELLO=[
 function initChat(){
   HISTORY.length=0;msgSeq=0;
   HELLO.forEach(m=>HISTORY.push({who:m[0],html:m[1],id:"m"+(++msgSeq)}));
+  // 隔了三天以上才翻日记；平时日记不出现
+  const recall=diaryRecall();
+  if(recall){
+    HISTORY.push({who:"ai",html:recall,id:"m"+(++msgSeq)});
+    showPeek(recall);
+  }
 }
 function send(){
   const i=document.getElementById("chatIn"),v=i.value.trim();if(!v)return;
@@ -1217,7 +1321,7 @@ function setAIPill(on){
 async function askLLM(text){
   const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),9000);
   try{
-    const body={text,profile:DATA.profile};
+    const body={text,profile:DATA.profile,history:memRecent().map(m=>({role:m.r==="u"?"user":"assistant",text:m.t}))};
     if(USERLLM.key){
       body.api_key=USERLLM.key;body.base_url=USERLLM.base;body.model=USERLLM.model;
       if(USERLLM.headers&&Object.keys(USERLLM.headers).length)body.headers=USERLLM.headers;
@@ -1280,6 +1384,52 @@ function localFallback(t){
     : ["这句我没接住。你是想让我排个时间，还是想让我记着点什么？",
        "我没听懂，也不想假装听懂。再说具体一点？给我一件事或一个时间就行。"]);
 }
+/* 半句接龙：上一句我问了「几点到几点」，这句只给时间也接得上 */
+const CN_NUM={"零":0,"〇":0,"一":1,"二":2,"两":2,"三":3,"四":4,"五":5,"六":6,"七":7,"八":8,"九":9};
+function cnHour(v){
+  const s=String(v).trim();
+  if(/^\d{1,2}$/.test(s))return +s;
+  if(s==="十")return 10;
+  if(/^十[一二三四五六七八九]$/.test(s))return 10+CN_NUM[s[1]];
+  if(/^[一二三四五六七八九]十$/.test(s))return CN_NUM[s[0]]*10;
+  if(/^[一二三四五六七八九]十[一二三四五六七八九]$/.test(s))return CN_NUM[s[0]]*10+CN_NUM[s[2]];
+  if(s.length===1&&(s in CN_NUM))return CN_NUM[s];
+  return NaN;
+}
+const pad2=n=>String(n).padStart(2,"0");
+function parseTimeRange(t){
+  const s=String(t).replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-65248));
+  let m=s.match(/(\d{1,2})[:：](\d{2})\s*(?:[-~至到—－])\s*(\d{1,2})[:：](\d{2})/);
+  if(m)return {start:pad2(+m[1])+":"+m[2],end:pad2(+m[3])+":"+m[4]};
+  m=s.match(/(上午|早上|中午|下午|晚上|夜里)?\s*([零〇一二三四五六七八九十两\d]{1,3})\s*[点时]\s*(半)?\s*(?:到|至|~|—|－|-)\s*(上午|早上|中午|下午|晚上|夜里)?\s*([零〇一二三四五六七八九十两\d]{1,3})\s*[点时]?\s*(半)?/);
+  if(!m)return null;
+  const fix=(h,p)=>{
+    if(isNaN(h))return NaN;
+    if(/下午|晚上|夜里/.test(p)&&h<12)h+=12;
+    if(/中午/.test(p)&&h>=1&&h<=11)h+=12;
+    return h;
+  };
+  const p1=m[1]||"",p2=m[4]||p1;      // 「下午三点到五点」后半跟着前半走
+  const h1=fix(cnHour(m[2]),p1),h2=fix(cnHour(m[5]),p2);
+  const m1=m[3]?30:0,m2=m[6]?30:0;
+  if(!(h1>=0&&h1<24&&h2>=0&&h2<24))return null;
+  if(h2*60+m2<=h1*60+m1)return null;
+  return {start:pad2(h1)+":"+pad2(m1),end:pad2(h2)+":"+pad2(m2)};
+}
+function tryFillPending(t){
+  const p=DATA.memory.pending;
+  if(!p)return "";
+  if(Date.now()-p.ts>30*60000){DATA.memory.pending=null;saveData();return "";}
+  const r=parseTimeRange(t);
+  if(!r)return "";
+  DATA.memory.pending=null;saveData();
+  const res=addStructuredEvent({name:p.name,start:r.start,end:r.end});
+  if(res.dup)return `「${esc(res.ev.name)} ${r.start}-${r.end}」时间轴里已经有这条了，我没重复加。`;
+  const c=DATA.conflicts.find(x=>x.a===res.ev||x.b===res.ev);
+  return res.delta>0
+    ? `「${esc(res.ev.name)} ${r.start}-${r.end}」补上了，撞出 <b>${res.delta}</b> 处冲突${c?`——和「${esc(c.a===res.ev?c.b.name:c.a.name)}」重叠 ${c.overlap_min} 分钟`:""}。代价在时间轴页。`
+    : `「${esc(res.ev.name)} ${r.start}-${r.end}」补上了，没撞车。`;
+}
 function esc(s){
   return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
@@ -1289,6 +1439,7 @@ function setMsg(id,html){
   if(document.getElementById("fullChat").classList.contains("on"))renderHistory();
   else showPeek(html);
   maybeSpeak(html);
+  memPush("a",stripTags(html));
 }
 async function handleUser(v){
   push("me",v);
@@ -1296,6 +1447,14 @@ async function handleUser(v){
 
   // 安全话术永远走本地固定文案，不交给任何模型
   if(SAFETY_RE.test(v)){setTimeout(()=>push("ai",SAFETY_TXT),300);return;}
+
+  sessBegin();
+  memPush("u",v);
+  const tp=topicOf(v);if(tp&&SESS.topics[SESS.topics.length-1]!==tp)SESS.topics.push(tp);
+
+  // 半句接龙：上一句我问了「几点到几点」，这句只给时间也接得上
+  const filled=tryFillPending(v);
+  if(filled){setTimeout(()=>push("ai",filled),180);return;}
 
   const slot=push("ai","<span class='typing'>· · ·</span>");
   const j=await askLLM(v);
@@ -1319,8 +1478,9 @@ async function routeLLM(j,slotId,v){
         :`「${esc(r.ev.name)} ${r.ev.start}-${r.ev.end}」加进去了，没撞车。`));
       return;
     }
-    // 听懂了，但用户没说结束时间 —— 不编，问一句
+    // 听懂了，但用户没说结束时间 —— 不编，问一句；记住它，等下补时间
     const sub=j.subject?`「${esc(j.subject)}」`:"这件事";
+    if(j.subject){DATA.memory.pending={name:j.subject.slice(0,10),ts:Date.now()};saveData();}
     setMsg(slotId,j.reply||`${sub}我听懂了。但要进时间轴还差个开始和结束时间——几点到几点？`);
     return;
   }
@@ -1332,7 +1492,7 @@ async function routeLLM(j,slotId,v){
   }
   // 3) 长期目标
   if(j.intent==="goal"&&j.goal){
-    DATA.profile.long_term_goal=j.goal;renderMe();updStats();saveData();
+    DATA.profile.long_term_goal=j.goal;SESS.goal=j.goal;renderMe();updStats();saveData();
     setMsg(slotId,j.reply||`「${esc(j.goal)}」——这个我收进目标里了。<br>它今天不用开始。往后每次撞车，我先保它。`);
     return;
   }
@@ -1378,6 +1538,16 @@ const EMOTIONS=[
     "动力不是等来的，是动起来之后剩下的那点。今天不逼你。"
   ]}
 ];
+// 日记里怎么形容那会儿的状态
+const MOOD_LABEL=[
+  [/想哭|哭|难受|伤心|难过|委屈|低落|心情不好/,"难过"],
+  [/累|疲惫|透支|困/,"很累"],
+  [/焦虑|慌|压力|睡不着|烦/,"很焦虑"],
+  [/废物|没用|失败|搞砸|恨自己/,"在自责"],
+  [/重开|明天再|完美|头发油/,"想重开"],
+  [/没人|孤独|一个人/,"很孤单"],
+  [/摆烂|躺平|没动力/,"没动力"]
+];
 // 从一句话里抠出「目标本身」：去掉寒暄、连接词、语气词，动词归一
 function extractGoal(t){
   let s=t.trim()
@@ -1399,6 +1569,8 @@ function extractGoal(t){
   g=g.replace(/[啊呀吧呢哦啦哈嘛]+$/,"").replace(/[，,、\s]+$/,"").trim();
   // 情绪动词、日常琐事、当天的事，都不算长期目标
   if(!g||g.length<2||g.length>40)return "";
+  if(/^(和|跟|与|去|找|陪|帮)/.test(g))return "";
+  if(/^(考试|面试|开会|作业|论文|答辩|体检|看病|复习|上课)/.test(g))return "";
   if(/^(哭|睡觉|睡|吃|吃饭|玩|死|消失|放弃|休息|回家|逃|躺|摆烂)/.test(g))return "";
   if(/今天|明天|后天|下周|周末|今晚/.test(g))return "";
   return g;
@@ -1427,12 +1599,24 @@ function replyTo(v){
       : `「${r.ev.name} ${r.s}-${r.e}」加进去了，没撞车。`;
   }
   // 3) 情绪优先——先当人，再当工具
-  for(const e of EMOTIONS) if(e.k.test(t)) return pickFresh(e.r);
+  for(const e of EMOTIONS) if(e.k.test(t)){
+    SESS.mood=(MOOD_LABEL.find(([re])=>re.test(t))||[,"情绪低"])[1];
+    return pickFresh(e.r);
+  }
   // 4) 长期目标：收下目标本身，但不逼你现在就干
   const goal=extractGoal(t);
   if(goal){
-    DATA.profile.long_term_goal=goal;renderMe();updStats();saveData();
+    DATA.profile.long_term_goal=goal;SESS.goal=goal;renderMe();updStats();saveData();
     return `「${esc(goal)}」——这个我收进目标里了。<br>它今天不用开始。往后每次撞车，我先保它。`;
+  }
+  // 5) 说了一件要办的事，但没给钟点——问时间，并记着它等下补
+  const sub=t.match(/^(?:我)?(?:明天|后天|今天|今晚|下周[一二三四五六日天]|周[一二三四五六日天]|周末)?\s*(?:要|得|需要|准备|打算)\s*(?:去|跟|和|找)?\s*([^，,。！？\s]{2,12})/);
+  if(sub){
+    const name=sub[1].replace(/[啊呀吧呢了]+$/,"").slice(0,10);
+    if(name&&name.length>=2&&!/(哭|睡|累|休息|放弃|躺|摆烂|逃)/.test(name)){
+      DATA.memory.pending={name,ts:Date.now()};saveData();
+      return `「${esc(name)}」我接住了。要进时间轴还差个时间——几点到几点？`;
+    }
   }
   // 5) 行为规矩
   if(/以后不|以后别|再也不|不许|别再|不要再/.test(t)){
@@ -1689,6 +1873,24 @@ function renderMe(){
     <div>今日事件</div><div>${DATA.events.filter(e=>e.type!=="sleep").length} 件 · 冲突 ${DATA.conflicts.length} 处</div>`;
   const jb=document.getElementById("jsonBox");
   if(jb)jb.innerHTML=syntax(JSON.stringify(p,null,2));
+  const mk=document.getElementById("memKv");
+  if(mk){
+    const facts=[p.long_term_goal,p.hard_sleep_deadline,p.hard_morning_start,p.preferred_focus_hours]
+      .filter(Boolean).length+p.known_weakness.length;
+    const chat=DATA.memory.chat.length;
+    const diary=DATA.memory.diary.length;
+    mk.innerHTML=`
+      <div>长期记忆</div><div>${facts?facts+" 条事实":"<span class=\"dash\">还没说</span>"} <small>亲口说的，进计算器</small></div>
+      <div>聊天记忆</div><div>最近 ${chat} 条 <small>只留 3 轮，超了滚掉</small></div>
+      <div>日记</div><div>${diary?diary+" 行 <small>久别回来才翻</small>":'<span class="dash">还没有</span>'}</div>`;
+  }
+  const dl=document.getElementById("diaryList");
+  if(dl){
+    const last=DATA.memory.diary.slice(-3).reverse();
+    dl.innerHTML=last.length
+      ?`<div class="diary-h">最近的日记</div>`+last.map(x=>`<div class="diary-line">${esc(cuteDate(x.d))}：${esc(x.s)}</div>`).join("")
+      :"";
+  }
 }
 function syntax(s){
   return s.replace(/&/g,"&amp;").replace(/</g,"&lt;")
@@ -1831,6 +2033,8 @@ function startGuide(){
 /* ════════ 启动 ════════ */
 DATA.conflicts=detectConflicts();
 renderAxis();renderGantt();renderConflicts();initChat();renderOrbs();renderMe();renderNotes();updStats();
+// 今天来过就算「见过」：三天没来才翻日记
+DATA.memory.last_seen=todayStr();saveData();
 go("home");
 checkAI();
 renderTTSBtn();
