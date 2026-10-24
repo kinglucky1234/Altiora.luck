@@ -119,6 +119,7 @@ async def understand(req: dict = Body(...)):
         key=req.get("api_key"),
         base=req.get("base_url"),
         model=req.get("model"),
+        headers=req.get("headers"),
     )
 
 

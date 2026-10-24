@@ -63,6 +63,14 @@ body::before{
   color:var(--t3);border:1px solid var(--line);background:rgba(255,255,255,.02);
 }
 .ai-pill.on{color:#6EE7B7;border-color:rgba(16,185,129,.35);background:rgba(16,185,129,.08)}
+.tts-btn{
+  width:26px;height:26px;border-radius:999px;display:grid;place-items:center;flex:none;
+  background:rgba(255,255,255,.02);border:1px solid var(--line);color:var(--t3);
+  cursor:pointer;padding:0;transition:.15s;
+}
+.tts-btn svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.tts-btn:hover{color:var(--t1);border-color:var(--line-hi)}
+.tts-btn.on{color:#6EE7B7;border-color:rgba(16,185,129,.35);background:rgba(16,185,129,.08)}
 .typing{letter-spacing:3px;color:var(--t3);animation:tp 1.2s ease-in-out infinite}
 @keyframes tp{0%,100%{opacity:.3}50%{opacity:1}}
 .avatar-mini{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;
@@ -403,10 +411,11 @@ pre.json .n{color:#FDBA74}
 .llm-x:hover{color:var(--t1)}
 .llm-tip{font-size:11.5px;color:var(--t3);line-height:1.75}
 .llm-card label{display:block;font-size:11.5px;color:var(--t2);margin:13px 0 6px}
-.llm-card input,.llm-card select{width:100%;padding:10px 12px;border-radius:9px;
+.llm-card input,.llm-card select,.llm-card textarea{width:100%;padding:10px 12px;border-radius:9px;
   border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--t1);
   font-size:13px;font-family:inherit;outline:none}
-.llm-card input:focus,.llm-card select:focus{border-color:rgba(59,130,246,.5)}
+.llm-card textarea{resize:vertical;line-height:1.6;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px}
+.llm-card input:focus,.llm-card select:focus,.llm-card textarea:focus{border-color:rgba(59,130,246,.5)}
 .llm-actions{display:flex;gap:8px;margin-top:18px}
 .llm-actions .btn{flex:1}
 .llm-msg{font-size:12px;color:var(--t2);margin-top:12px;min-height:18px;line-height:1.7}
@@ -423,6 +432,7 @@ pre.json .n{color:#FDBA74}
     <div class="logo">Altiora<span>未来的你</span></div>
     <div class="gaze-msg" id="gazeMsg"><span class="dot"></span><span id="gazeTxt">今天还是一张白纸，你说一句我就开始记</span></div>
     <div class="ai-pill" id="aiPill" onclick="openLLM()" title="点这里填你自己的 API Key">本地规则</div>
+    <button class="tts-btn" id="ttsBtn" onclick="toggleTTS()" title="朗读回复"></button>
     <div class="avatar-mini" id="gazeAvatar"></div>
   </div>
 </div>
@@ -601,10 +611,10 @@ pre.json .n{color:#FDBA74}
     <input id="llmKey" type="password" autocomplete="off" placeholder="sk-...">
     <label>模型名</label>
     <input id="llmModel" autocomplete="off" placeholder="deepseek-chat">
-    <div id="llmBaseWrap" style="display:none">
-      <label>Base URL</label>
-      <input id="llmBase" autocomplete="off" placeholder="https://你的地址/v1">
-    </div>
+    <label>URL（Base URL，OpenAI 兼容）</label>
+    <input id="llmBase" autocomplete="off" placeholder="https://api.deepseek.com/v1">
+    <label>额外请求头（可选，一行一个，格式 Key: Value）</label>
+    <textarea id="llmHeaders" rows="2" autocomplete="off" placeholder="一般不用填。中转站要求时再加，例如：&#10;X-Api-Key: xxx"></textarea>
     <div class="llm-actions">
       <button class="btn" onclick="saveLLM()">保存</button>
       <button class="btn" id="llmTest" onclick="testLLM()">测试连接</button>
@@ -903,6 +913,7 @@ function push(who,html){
   HISTORY.push({who,html,id});
   if(document.getElementById("fullChat").classList.contains("on")) renderHistory();
   else if(who==="ai") showPeek(html);
+  if(who==="ai")maybeSpeak(html);
   return {who,html,id};
 }
 function showPeek(html){
@@ -913,14 +924,77 @@ function showPeek(html){
   showPeek._t=setTimeout(()=>p.classList.remove("on"),12000);
 }
 function stripTags(h){const d=document.createElement("div");d.innerHTML=h;return d.textContent||"";}
+/* ════════ 朗读：系统自带语音合成（免费、离线，不用下模型） ════════ */
+const TTS_KEY="altiora_tts_v1";
+const TTS_ICON_ON='<svg viewBox="0 0 24 24"><path d="M4 9.5v5h3.5L12 18V6L7.5 9.5H4z"/><path d="M16 9a4.5 4.5 0 0 1 0 6"/><path d="M18.5 6.5a8 8 0 0 1 0 11"/></svg>';
+const TTS_ICON_OFF='<svg viewBox="0 0 24 24"><path d="M4 9.5v5h3.5L12 18V6L7.5 9.5H4z"/><path d="M16.5 9.5l5 5M21.5 9.5l-5 5"/></svg>';
+let TTS_ON=false;
+try{TTS_ON=localStorage.getItem(TTS_KEY)==="1";}catch(e){}
+let ttsVoice=null;
+
+function pickVoice(){
+  if(!window.speechSynthesis)return null;
+  const vs=window.speechSynthesis.getVoices()||[];
+  const zh=vs.filter(v=>/^zh/i.test(v.lang)||/普通话|中文|Chinese|Huihui|Xiaoxiao|Tingting|Yaoyao|Kangkang/i.test(v.name));
+  const pref=["Xiaoxiao","Huihui","Tingting","Yaoyao","Yunxi","Yunyang","Google 普通话"];
+  for(const p of pref){const f=zh.find(v=>v.name.includes(p));if(f)return f;}
+  return zh[0]||null;
+}
+if(window.speechSynthesis){
+  ttsVoice=pickVoice();
+  window.speechSynthesis.onvoiceschanged=()=>{ttsVoice=pickVoice();};
+}
+function renderTTSBtn(){
+  const b=document.getElementById("ttsBtn");if(!b)return;
+  if(!window.speechSynthesis){b.style.display="none";return;}
+  b.classList.toggle("on",TTS_ON);
+  b.innerHTML=TTS_ON?TTS_ICON_ON:TTS_ICON_OFF;
+  b.title=TTS_ON?"朗读已开：回复会用系统语音念出来（点一下关闭）":"朗读已关（点一下打开）";
+}
+function toggleTTS(){
+  TTS_ON=!TTS_ON;
+  try{localStorage.setItem(TTS_KEY,TTS_ON?"1":"0");}catch(e){}
+  if(!TTS_ON&&window.speechSynthesis)window.speechSynthesis.cancel();
+  renderTTSBtn();
+}
+/* 长句切段：有些浏览器一次念太长会中途停住 */
+function ttsChunks(text){
+  const clean=String(text||"").replace(/\s+/g," ").trim();
+  if(!clean)return [];
+  const parts=clean.split(/(?<=[。！？；!?;])/);
+  const out=[];let buf="";
+  for(const p of parts){
+    if(buf&&(buf+p).length>80){out.push(buf);buf=p;}
+    else buf+=p;
+  }
+  if(buf.trim())out.push(buf.trim());
+  return out.slice(0,12);
+}
 function doSpeak(text,btn){
   if(!window.speechSynthesis)return;
   window.speechSynthesis.cancel();
   document.querySelectorAll(".speak.playing").forEach(b=>b.classList.remove("playing"));
-  const u=new SpeechSynthesisUtterance(text);
-  u.lang="zh-CN";
-  if(btn){btn.classList.add("playing");u.onend=()=>btn.classList.remove("playing");u.onerror=()=>btn.classList.remove("playing");}
-  window.speechSynthesis.speak(u);
+  const chunks=ttsChunks(text);if(!chunks.length)return;
+  ttsVoice=ttsVoice||pickVoice();
+  const last=chunks.length-1;
+  chunks.forEach((c,i)=>{
+    const u=new SpeechSynthesisUtterance(c);
+    u.lang="zh-CN";
+    if(ttsVoice)u.voice=ttsVoice;
+    u.rate=1.03;u.pitch=1;
+    if(btn){
+      if(i===0)u.onstart=()=>btn.classList.add("playing");
+      if(i===last){u.onend=()=>btn.classList.remove("playing");u.onerror=()=>btn.classList.remove("playing");}
+    }
+    window.speechSynthesis.speak(u);
+  });
+}
+/* 开关打开时，新回复直接念出来 */
+function maybeSpeak(html){
+  if(!TTS_ON||!window.speechSynthesis)return;
+  if(/class=["']typing/.test(html||""))return;
+  const t=stripTags(html||"");
+  if(t.trim())doSpeak(t,null);
 }
 function speakMsg(id,btn){
   const m=HISTORY.find(x=>x.id===id);if(!m)return;
@@ -1009,6 +1083,7 @@ function openLLM(){
   document.getElementById("llmKey").value=USERLLM.key||"";
   document.getElementById("llmBase").value=USERLLM.base||LLM_PRESETS[prov].base;
   document.getElementById("llmModel").value=USERLLM.model||LLM_PRESETS[prov].model;
+  document.getElementById("llmHeaders").value=headersToText(USERLLM.headers);
   llmPreset(true);
   setLLMMsg("","");
   document.getElementById("llmMask").classList.add("on");
@@ -1018,11 +1093,29 @@ function closeLLM(){document.getElementById("llmMask").classList.remove("on");}
 function llmPreset(keep){
   const prov=document.getElementById("llmProvider").value;
   const p=LLM_PRESETS[prov];
-  document.getElementById("llmBaseWrap").style.display=prov==="custom"?"block":"none";
+  const modelEl=document.getElementById("llmModel");
+  modelEl.placeholder=prov==="ark"?"接入点 ID（ep-…）":prov==="custom"?"填这个接口要的模型名":"deepseek-chat";
   if(!keep){
-    document.getElementById("llmModel").value=p.model;
+    modelEl.value=p.model;
     document.getElementById("llmBase").value=p.base;
   }
+}
+/* 请求头：一行一个 "Key: Value"，空行和 # 开头的行忽略 */
+function parseHeaders(txt){
+  const out={};
+  String(txt||"").split(/\r?\n/).forEach(line=>{
+    const s=line.trim();
+    if(!s||s.startsWith("#"))return;
+    const i=s.indexOf(":");
+    if(i<1)return;
+    const k=s.slice(0,i).trim().replace(/[^A-Za-z0-9_-]/g,"");
+    const v=s.slice(i+1).trim();
+    if(k&&!/[\r\n]/.test(v))out[k]=v;
+  });
+  return out;
+}
+function headersToText(h){
+  return h?Object.keys(h).map(k=>k+": "+h[k]).join("\n"):"";
 }
 function setLLMMsg(t,cls){
   const m=document.getElementById("llmMsg");
@@ -1033,8 +1126,15 @@ function readLLMForm(){
   const prov=document.getElementById("llmProvider").value;
   const key=document.getElementById("llmKey").value.trim();
   const model=document.getElementById("llmModel").value.trim();
-  const rawBase=prov==="custom"?document.getElementById("llmBase").value.trim():LLM_PRESETS[prov].base;
-  return {provider:prov,key,model:model||LLM_PRESETS[prov].model,base:rawBase.replace(/\/+$/,"")};
+  // URL 始终可见、可改；留空就回落到该厂商的默认地址
+  const rawBase=document.getElementById("llmBase").value.trim()||LLM_PRESETS[prov].base;
+  return {
+    provider:prov,
+    key,
+    model:model||LLM_PRESETS[prov].model,
+    base:rawBase.replace(/\/+$/,""),
+    headers:parseHeaders(document.getElementById("llmHeaders").value)
+  };
 }
 function saveLLM(silent){
   const c=readLLMForm();
@@ -1051,6 +1151,7 @@ function clearLLM(){
   USERLLM={};
   try{localStorage.removeItem(LLM_STORE);}catch(e){}
   document.getElementById("llmKey").value="";
+  document.getElementById("llmHeaders").value="";
   setAIPill(false);
   checkAI();   // 服务器 .env 里还有 Key 的话，会自动变回在线
   setLLMMsg("已清除，回到本地规则。","ok");
@@ -1063,7 +1164,7 @@ async function testLLM(){
   try{
     const r=await fetch("/api/understand",{
       method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({text:"你好",profile:{},api_key:c.key,base_url:c.base,model:c.model})
+      body:JSON.stringify({text:"你好",profile:{},api_key:c.key,base_url:c.base,model:c.model,headers:c.headers})
     });
     const j=await r.json();
     if(j&&j.ok){
@@ -1113,7 +1214,10 @@ async function askLLM(text){
   const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),9000);
   try{
     const body={text,profile:DATA.profile};
-    if(USERLLM.key){body.api_key=USERLLM.key;body.base_url=USERLLM.base;body.model=USERLLM.model;}
+    if(USERLLM.key){
+      body.api_key=USERLLM.key;body.base_url=USERLLM.base;body.model=USERLLM.model;
+      if(USERLLM.headers&&Object.keys(USERLLM.headers).length)body.headers=USERLLM.headers;
+    }
     const r=await fetch("/api/understand",{
       method:"POST",
       headers:{"Content-Type":"application/json"},
@@ -1139,6 +1243,7 @@ function setMsg(id,html){
   m.html=html;
   if(document.getElementById("fullChat").classList.contains("on"))renderHistory();
   else showPeek(html);
+  maybeSpeak(html);
 }
 async function handleUser(v){
   push("me",v);
@@ -1652,6 +1757,7 @@ DATA.conflicts=detectConflicts();
 renderAxis();renderGantt();renderConflicts();initChat();renderOrbs();renderMe();renderNotes();updStats();
 go("home");
 checkAI();
+renderTTSBtn();
 // 新手引导：首次打开自动播放，之后不再显示
 try{
   if(!localStorage.getItem("altiora_guide_done"))setTimeout(startGuide,600);

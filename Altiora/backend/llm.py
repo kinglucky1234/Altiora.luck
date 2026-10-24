@@ -89,6 +89,26 @@ def _resolve(key: str | None, base: str | None, model: str | None):
 _PRIVATE_HOSTS = ("localhost", "127.", "10.", "192.168.", "169.254.", "0.")
 
 
+_HEADER_NAME = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+_BLOCKED_HEADERS = {"host", "content-length", "connection", "transfer-encoding"}
+
+
+def _merge_headers(base_headers: dict, extra) -> dict:
+    """合上用户自填的额外请求头（中转站常用）。只做最小校验，防止头注入。"""
+    if not isinstance(extra, dict):
+        return base_headers
+    for k, v in list(extra.items())[:20]:
+        if not isinstance(k, str) or not isinstance(v, str):
+            continue
+        k, v = k.strip(), v.strip()
+        if not _HEADER_NAME.match(k) or k.lower() in _BLOCKED_HEADERS:
+            continue
+        if len(v) > 1024 or "\r" in v or "\n" in v:
+            continue
+        base_headers[k] = v
+    return base_headers
+
+
 def _safe_base(base: str) -> bool:
     """用户自填的地址只允许公网 https，避免被当成内网探针。"""
     u = urlparse(base)
@@ -168,21 +188,23 @@ def _parse_json(content: str) -> dict | None:
     return obj if isinstance(obj, dict) else None
 
 
-def _chat(messages: list[dict], api_key: str, base: str, model: str) -> str:
+def _chat(messages: list[dict], api_key: str, base: str, model: str,
+          extra_headers=None) -> str:
     body = json.dumps({
         "model": model,
         "messages": messages,
         "temperature": 0.5,
         "max_tokens": 400,
     }).encode("utf-8")
+    headers = _merge_headers({
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + api_key,
+    }, extra_headers)
     req = urllib.request.Request(
         base + "/chat/completions",
         data=body,
         method="POST",
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": "Bearer " + api_key,
-        },
+        headers=headers,
     )
     with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
         payload = json.loads(resp.read().decode("utf-8"))
@@ -205,10 +227,10 @@ def _profile_brief(profile: dict) -> str:
 
 def understand(text: str, profile: dict | None = None,
                key: str | None = None, base: str | None = None,
-               model: str | None = None) -> dict:
+               model: str | None = None, headers=None) -> dict:
     """自然语言 → 结构化字段。失败一律返回 ok=False，由前端兜底。
 
-    key/base/model 由调用方传入时优先使用（用户自带 Key 模式），
+    key/base/model/headers 由调用方传入时优先使用（用户自带 Key 模式），
     服务器不保存、不记录这些值。
     """
     text = (text or "").strip()
@@ -231,7 +253,7 @@ def understand(text: str, profile: dict | None = None,
         content = _chat([
             {"role": "system", "content": SYSTEM},
             {"role": "user", "content": user},
-        ], api_key, base_url, model_id)
+        ], api_key, base_url, model_id, headers)
     except urllib.error.HTTPError as e:
         return {"ok": False, "source": "rule", "reason": f"http_{e.code}"}
     except (urllib.error.URLError, TimeoutError, OSError):
