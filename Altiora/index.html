@@ -567,6 +567,17 @@ const DATA = {
   notes:[]
 };
 
+/* 画像与日程持久化：刷新不丢（只存用户自己的事实，不存聊天记录） */
+const SAVE_KEY="altiora_state_v1";
+function saveData(){
+  try{localStorage.setItem(SAVE_KEY,JSON.stringify({profile:DATA.profile,events:DATA.events}));}catch(e){}
+}
+try{
+  const s=JSON.parse(localStorage.getItem(SAVE_KEY)||"null");
+  if(s&&s.profile)Object.assign(DATA.profile,s.profile);
+  if(s&&Array.isArray(s.events)&&s.events.length)DATA.events=s.events;
+}catch(e){}
+
 const COLORS={class:"#3B82F6",work:"#06B6D4",meeting:"#F97316",study:"#10B981",sleep:"#6B7280"};
 const T0=360, T1=1560, SPAN=T1-T0;
 const toMin=s=>{const[h,m]=s.split(":").map(Number);let v=h*60+m;if(v<T0)v+=1440;return v;};
@@ -715,6 +726,7 @@ function undoApply(){
   if(!snapshot)return;
   const s=JSON.parse(snapshot);snapshot=null;
   DATA.events=s.events;DATA.conflicts=s.conflicts;
+  saveData();
   renderConflicts();renderGantt();renderOrbs();updStats();
   push("ai","已撤销上一次采纳，日程回到改动前");
 }
@@ -725,24 +737,42 @@ function addEventFromText(t){
   if(m){s=String(m[1]).padStart(2,"0")+":"+m[2];if(m[3]&&m[4])e=String(m[3]).padStart(2,"0")+":"+m[4];}
   const ev={id:"n"+Date.now(),name:name.slice(0,10)||"新安排",type:"work",start:s,end:e,loc:"",priority:2,wage:0};
   DATA.events.push(ev);
+  saveData();
   const before=DATA.conflicts.length;
   DATA.conflicts=detectConflicts();
   renderGantt();renderConflicts();renderNotes();updStats();
   return {ev,s,e,delta:DATA.conflicts.length-before};
 }
+const fmtHM=m=>{m=((m%1440)+1440)%1440;return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0");};
 function apply(){
-  const c=DATA.conflicts[0],o=c.options.find(x=>x.k===picked);
+  const c=DATA.conflicts[0];if(!c)return;
+  const o=c.options.find(x=>x.k===picked);if(!o)return;
   takeSnapshot();
+
+  // 真的改日程，不只是嘴上说改了
+  const hi=c.a.priority<=c.b.priority?c.a:c.b;
+  const lo=hi===c.a?c.b:c.a;
+  const dur=toMin(lo.end)-toMin(lo.start);
+  if(picked==="A")DATA.events=DATA.events.filter(e=>e!==lo);
+  else if(picked==="B")DATA.events=DATA.events.filter(e=>e!==hi);
+  else{const st=toMin(hi.end)+30;lo.start=fmtHM(st);lo.end=fmtHM(st+dur);}
+  saveData();
+
+  DATA.conflicts=detectConflicts();
+  const left=DATA.conflicts.length;
+
   push("me",`就按 ${picked} 来：${o.name}`);
-  setTimeout(()=>push("ai",`好，就按 ${picked} 来。我只动了和冲突有关的那两件事，其它一格没碰。今天冲突清零了，你接着忙。`),420);
-  DATA.conflicts=[];
+  setTimeout(()=>push("ai",left
+    ? `按 ${picked} 调完了，但这么一动又撞上 ${left} 处。位置已经在时间轴上了，要不要再动你自己看。`
+    : `好，就按 ${picked} 来。我只动了和冲突有关的那两件事，其它一格没碰。今天冲突清零了。`),420);
+
+  renderGantt();renderConflicts();renderOrbs(true);updStats();
   const w=document.getElementById("cfWrap");
-  if(w)w.innerHTML=
+  if(w&&!left)w.innerHTML=
     `<div class="card" style="border-color:rgba(16,185,129,.3);background:rgba(16,185,129,.06);display:flex;align-items:center;gap:14px;justify-content:space-between">
        <div class="ttl" style="color:#6EE7B7;margin:0">✓ 今日冲突已清零 <small>采纳了 ${picked}：${o.name} · 只改了冲突相关项</small></div>
        <button class="btn ghost" onclick="undoApply()">撤销这次改动</button>
      </div>`;
-  renderGantt();renderOrbs(true);updStats();
   go("timeline");
 }
 
@@ -764,7 +794,7 @@ function makeConflict(a,b,ov){
     gains:["两件事都不耽误"],
     costs:[`连轴转，结束将被推到 ${stTxt} 之后`,`可能破你「${DATA.profile.hard_sleep_deadline} 前睡」的硬约束`]});
   return {id:"cf_"+a.id+"_"+b.id,a:a,b:b,overlap_min:ov,options:opts,
-    advice:`换我是你，我选 <b>A</b>。优先级高的事不能丢；而且你自己说过「${DATA.profile.known_weakness[0]||"已知弱点"}」，硬扛下去大概率会崩。`,
+    advice:`我不替你选。三个代价都摆在这儿了${DATA.profile.known_weakness[0]?`；你自己说过「${DATA.profile.known_weakness[0]}」，扛不扛得住你比我清楚`:""}。`,
     risk:money?`存在金钱损失（${money} 元），请结合长期目标判断`:"暂无直接金钱损失"};
 }
 function detectConflicts(){
@@ -909,7 +939,7 @@ const EMOTIONS=[
     "动力不是等来的，是动起来之后剩下的那点。今天不逼你。"
   ]}
 ];
-function pick(a){return a[Math.floor(Math.random()*a.length)];}
+function randPick(a){return a[Math.floor(Math.random()*a.length)];}
 function replyTo(v){
   const t=v.trim();
 
@@ -921,7 +951,7 @@ function replyTo(v){
   // 1) 明确让你记住，才写进画像（普通吐槽一律不记）
   if(/^(记住|记一下|帮我记住|规矩)/.test(t)){
     const r=t.replace(/^(记住|记一下|帮我记住|规矩)/,"").trim();
-    if(r){DATA.profile.known_weakness.push(r);renderMe();updStats();
+    if(r){DATA.profile.known_weakness.push(r);renderMe();updStats();saveData();
       return `行，写进行为规矩了：「${r}」。以后撞上它，代价那栏会出现。`;}
   }
   // 2) 带具体时间，才当成日程
@@ -932,17 +962,17 @@ function replyTo(v){
       : `「${r.ev.name} ${r.s}-${r.e}」加进去了，没撞车。`;
   }
   // 3) 情绪优先——先当人，再当工具
-  for(const e of EMOTIONS) if(e.k.test(t)) return pick(e.r);
+  for(const e of EMOTIONS) if(e.k.test(t)) return randPick(e.r);
   // 4) 长期目标：收下，但不逼你现在就干
   if(/想拿|想考|想成|目标是|我希望|我打算|我要考|我要拿|以后要/.test(t)){
     const g=t.replace(/[。！.!]+$/,"");
-    DATA.profile.long_term_goal=g;renderMe();updStats();
+    DATA.profile.long_term_goal=g;renderMe();updStats();saveData();
     return `「${g}」——这个我收进目标里了。<br>它今天不用开始。往后每次撞车，我先保它。`;
   }
   // 5) 行为规矩
   if(/以后不|以后别|再也不|不许|别再|不要再/.test(t)){
     const r=t.replace(/^(我|以后)/,"").trim().replace(/[。！.!]+$/,"");
-    DATA.profile.known_weakness.push(r);renderMe();updStats();
+    DATA.profile.known_weakness.push(r);renderMe();updStats();saveData();
     return `「${r}」，我记住了。下次你快撞上去的时候，我会先把代价摆出来。`;
   }
   // 6) 问日程
@@ -953,10 +983,10 @@ function replyTo(v){
   }
   // 7) 闲聊
   if(/天气|下雨|出太阳|好热|好冷|吃了|吃饭|饿|无聊|开心|哈哈|好烦但没事/.test(t)){
-    return pick(["嗯，那今天就普通地过。","挺好，今天没什么必须处理的事。","听你这么说，我这边也松了一点。"]);
+    return randPick(["嗯，那今天就普通地过。","挺好，今天没什么必须处理的事。","听你这么说，我这边也松了一点。"]);
   }
   // 8) 兜底：不记，只聊
-  return pick(["嗯，我在听。", "你接着说，我不打断。", "这会儿想说点什么就说，我不急着给你安排。"]);
+  return randPick(["嗯，我在听。", "你接着说，我不打断。", "这会儿想说点什么就说，我不急着给你安排。"]);
 }
 function slashCmd(v){
   const cmd=v.split(/\s+/)[0];
@@ -975,7 +1005,7 @@ function slashCmd(v){
   }else if(cmd==="/规矩"){
     const r=v.slice(3).trim();
     if(!r){push("ai","格式：/规矩 周一不接活");return;}
-    DATA.profile.known_weakness.push(r);renderMe();updStats();
+    DATA.profile.known_weakness.push(r);renderMe();updStats();saveData();
     push("ai",`规矩「${r}」已写进画像。以后排日程我替你守这条——它不进聊天记录，进的是计算器的输入。`);
   }else if(cmd==="/撤销"){undoApply();}
   else push("ai",`没有「${cmd}」这条命令。我认这几个：<b>/冲突 · /加事 · /规矩 · /撤销</b>。`);
@@ -1183,7 +1213,7 @@ function saveNote(){
     }else res.innerHTML=`<span class="lbl">记为日程</span>「${r.ev.name} ${r.s}-${r.e}」已进今天，没撞车。`;
   }else if(ty==="rule"){
     const r=t.replace(/^(以后|记住|必须|别再)/,"").trim();
-    DATA.profile.known_weakness.push(r);renderMe();updStats();
+    DATA.profile.known_weakness.push(r);renderMe();updStats();saveData();
     res.className="result on warn";
     res.innerHTML=`<span class="lbl">记为规矩</span>「${r}」已写进画像。<b>以后排日程我替你守这条。</b>`;
   }else{
