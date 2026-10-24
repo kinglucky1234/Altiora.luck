@@ -123,6 +123,25 @@ async def understand(req: dict = Body(...)):
     )
 
 
+@app.post("/api/say")
+async def say(req: dict = Body(...)):
+    """
+    第二段翻译官：计算器算出的确定结果 → 一句人话。
+    模型只能引用给定数字，写错就作废，前端退回模板。
+    """
+    facts = req.get("facts")
+    if not isinstance(facts, dict) or not facts:
+        return {"ok": False, "reason": "empty_facts"}
+    return llm.say(
+        facts,
+        req.get("profile") or {},
+        key=req.get("api_key"),
+        base=req.get("base_url"),
+        model=req.get("model"),
+        headers=req.get("headers"),
+    )
+
+
 @app.post("/api/asr")
 async def asr(audio: UploadFile = File(...)):
     """浏览器录音（webm/ogg/wav）→ 文字。"""

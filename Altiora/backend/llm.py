@@ -26,6 +26,13 @@ MAX_INPUT = 600
 INTENTS = {"safety", "emotion", "schedule", "memory", "goal", "chat"}
 EMOTIONS = {"sad", "tired", "anxious", "selfblame", "relapse", "lonely", "numb", "none"}
 
+# 万金油句式：模型一旦写出这些，服务端直接作废，让前端用自己的话兜底
+_BANNED = re.compile(
+    r"嗯[，,]\s*我在听|我在听|你接着说|我在这儿|我都在|会好起来的|会好一点|"
+    r"加油|你可以的|相信自己|慢慢来|不要放弃|你能做到"
+)
+_NUM = re.compile(r"\d+(?:\.\d+)?")
+
 SYSTEM = """你叫 Altiora，是「用户理想中更好的自己」在电脑里的投影，不是客服，也不是心理医生。
 
 你的职责只有翻译，不做决策。
@@ -51,15 +58,30 @@ SYSTEM = """你叫 Altiora，是「用户理想中更好的自己」在电脑里
 - 不说「加油」「你可以的」「相信自己」，不喊口号，不做心理诊断
 - 不复述用户原话，不用客服腔
 
-【reply 的写法】
-- 只有 intent 为 emotion 或 chat 时才写，其它一律 null
-- 一到两句，40 字以内
-- 情绪：先接住，不分析、不劝、不给方案；可以承认「今天就这样也行」
-- 闲聊：正常聊天，可以有一点幽默
-- 安全相关一律 null（由前端固定话术处理）
+【reply 的写法（这一栏最容易被写成客服腔，逐条遵守）】
+- intent=safety：null（前端有固定安全话术）
+- intent=schedule 且 event 完整（有 start 和 end）：null。账要由计算器算完再回来说，你不能抢答。
+- 其它情况一律要写，一到两句，40 字以内。
+- 必须指涉用户刚说的具体内容：那件事的名字、那个时间、那个词。只写放之四海皆准的话等于没听懂。
+- 禁止出现这些句式（及同类）：嗯，我在听 / 你接着说 / 我在这儿 / 说出来会好一点 / 会好起来的 / 加油 / 你可以的 / 相信自己 / 慢慢来。
+- 不确定就问一个具体问题（二选一，或要一个时间），不要问「你还好吗」这种空问题。
+- 情绪：先接住，不分析、不劝、不给方案；可以承认「今天就这样也行」。
+- 闲聊：正常聊天，可以有一点幽默，但别硬逗。
 
 只输出 JSON，不要解释，不要 Markdown 代码块：
 {"intent":"emotion","emotion":"tired","event":null,"memory":null,"goal":null,"reply":"..."}"""
+
+SAY_SYSTEM = """你是 Altiora，用户理想中更好的自己在电脑里的投影。下面是本地计算器算出的确定结果，你只负责把它说成一句人话。
+
+规则：
+- 只能引用给定数字，一个都不许改、不许加、不许四舍五入、不许推算新数字
+- 不替用户选择，不给建议，不评价对错
+- 一到两句，50 字以内
+- 语气平静、具体，说清发生了什么（哪两件事撞了、撞了多久）
+- 禁止「加油」「你可以的」「相信自己」「嗯，我在听」这类句子
+- 只说结果，不要重复用户原话
+
+只输出那一句话，不要引号，不要解释，不要 Markdown。"""
 
 
 def _api_key() -> str:
@@ -283,8 +305,10 @@ def understand(text: str, profile: dict | None = None,
 
     reply = obj.get("reply")
     reply = str(reply).strip()[:120] if isinstance(reply, str) else None
-    # 服务端硬约束：除了情绪与闲聊，不许模型说话，避免它替计算器下结论
-    if intent not in ("emotion", "chat"):
+    # 服务端硬约束：完整日程不给话术（账还没算），安全一律本地处理
+    if intent in ("safety",) or (intent == "schedule" and event):
+        reply = None
+    if reply and _BANNED.search(reply):
         reply = None
 
     return {
@@ -299,3 +323,47 @@ def understand(text: str, profile: dict | None = None,
         "reply": reply,
         "model": model_id,
     }
+
+
+def _numbers(s) -> set:
+    return set(_NUM.findall(str(s)))
+
+
+def say(facts: dict, profile: dict | None = None,
+        key: str | None = None, base: str | None = None,
+        model: str | None = None, headers=None) -> dict:
+    """第二段翻译官：计算器的确定结果 → 一句人话。
+
+    只允许引用 facts 里已有的数字，写错一个数字就整句作废（返回 ok=False）。
+    """
+    api_key, base_url, model_id = _resolve(key, base, model)
+    if not api_key:
+        return {"ok": False, "reason": "no_api_key"}
+    if key and not _safe_base(base_url):
+        return {"ok": False, "reason": "unsafe_base"}
+
+    fact_json = json.dumps(facts, ensure_ascii=False)
+    user = (
+        f"用户画像（仅供语气参考，不要复述）：\n{_profile_brief(profile or {})}\n\n"
+        f"计算结果：\n{fact_json}"
+    )
+    try:
+        content = _chat([
+            {"role": "system", "content": SAY_SYSTEM},
+            {"role": "user", "content": user},
+        ], api_key, base_url, model_id, headers)
+    except urllib.error.HTTPError as e:
+        return {"ok": False, "reason": f"http_{e.code}"}
+    except (urllib.error.URLError, TimeoutError, OSError):
+        return {"ok": False, "reason": "network"}
+    except Exception:
+        return {"ok": False, "reason": "unknown"}
+
+    line = content.strip().strip('"“”').split("\n")[0].strip()[:120]
+    if not line:
+        return {"ok": False, "reason": "empty"}
+    if _BANNED.search(line):
+        return {"ok": False, "reason": "banned"}
+    if not _numbers(line) <= _numbers(fact_json):
+        return {"ok": False, "reason": "invented_number"}
+    return {"ok": True, "text": line, "model": model_id}

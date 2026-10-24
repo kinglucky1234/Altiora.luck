@@ -10,9 +10,11 @@ Altiora 一键自检
 import json
 import os
 import re
+import shutil
 import socket
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.request
 import wave
@@ -87,6 +89,35 @@ def check_frontend():
         warn("前端页面", "页面里出现了疑似真实 Key 的字符串，检查一下")
     else:
         ok("无硬编码 Key", "页面里没有真实 API Key")
+
+
+def check_js_syntax():
+    """页面里的内联脚本整段跑不起来时，页面看着正常、其实什么都点不动。
+    本机有 node 就借它做语法检查；没有就跳过，不误报。"""
+    if not HTML.exists():
+        return
+    node = shutil.which("node")
+    if not node:
+        warn("前端脚本语法", "本机没有 node，跳过（不影响使用）")
+        return
+    text = HTML.read_text(encoding="utf-8")
+    scripts = re.findall(r"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", text, re.S)
+    bad = []
+    for i, code in enumerate(scripts):
+        if not code.strip():
+            continue
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / f"s{i}.js"
+            p.write_text(code, encoding="utf-8")
+            r = subprocess.run([node, "--check", str(p)], capture_output=True, text=True)
+            if r.returncode != 0:
+                lines = [x.strip() for x in (r.stderr or "").splitlines() if x.strip()]
+                hit = next((x for x in lines if "Error:" in x), lines[-1] if lines else "语法错误")
+                bad.append(hit)
+    if bad:
+        fail("前端脚本语法", "；".join(bad)[:300])
+    else:
+        ok("前端脚本语法", f"{len(scripts)} 段内联脚本语法正常")
 
 
 def free_port():
@@ -170,7 +201,8 @@ def check_server():
 
 def main():
     print("Altiora 自检\n" + "=" * 48)
-    for fn in (check_python, check_deps, check_model, check_frontend, check_server):
+    for fn in (check_python, check_deps, check_model, check_frontend,
+               check_js_syntax, check_server):
         try:
             fn()
         except Exception as e:

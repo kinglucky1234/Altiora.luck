@@ -818,8 +818,12 @@ function undoApply(){
   push("ai","已撤销上一次采纳，日程回到改动前");
 }
 function addStructuredEvent(ev){
+  const name=(ev.name||"新安排").slice(0,12);
+  // 同名同时间段不重复加，否则会自己跟自己「撞车」，算出一堆假冲突
+  const dup=DATA.events.find(e=>e.name===name&&e.start===ev.start&&e.end===ev.end);
+  if(dup)return {ev:dup,delta:0,dup:true};
   const e={id:"n"+Date.now()+Math.random().toString(36).slice(2,4),
-    name:(ev.name||"新安排").slice(0,12),type:ev.type||"work",
+    name,type:ev.type||"work",
     start:ev.start,end:ev.end,loc:ev.loc||"",priority:ev.priority||2,wage:ev.wage||0};
   DATA.events.push(e);
   saveData();
@@ -837,7 +841,7 @@ function addEventFromText(t){
   let s="19:00",e="21:00";
   if(m){s=String(m[1]).padStart(2,"0")+":"+m[2];if(m[3]&&m[4])e=String(m[3]).padStart(2,"0")+":"+m[4];}
   const r=addStructuredEvent({name:name.slice(0,10),type:"work",start:s,end:e});
-  return {ev:r.ev,s,e,delta:r.delta};
+  return {ev:r.ev,s,e,delta:r.delta,dup:r.dup};
 }
 const fmtHM=m=>{m=((m%1440)+1440)%1440;return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0");};
 function apply(){
@@ -1235,6 +1239,47 @@ async function askLLM(text){
     return null;
   }catch(e){clearTimeout(t);return null;}
 }
+async function askSay(facts){
+  const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),9000);
+  try{
+    const body={facts,profile:DATA.profile};
+    if(USERLLM.key){
+      body.api_key=USERLLM.key;body.base_url=USERLLM.base;body.model=USERLLM.model;
+      if(USERLLM.headers&&Object.keys(USERLLM.headers).length)body.headers=USERLLM.headers;
+    }
+    const r=await fetch("/api/say",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(body),signal:ctl.signal
+    });
+    clearTimeout(t);
+    if(!r.ok)return "";
+    const j=await r.json();
+    return j&&j.ok&&j.text?j.text:"";
+  }catch(e){clearTimeout(t);return "";}
+}
+// 最近说过的三句不再重复，避免「背稿感」
+const RECENT_AI=[];
+function pickFresh(pool){
+  const fresh=pool.filter(x=>!RECENT_AI.includes(x));
+  const line=(fresh.length?fresh:pool)[Math.floor(Math.random()*(fresh.length?fresh.length:pool.length))];
+  RECENT_AI.push(line);if(RECENT_AI.length>3)RECENT_AI.shift();
+  return line;
+}
+// 从用户这句里抓一个具体的东西，兜底时指涉它，不说「嗯，我在听」
+function topicOf(t){
+  return t.replace(/[，。！？、,.!?~～；;：:\s]+/g," ").trim().split(" ")
+    .map(x=>x.replace(/^(嗯+|啊+|诶+|哎+|哈+|嘿+|我|你|就是|那个|其实|然后|所以|但是|因为|我觉得|感觉|的话|今天|明天)+/,""))
+    .filter(x=>x.length>=2&&x.length<=12)
+    .pop()||"";
+}
+function localFallback(t){
+  const k=topicOf(t);
+  return pickFresh(k
+    ? [`「${esc(k)}」这句我没完全跟上——你是想排个时间，还是想让我先记着？`,
+       `你说的「${esc(k)}」，我记下了。它是今天要动的事，还是更远的那种？`]
+    : ["这句我没接住。你是想让我排个时间，还是想让我记着点什么？",
+       "我没听懂，也不想假装听懂。再说具体一点？给我一件事或一个时间就行。"]);
+}
 function esc(s){
   return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
@@ -1255,33 +1300,40 @@ async function handleUser(v){
   const slot=push("ai","<span class='typing'>· · ·</span>");
   const j=await askLLM(v);
   if(!j){setMsg(slot.id,replyTo(v));return;}
-  routeLLM(j,slot.id,v);
+  await routeLLM(j,slot.id,v);
 }
-function routeLLM(j,slotId,v){
-  // 1) 日程：时间由 LLM 抽取，撞了几处由本地计算器算
+async function routeLLM(j,slotId,v){
+  // 1) 日程：时间由 LLM 抽取，撞了几处由本地计算器算，再由 LLM 说成人话
   if(j.intent==="schedule"){
     if(j.event){
       const r=addStructuredEvent(j.event);
-      setMsg(slotId,r.delta>0
+      if(r.dup){setMsg(slotId,`「${esc(r.ev.name)} ${r.ev.start}-${r.ev.end}」时间轴里已经有这条了，我没重复加。`);return;}
+      const c=DATA.conflicts.find(x=>x.a===r.ev||x.b===r.ev);
+      const line=await askSay({
+        事件:{名称:r.ev.name,开始:r.ev.start,结束:r.ev.end},
+        新撞出的冲突数:r.delta,
+        冲突:c?{对方:c.a===r.ev?c.b.name:c.a.name,重叠分钟:c.overlap_min}:null
+      });
+      setMsg(slotId,line||(r.delta>0
         ?`「${esc(r.ev.name)} ${r.ev.start}-${r.ev.end}」加进时间轴了，撞出 <b>${r.delta}</b> 处冲突。代价在时间轴页。`
-        :`「${esc(r.ev.name)} ${r.ev.start}-${r.ev.end}」加进去了，没撞车。`);
+        :`「${esc(r.ev.name)} ${r.ev.start}-${r.ev.end}」加进去了，没撞车。`));
       return;
     }
     // 听懂了，但用户没说结束时间 —— 不编，问一句
     const sub=j.subject?`「${esc(j.subject)}」`:"这件事";
-    setMsg(slotId,`${sub}我听懂了。但要进时间轴还差个开始和结束时间——几点到几点？`);
+    setMsg(slotId,j.reply||`${sub}我听懂了。但要进时间轴还差个开始和结束时间——几点到几点？`);
     return;
   }
   // 2) 明确要求记住的规矩
   if(j.intent==="memory"&&j.memory){
     DATA.profile.known_weakness.push(j.memory.text);renderMe();updStats();saveData();
-    setMsg(slotId,`行，写进行为规矩了：「${esc(j.memory.text)}」。以后撞上它，代价那栏会出现。`);
+    setMsg(slotId,j.reply||`行，写进行为规矩了：「${esc(j.memory.text)}」。以后撞上它，代价那栏会出现。`);
     return;
   }
   // 3) 长期目标
   if(j.intent==="goal"&&j.goal){
     DATA.profile.long_term_goal=j.goal;renderMe();updStats();saveData();
-    setMsg(slotId,`「${esc(j.goal)}」——这个我收进目标里了。<br>它今天不用开始。往后每次撞车，我先保它。`);
+    setMsg(slotId,j.reply||`「${esc(j.goal)}」——这个我收进目标里了。<br>它今天不用开始。往后每次撞车，我先保它。`);
     return;
   }
   // 4) 情绪 / 闲聊：模型只负责说话
@@ -1302,7 +1354,7 @@ const EMOTIONS=[
     "累成这样还逼自己，等于跟身体借钱。今天先还一点。",
     "晚上的事，晚点再说。你现在只负责休息。"
   ]},
-  {k:/焦虑|慌|压力|好怕|担心|来不及|赶不上|睡不着|心里发紧/,r:[
+  {k:/焦虑|慌|压力|好怕|担心|来不及|赶不上|睡不着|心里发紧|好烦|烦死|心烦|烦躁/,r:[
     "慌，是因为你把它当成一件必须一次做完的事。它其实可以先只做第一步。",
     "先说最让你睡不着的那一件。别的先放着，我们不一次解决全部。",
     "别急着规划全局。接下来十分钟，你能动哪一下？"
@@ -1326,7 +1378,6 @@ const EMOTIONS=[
     "动力不是等来的，是动起来之后剩下的那点。今天不逼你。"
   ]}
 ];
-function randPick(a){return a[Math.floor(Math.random()*a.length)];}
 // 从一句话里抠出「目标本身」：去掉寒暄、连接词、语气词，动词归一
 function extractGoal(t){
   let s=t.trim()
@@ -1370,12 +1421,13 @@ function replyTo(v){
   // 2) 带具体时间，才当成日程
   if(/\d{1,2}[:：]\d{2}/.test(t)){
     const r=addEventFromText(t);
+    if(r.dup)return `「${r.ev.name} ${r.s}-${r.e}」时间轴里已经有这条了，我没重复加。`;
     return r.delta>0
       ? `「${r.ev.name} ${r.s}-${r.e}」加进时间轴了，撞出 ${r.delta} 处冲突。代价在时间轴页。`
       : `「${r.ev.name} ${r.s}-${r.e}」加进去了，没撞车。`;
   }
   // 3) 情绪优先——先当人，再当工具
-  for(const e of EMOTIONS) if(e.k.test(t)) return randPick(e.r);
+  for(const e of EMOTIONS) if(e.k.test(t)) return pickFresh(e.r);
   // 4) 长期目标：收下目标本身，但不逼你现在就干
   const goal=extractGoal(t);
   if(goal){
@@ -1394,12 +1446,8 @@ function replyTo(v){
     const c=DATA.conflicts[0];
     return `现在撞的是「${c.a.name}」和「${c.b.name}」，重叠 ${c.overlap_min} 分钟。三个选项的代价我摆在时间轴页了。`;
   }
-  // 7) 闲聊
-  if(/天气|下雨|出太阳|好热|好冷|吃了|吃饭|饿|无聊|开心|哈哈|好烦但没事/.test(t)){
-    return randPick(["嗯，那今天就普通地过。","挺好，今天没什么必须处理的事。","听你这么说，我这边也松了一点。"]);
-  }
-  // 8) 兜底：不记，只聊
-  return randPick(["嗯，我在听。", "你接着说，我不打断。", "这会儿想说点什么就说，我不急着给你安排。"]);
+  // 7) 兜底：不记，也不说万金油——没听懂就承认，并问一个具体问题
+  return localFallback(t);
 }
 function slashCmd(v){
   const cmd=v.split(/\s+/)[0];
@@ -1412,7 +1460,9 @@ function slashCmd(v){
     const t=v.slice(3).trim();
     if(!/\d{1,2}[:：]\d{2}/.test(t)){push("ai","格式：/加事 周五 19:00-21:00 晚班（带上时间我才能排进日程）");return;}
     const r=addEventFromText(t);
-    push("ai",r.delta>0
+    push("ai",r.dup
+      ?`「${r.ev.name} ${r.s}-${r.e}」时间轴里已经有一条一模一样的了，我没重复加。`
+      :r.delta>0
       ?`「${r.ev.name} ${r.s}-${r.e}」已加进今天，<b>撞出 ${r.delta} 处冲突</b>——代价在时间轴页，我算好了。`
       :`「${r.ev.name} ${r.s}-${r.e}」已加进今天，没撞车。`);
   }else if(cmd==="/规矩"){
