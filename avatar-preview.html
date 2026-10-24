@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>白色小人 · 形象预演</title>
+<style>
+  :root{
+    --bg:#0A0D16;
+    --card:rgba(255,255,255,.04);
+    --line:rgba(255,255,255,.08);
+    --t1:#E8EAF0;
+    --t2:#9AA0AE;
+    --t3:#6B7280;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    background:var(--bg);color:var(--t1);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    min-height:100vh;padding:56px 24px 80px;
+    background-image:
+      radial-gradient(800px 460px at 16% -10%, rgba(255,138,122,.07), transparent 62%),
+      radial-gradient(700px 420px at 88% 2%, rgba(139,92,246,.07), transparent 60%);
+  }
+  .head{max-width:920px;margin:0 auto 40px}
+  .head h1{font-size:20px;font-weight:600;letter-spacing:.3px}
+  .head p{margin-top:8px;font-size:13.5px;color:var(--t2);line-height:1.7}
+  .gallery{
+    max-width:920px;margin:0 auto;
+    display:grid;grid-template-columns:repeat(4,1fr);gap:18px;
+  }
+  @media (max-width:760px){.gallery{grid-template-columns:repeat(2,1fr)}}
+  .cell{
+    background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:22px 14px 18px;display:flex;flex-direction:column;align-items:center;gap:10px;
+  }
+  .cell .name{font-size:14px;font-weight:600}
+  .cell .desc{font-size:12px;color:var(--t3);text-align:center;line-height:1.6;min-height:38px}
+
+  /* ── 白色小人 ── */
+  .wf{
+    width:142px;height:174px;overflow:visible;
+    filter:drop-shadow(0 18px 28px rgba(0,0,0,.42));
+  }
+  .wf .body{
+    fill:url(#g-body);
+    stroke:rgba(255,255,255,.55);stroke-width:.6;
+  }
+  .wf .rim{fill:url(#g-rim);opacity:.85}
+  .wf .eye{fill:#2A3344}
+  .wf .eyes-happy path,.wf .eyes-tired path{
+    fill:none;stroke:#2A3344;stroke-width:3.4;stroke-linecap:round;
+  }
+  .wf .mouth-smile,.wf .mouth-frown,.wf .mouth-line{
+    fill:none;stroke:#2A3344;stroke-linecap:round;stroke-width:3.2;
+  }
+  /* 默认隐藏的部件 */
+  .wf .eyes-happy,.wf .eyes-tired,.wf .mouth-frown,.wf .mouth-line{display:none}
+
+  /* 平静 */
+  .wf[data-mood="calm"]{--glow:#DCE6F5}
+  .wf[data-mood="calm"] .eyes-open{animation:blink 5.6s infinite}
+  .wf[data-mood="calm"] .body{animation:breathe 4.6s ease-in-out infinite}
+
+  /* 开心 */
+  .wf[data-mood="happy"]{--glow:#FF9E8E}
+  .wf[data-mood="happy"] .eyes-open{display:none}
+  .wf[data-mood="happy"] .eyes-happy{display:block}
+  .wf[data-mood="happy"] .mouth-smile{display:none}
+  .wf[data-mood="happy"] .mouth-line{display:none}
+  .wf[data-mood="happy"] .body{animation:hop 1.9s ease-in-out infinite}
+
+  /* 担心 */
+  .wf[data-mood="worried"]{--glow:#F5A524}
+  .wf[data-mood="worried"] .mouth-smile{display:none}
+  .wf[data-mood="worried"] .mouth-frown{display:block}
+  .wf[data-mood="worried"] .e2{transform:scale(.82);transform-box:fill-box;transform-origin:center}
+  .wf[data-mood="worried"] .body{animation:tilt 4.2s ease-in-out infinite}
+
+  /* 困 / 低落 */
+  .wf[data-mood="tired"]{--glow:#7C8AA5}
+  .wf[data-mood="tired"] .eyes-open{display:none}
+  .wf[data-mood="tired"] .eyes-tired{display:block}
+  .wf[data-mood="tired"] .mouth-smile{display:none}
+  .wf[data-mood="tired"] .mouth-line{display:block}
+  .wf[data-mood="tired"] .body{animation:sink 5.2s ease-in-out infinite}
+  .wf[data-mood="tired"] .e1,.wf[data-mood="tired"] .e2{animation:none}
+
+  @keyframes breathe{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-3px) scale(1.012)}}
+  @keyframes hop{0%,100%{transform:translateY(0)}45%{transform:translateY(-9px)}}
+  @keyframes tilt{0%,100%{transform:rotate(0)}50%{transform:rotate(-2.4deg)}}
+  @keyframes sink{0%,100%{transform:translateY(4px)}50%{transform:translateY(8px)}}
+  @keyframes blink{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(.12)}}
+  .wf .eyes-open,.wf .e1,.wf .e2{transform-box:fill-box;transform-origin:center}
+
+  /* 缩到 App 里的大小 */
+  .small{
+    max-width:920px;margin:44px auto 0;padding:26px 20px;
+    background:var(--card);border:1px solid var(--line);border-radius:16px;
+    display:flex;align-items:center;gap:26px;
+  }
+  .small .wf{width:82px;height:100px}
+  .small .txt{font-size:12.5px;color:var(--t3);line-height:1.7}
+  .small .txt b{color:var(--t2);font-weight:600}
+</style>
+</head>
+<body>
+  <div class="head">
+    <h1>白色小人 · 四种表情</h1>
+    <p>纯 SVG + CSS，不加载任何图片或字体。下面是四种情绪状态，同一个形体只换眼睛和嘴。看哪个状态像你心里那个「未来的自己」。</p>
+  </div>
+
+  <div class="gallery" id="gallery"></div>
+
+  <div class="small">
+    <div id="smallFig"></div>
+    <div class="txt">
+      <b>在页面里大概这么大（82px）</b><br>
+      比现在的球小，但要留出表情的空间。位置仍在输入框上方居中，不遮挡对话。
+    </div>
+  </div>
+
+<script>
+function figure(mood){
+  return `
+  <svg class="wf" data-mood="${mood}" viewBox="0 0 140 170" aria-label="白色小人">
+    <defs>
+      <radialGradient id="g-body" cx="36%" cy="24%" r="82%">
+        <stop offset="0%"  stop-color="#FFFFFF"/>
+        <stop offset="52%" stop-color="#F5F8FD"/>
+        <stop offset="100%" stop-color="#CBD6E8"/>
+      </radialGradient>
+      <radialGradient id="g-glow">
+        <stop offset="0%"  stop-color="var(--glow)" stop-opacity=".50"/>
+        <stop offset="62%" stop-color="var(--glow)" stop-opacity=".12"/>
+        <stop offset="100%" stop-color="var(--glow)" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="g-rim" cx="34%" cy="18%" r="56%">
+        <stop offset="0%" stop-color="#FFFFFF" stop-opacity=".95"/>
+        <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+
+    <ellipse cx="70" cy="94" rx="58" ry="66" fill="url(#g-glow)"/>
+
+    <g class="body">
+      <path d="M70 18 C98 18 118 44 118 82 C118 117 99 150 70 150 C41 150 22 117 22 82 C22 44 42 18 70 18 Z"/>
+      <ellipse class="rim" cx="60" cy="52" rx="22" ry="17"/>
+    </g>
+
+    <g class="face">
+      <g class="eyes-open">
+        <ellipse class="eye e1" cx="54" cy="80" rx="5.2" ry="6.4"/>
+        <ellipse class="eye e2" cx="86" cy="80" rx="5.2" ry="6.4"/>
+      </g>
+      <g class="eyes-happy">
+        <path d="M47 82 Q54 73 61 82"/>
+        <path d="M79 82 Q86 73 93 82"/>
+      </g>
+      <g class="eyes-tired">
+        <path d="M48 80 h12"/>
+        <path d="M80 80 h12"/>
+      </g>
+      <path class="mouth-smile" d="M58 98 Q70 108 82 98"/>
+      <path class="mouth-frown" d="M60 104 Q70 96 80 104"/>
+      <path class="mouth-line"  d="M62 101 h16"/>
+    </g>
+  </svg>`;
+}
+
+const moods = [
+  {k:"calm",    n:"平静",   d:"默认状态。眨眼、轻呼吸，不打扰你。"},
+  {k:"happy",   n:"开心",   d:"弯眼 + 笑嘴 + 轻跳。你完成一件事时用这个。"},
+  {k:"worried", n:"担心",   d:"一边眼睛变小、嘴角下弯、身体微倾。撞车时用这个。"},
+  {k:"tired",   n:"困 / 低落", d:"眼睛半闭、嘴角拉平、身体下沉。你说累的时候用这个。"}
+];
+
+document.getElementById("gallery").innerHTML = moods.map(m=>`
+  <div class="cell">
+    ${figure(m.k)}
+    <div class="name">${m.n}</div>
+    <div class="desc">${m.d}</div>
+  </div>`).join("");
+
+document.getElementById("smallFig").innerHTML = figure("calm");
+</script>
+</body>
+</html>

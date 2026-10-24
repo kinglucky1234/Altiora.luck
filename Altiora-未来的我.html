@@ -55,8 +55,16 @@ body::before{
   display:flex;align-items:center;gap:8px;
 }
 .gaze-msg .dot{width:6px;height:6px;border-radius:50%;background:var(--red);animation:pulse 2s infinite}
+.gaze-msg:not(.warn) .dot{background:var(--green)}
 .gaze-msg.warn{color:#FCA5A5}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.8)}}
+.ai-pill{
+  font-size:11px;padding:3px 9px;border-radius:999px;white-space:nowrap;
+  color:var(--t3);border:1px solid var(--line);background:rgba(255,255,255,.02);
+}
+.ai-pill.on{color:#6EE7B7;border-color:rgba(16,185,129,.35);background:rgba(16,185,129,.08)}
+.typing{letter-spacing:3px;color:var(--t3);animation:tp 1.2s ease-in-out infinite}
+@keyframes tp{0%,100%{opacity:.3}50%{opacity:1}}
 .avatar-mini{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;
   box-shadow:0 0 15px 4px var(--glow,rgba(239,68,68,.4))}
 .avatar-mini svg{width:100%;height:100%;display:block}
@@ -152,6 +160,8 @@ body[data-tab="home"] .fab{display:none}
   display:none;
 }
 .icon-btn .dot.on{display:block}
+.icon-btn.primary{background:rgba(59,130,246,.16);border-color:rgba(59,130,246,.45);color:#93C5FD}
+.icon-btn.primary:hover{background:rgba(59,130,246,.28);color:#DBEAFE}
 
 /* AI 回复预览（主页） */
 .peek{
@@ -313,6 +323,7 @@ pre.json .n{color:#FDBA74}
 .note-item .del{flex:none;color:var(--t3);cursor:pointer;font-size:15px;line-height:1;padding:2px 4px}
 .note-item .del:hover{color:var(--red)}
 .empty{font-size:12px;color:var(--t3);padding:14px 0;text-align:center}
+.dash{color:var(--t3)}
 
 @media(max-width:720px){
   .kv{grid-template-columns:110px 1fr}
@@ -379,6 +390,30 @@ pre.json .n{color:#FDBA74}
   background:rgba(255,255,255,.03);color:var(--t1);font-size:14px;font-family:inherit;outline:none;transition:.15s;
 }
 .fullchat-input input:focus{border-color:rgba(59,130,246,.5);background:rgba(59,130,246,.05)}
+
+/* ── 大模型设置（自带 Key） ── */
+.llm-mask{position:fixed;inset:0;z-index:1100;display:none;align-items:center;justify-content:center;
+  background:rgba(5,8,18,.74);backdrop-filter:blur(4px);padding:20px}
+.llm-mask.on{display:flex;animation:fade .2s}
+.llm-card{width:min(430px,92vw);max-height:88vh;overflow:auto;background:#101626;
+  border:1px solid var(--line-hi);border-radius:16px;padding:22px;box-shadow:0 24px 70px rgba(0,0,0,.6)}
+.llm-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.llm-head b{font-size:15px}
+.llm-x{background:none;border:none;color:var(--t3);font-size:18px;cursor:pointer;padding:0 4px;line-height:1}
+.llm-x:hover{color:var(--t1)}
+.llm-tip{font-size:11.5px;color:var(--t3);line-height:1.75}
+.llm-card label{display:block;font-size:11.5px;color:var(--t2);margin:13px 0 6px}
+.llm-card input,.llm-card select{width:100%;padding:10px 12px;border-radius:9px;
+  border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--t1);
+  font-size:13px;font-family:inherit;outline:none}
+.llm-card input:focus,.llm-card select:focus{border-color:rgba(59,130,246,.5)}
+.llm-actions{display:flex;gap:8px;margin-top:18px}
+.llm-actions .btn{flex:1}
+.llm-msg{font-size:12px;color:var(--t2);margin-top:12px;min-height:18px;line-height:1.7}
+.llm-msg.err{color:#FCA5A5}
+.llm-msg.ok{color:#6EE7B7}
+.ai-pill{cursor:pointer}
+.ai-pill:hover{border-color:var(--line-hi);color:var(--t1)}
 </style>
 </head>
 <body>
@@ -386,7 +421,8 @@ pre.json .n{color:#FDBA74}
 <div class="gaze">
   <div class="gaze-in">
     <div class="logo">Altiora<span>未来的你</span></div>
-    <div class="gaze-msg warn" id="gazeMsg"><span class="dot"></span><span id="gazeTxt">我盯着呢，今天有 1 处冲突等你定</span></div>
+    <div class="gaze-msg" id="gazeMsg"><span class="dot"></span><span id="gazeTxt">今天还是一张白纸，你说一句我就开始记</span></div>
+    <div class="ai-pill" id="aiPill" onclick="openLLM()" title="点这里填你自己的 API Key">本地规则</div>
     <div class="avatar-mini" id="gazeAvatar"></div>
   </div>
 </div>
@@ -419,6 +455,11 @@ pre.json .n{color:#FDBA74}
           <path d="M19 11a7 7 0 0 1-14 0"/><path d="M12 18v3"/>
         </svg>
       </button>
+      <button class="icon-btn primary" id="sendBtn" onclick="send()" title="发送">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 12h15M13 6l6 6-6 6"/>
+        </svg>
+      </button>
       <button class="icon-btn" id="histBtn" onclick="openFullChat()" title="聊天记录">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
           <path d="M21 12a8 8 0 0 1-8 8H7l-4 3V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8Z"/>
@@ -437,6 +478,7 @@ pre.json .n{color:#FDBA74}
       </div>
       <div class="axis" id="axis"></div>
       <div class="gantt"><div class="grid" id="grid"></div><div id="bars"></div></div>
+      <div class="empty" id="ganttEmpty" style="display:none"></div>
       <div class="legend">
         <span><b style="background:#3B82F6"></b>课程</span>
         <span><b style="background:#06B6D4"></b>兼职</span>
@@ -543,39 +585,63 @@ pre.json .n{color:#FDBA74}
 
 <div id="toast"></div>
 
+<!-- ═══ 大模型设置：每个用户用自己的 Key ═══ -->
+<div class="llm-mask" id="llmMask" onclick="if(event.target===this)closeLLM()">
+  <div class="llm-card">
+    <div class="llm-head"><b>大模型设置</b><button class="llm-x" onclick="closeLLM()" title="关闭">×</button></div>
+    <p class="llm-tip">用你自己的 Key。它只存在这台电脑的浏览器里，每句话临时发给本地服务，服务端不保存、不写日志，也不会进仓库。<br>不填也能用：全部走本地规则。</p>
+    <label>厂商</label>
+    <select id="llmProvider" onchange="llmPreset()">
+      <option value="deepseek">DeepSeek</option>
+      <option value="dashscope">通义千问（阿里云百炼）</option>
+      <option value="ark">火山方舟（豆包）</option>
+      <option value="custom">自定义（OpenAI 兼容）</option>
+    </select>
+    <label>API Key</label>
+    <input id="llmKey" type="password" autocomplete="off" placeholder="sk-...">
+    <label>模型名</label>
+    <input id="llmModel" autocomplete="off" placeholder="deepseek-chat">
+    <div id="llmBaseWrap" style="display:none">
+      <label>Base URL</label>
+      <input id="llmBase" autocomplete="off" placeholder="https://你的地址/v1">
+    </div>
+    <div class="llm-actions">
+      <button class="btn" onclick="saveLLM()">保存</button>
+      <button class="btn" id="llmTest" onclick="testLLM()">测试连接</button>
+      <button class="btn ghost" onclick="clearLLM()">清除</button>
+    </div>
+    <div class="llm-msg" id="llmMsg"></div>
+  </div>
+</div>
+
 <script>
 /* ════════ 数据 ════════ */
 const DATA = {
   profile:{
-    name:"小林",
-    hard_sleep_deadline:"23:00",
-    hard_morning_start:"07:00",
-    preferred_focus_hours:"09:00-12:00",
-    known_weakness:["晚上容易刷手机","连续学习 3 小时会垮"],
-    long_term_goal:"拿到传智杯奖项",
+    name:"",
+    hard_sleep_deadline:"",
+    hard_morning_start:"",
+    preferred_focus_hours:"",
+    known_weakness:[],
+    long_term_goal:"",
     avatar_color:"#5B7CFA"
   },
-  events:[
-    {id:"e1",name:"高数课", type:"class",  start:"08:00",end:"09:40",loc:"教A101",      priority:1,wage:0},
-    {id:"e2",name:"家教",   type:"work",   start:"10:00",end:"12:00",loc:"东门咖啡馆",  priority:2,wage:80},
-    {id:"e3",name:"开会",   type:"meeting",start:"14:00",end:"15:00",loc:"302 会议室",  priority:1,wage:0},
-    {id:"e4",name:"家教补", type:"work",   start:"14:30",end:"16:30",loc:"东门咖啡馆",  priority:2,wage:80},
-    {id:"e5",name:"写代码", type:"study",  start:"19:00",end:"21:00",loc:"宿舍",        priority:3,wage:0},
-    {id:"e6",name:"睡觉",   type:"sleep",  start:"23:00",end:"02:00",loc:"",            priority:1,wage:0}
-  ],
+  events:[],
   conflicts:[],
   notes:[]
 };
 
 /* 画像与日程持久化：刷新不丢（只存用户自己的事实，不存聊天记录） */
-const SAVE_KEY="altiora_state_v1";
+const SAVE_KEY="altiora_state_v2";
+// 旧版本的内置示例数据不再沿用，清掉，第一次打开就是一张白纸
+try{localStorage.removeItem("altiora_state_v1");}catch(e){}
 function saveData(){
   try{localStorage.setItem(SAVE_KEY,JSON.stringify({profile:DATA.profile,events:DATA.events}));}catch(e){}
 }
 try{
   const s=JSON.parse(localStorage.getItem(SAVE_KEY)||"null");
   if(s&&s.profile)Object.assign(DATA.profile,s.profile);
-  if(s&&Array.isArray(s.events)&&s.events.length)DATA.events=s.events;
+  if(s&&Array.isArray(s.events))DATA.events=s.events;
 }catch(e){}
 
 const COLORS={class:"#3B82F6",work:"#06B6D4",meeting:"#F97316",study:"#10B981",sleep:"#6B7280"};
@@ -635,7 +701,7 @@ function renderOrbs(joy){
     s.className="hero-state";
     if(joy){s.textContent="排好了";s.classList.add("blue");}
     else if(mood==="worry"){s.textContent="撞车了，账算好了";}
-    else{s.textContent="今天稳着";s.classList.add("green");}
+    else{s.textContent=DATA.events.length?"今天稳着":"还没开始，先聊两句";s.classList.add("green");}
   }
 }
 
@@ -673,6 +739,11 @@ function renderGantt(){
       seg.style.left=pct(s)+"%";seg.style.width=((en-s)/SPAN*100)+"%";}
     else seg.style.width="0";
   }
+  const em=document.getElementById("ganttEmpty");
+  if(em){
+    em.style.display=DATA.events.length?"none":"block";
+    if(!DATA.events.length)em.textContent="今天还是一张白纸。贴一份课表，或者直接对球说一句「三点到五点去家教」。";
+  }
 }
 function hexA(hex,a){
   const n=parseInt(hex.slice(1),16);
@@ -683,6 +754,12 @@ function hexA(hex,a){
 function renderConflicts(){
   const w=document.getElementById("cfWrap");if(!w)return;
   w.innerHTML="";
+  if(!DATA.conflicts.length){
+    w.innerHTML=`<div class="card" style="border-color:rgba(16,185,129,.22);background:rgba(16,185,129,.04)">
+      <div class="ttl" style="margin:0;color:#6EE7B7">今天没有撞车
+      <small>${DATA.events.length?"安排都在时间轴上，互不重叠":"还没有安排——先告诉我一件带时间的事"}</small></div></div>`;
+    return;
+  }
   DATA.conflicts.forEach(c=>{
     const card=document.createElement("div");card.className="cf-card";
     card.innerHTML=`
@@ -730,18 +807,27 @@ function undoApply(){
   renderConflicts();renderGantt();renderOrbs();updStats();
   push("ai","已撤销上一次采纳，日程回到改动前");
 }
-function addEventFromText(t){
-  const m=t.match(/(\d{1,2})[:：](\d{2})\s*(?:至|-|到|~)?\s*(\d{1,2})?[:：]?(\d{2})?/);
-  let name=t.replace(/\d{1,2}[:：]\d{2}[\s\S]*$/,"").replace(/[，,。]$/,"").trim()||"新安排";
-  let s="19:00",e="21:00";
-  if(m){s=String(m[1]).padStart(2,"0")+":"+m[2];if(m[3]&&m[4])e=String(m[3]).padStart(2,"0")+":"+m[4];}
-  const ev={id:"n"+Date.now(),name:name.slice(0,10)||"新安排",type:"work",start:s,end:e,loc:"",priority:2,wage:0};
-  DATA.events.push(ev);
+function addStructuredEvent(ev){
+  const e={id:"n"+Date.now()+Math.random().toString(36).slice(2,4),
+    name:(ev.name||"新安排").slice(0,12),type:ev.type||"work",
+    start:ev.start,end:ev.end,loc:ev.loc||"",priority:ev.priority||2,wage:ev.wage||0};
+  DATA.events.push(e);
   saveData();
   const before=DATA.conflicts.length;
   DATA.conflicts=detectConflicts();
-  renderGantt();renderConflicts();renderNotes();updStats();
-  return {ev,s,e,delta:DATA.conflicts.length-before};
+  renderGantt();renderConflicts();renderNotes();renderOrbs();renderMe();updStats();
+  return {ev:e,delta:DATA.conflicts.length-before};
+}
+function addEventFromText(t){
+  const m=t.match(/(\d{1,2})[:：](\d{2})\s*(?:至|-|到|~)?\s*(\d{1,2})?[:：]?(\d{2})?/);
+  // 名字可能写时间前面，也可能写时间后面，两边都要认
+  let name=t.replace(/\d{1,2}[:：]\d{2}/g," ")
+           .replace(/[至到~\-–—]/g," ")
+           .replace(/[，,。.\s]+/g," ").trim()||"新安排";
+  let s="19:00",e="21:00";
+  if(m){s=String(m[1]).padStart(2,"0")+":"+m[2];if(m[3]&&m[4])e=String(m[3]).padStart(2,"0")+":"+m[4];}
+  const r=addStructuredEvent({name:name.slice(0,10),type:"work",start:s,end:e});
+  return {ev:r.ev,s,e,delta:r.delta};
 }
 const fmtHM=m=>{m=((m%1440)+1440)%1440;return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0");};
 function apply(){
@@ -792,7 +878,8 @@ function makeConflict(a,b,ov){
   const stTxt=String(hh).padStart(2,"0")+":"+String(mm).padStart(2,"0");
   opts.push({k:"C",name:`把${lo.name}顺延到 ${stTxt}`,
     gains:["两件事都不耽误"],
-    costs:[`连轴转，结束将被推到 ${stTxt} 之后`,`可能破你「${DATA.profile.hard_sleep_deadline} 前睡」的硬约束`]});
+    costs:[`连轴转，结束将被推到 ${stTxt} 之后`,
+      DATA.profile.hard_sleep_deadline?`可能破你「${DATA.profile.hard_sleep_deadline} 前睡」的硬约束`:"往后连轴转，你今天可能没有整块休息"]});
   return {id:"cf_"+a.id+"_"+b.id,a:a,b:b,overlap_min:ov,options:opts,
     advice:`我不替你选。三个代价都摆在这儿了${DATA.profile.known_weakness[0]?`；你自己说过「${DATA.profile.known_weakness[0]}」，扛不扛得住你比我清楚`:""}。`,
     risk:money?`存在金钱损失（${money} 元），请结合长期目标判断`:"暂无直接金钱损失"};
@@ -882,9 +969,9 @@ function toggleFullMic(){
   startVoice(document.getElementById("fullMicBtn"),document.getElementById("fullChatIn"),handleUser);
 }
 const HELLO=[
-  ["sys","今天 · 画像已加载"],
-  ["ai","今天的安排我看过了——<b>开会</b>和<b>家教补</b>撞了 30 分钟，三个选项的代价都算好了。"],
-  ["ai","吐槽、难过、不想动，都能跟我说。真要记进画像的，我会先问一句。"]
+  ["sys","今天 · 一张白纸"],
+  ["ai","现在我对你几乎一无所知——这样才对。你知道的我，都得是你亲口说的。"],
+  ["ai","给个时间我排日程，说句实话我记画像，难受就直接说。"]
 ];
 function initChat(){
   HISTORY.length=0;msgSeq=0;
@@ -894,13 +981,208 @@ function send(){
   const i=document.getElementById("chatIn"),v=i.value.trim();if(!v)return;
   i.value="";handleUser(v);
 }
-function handleUser(v){
+/* ════════ AI 翻译官：先问 LLM 听懂了吗，听不懂就本地规则兜底 ════════ */
+const SAFETY_RE=/不想活|活不下去|活着没意思|想消失|自杀|结束自己|重开人生|重开这辈子|不值得活|没意思活了/;
+const SAFETY_TXT="这句话我不轻飘飘地接。我在这儿，你也需要有一个真人在场——室友、家人、学校的心理老师，哪个最近找哪个；打 <b>12356</b>（全国心理援助热线）也可以，24 小时有人。<br>我不劝你，也不跟你讲道理。你现在只要做一件事：让一个人的声音真的出现在你身边。";
+
+/* ════════ 大模型：用户自带 Key（BYOK） ════════
+   Key 只存这台电脑的浏览器（localStorage），每个请求临时发给本地服务；
+   服务端不保存、不记录，也不会进仓库。 */
+const LLM_STORE="altiora_llm_v1";
+const LLM_PRESETS={
+  deepseek:{base:"https://api.deepseek.com/v1",model:"deepseek-chat"},
+  dashscope:{base:"https://dashscope.aliyuncs.com/compatible-mode/v1",model:"qwen-plus"},
+  ark:{base:"https://ark.cn-beijing.volces.com/api/v3",model:""},
+  custom:{base:"",model:""}
+};
+function loadLLM(){
+  try{
+    const o=JSON.parse(localStorage.getItem(LLM_STORE)||"null");
+    return (o&&o.key)?o:{};
+  }catch(e){return {};}
+}
+let USERLLM=loadLLM();
+
+function openLLM(){
+  const prov=USERLLM.provider||"deepseek";
+  document.getElementById("llmProvider").value=prov;
+  document.getElementById("llmKey").value=USERLLM.key||"";
+  document.getElementById("llmBase").value=USERLLM.base||LLM_PRESETS[prov].base;
+  document.getElementById("llmModel").value=USERLLM.model||LLM_PRESETS[prov].model;
+  llmPreset(true);
+  setLLMMsg("","");
+  document.getElementById("llmMask").classList.add("on");
+  setTimeout(()=>document.getElementById("llmKey").focus(),80);
+}
+function closeLLM(){document.getElementById("llmMask").classList.remove("on");}
+function llmPreset(keep){
+  const prov=document.getElementById("llmProvider").value;
+  const p=LLM_PRESETS[prov];
+  document.getElementById("llmBaseWrap").style.display=prov==="custom"?"block":"none";
+  if(!keep){
+    document.getElementById("llmModel").value=p.model;
+    document.getElementById("llmBase").value=p.base;
+  }
+}
+function setLLMMsg(t,cls){
+  const m=document.getElementById("llmMsg");
+  m.textContent=t||"";
+  m.className="llm-msg"+(cls?" "+cls:"");
+}
+function readLLMForm(){
+  const prov=document.getElementById("llmProvider").value;
+  const key=document.getElementById("llmKey").value.trim();
+  const model=document.getElementById("llmModel").value.trim();
+  const rawBase=prov==="custom"?document.getElementById("llmBase").value.trim():LLM_PRESETS[prov].base;
+  return {provider:prov,key,model:model||LLM_PRESETS[prov].model,base:rawBase.replace(/\/+$/,"")};
+}
+function saveLLM(silent){
+  const c=readLLMForm();
+  if(!c.key){setLLMMsg("先把 API Key 填上。","err");return false;}
+  if(!/^https:\/\//.test(c.base)){setLLMMsg("Base URL 要以 https:// 开头。","err");return false;}
+  if(!c.model){setLLMMsg("模型名不能空。火山方舟要填接入点 ID（ep-…）。","err");return false;}
+  USERLLM=c;
+  try{localStorage.setItem(LLM_STORE,JSON.stringify(c));}catch(e){}
+  setAIPill(true);
+  if(!silent)setLLMMsg("已保存。点「测试连接」确认能不能用。","ok");
+  return true;
+}
+function clearLLM(){
+  USERLLM={};
+  try{localStorage.removeItem(LLM_STORE);}catch(e){}
+  document.getElementById("llmKey").value="";
+  setAIPill(false);
+  checkAI();   // 服务器 .env 里还有 Key 的话，会自动变回在线
+  setLLMMsg("已清除，回到本地规则。","ok");
+}
+async function testLLM(){
+  const c=readLLMForm();
+  if(!c.key){setLLMMsg("先把 API Key 填上。","err");return;}
+  const btn=document.getElementById("llmTest");
+  btn.disabled=true;setLLMMsg("正在连…","");
+  try{
+    const r=await fetch("/api/understand",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({text:"你好",profile:{},api_key:c.key,base_url:c.base,model:c.model})
+    });
+    const j=await r.json();
+    if(j&&j.ok){
+      saveLLM(true);
+      askLLM._warned=false;
+      setLLMMsg("通了，已保存。当前模型："+(j.model||c.model),"ok");
+    }else{
+      setLLMMsg(llmErr(j&&j.reason),"err");
+    }
+  }catch(e){
+    setLLMMsg("连不上本地服务。确认「启动.bat」的黑窗口还开着。","err");
+  }finally{btn.disabled=false;}
+}
+function llmErr(r){
+  const map={
+    http_401:"Key 不对（401）。检查是不是复制全了，或者这个 Key 已失效。",
+    http_403:"没有权限（403）。看看这个 Key 有没有开通该模型。",
+    http_404:"找不到模型或地址（404）。检查模型名和 Base URL。",
+    http_429:"额度或频率超了（429），过一会儿再试。",
+    network:"连不上模型服务。检查网络，或者厂商地址写错了。",
+    unsafe_base:"地址不被允许：只接受 https 的公网地址。",
+    bad_json:"模型返回的不是 JSON，换个模型再试。",
+    bad_intent:"模型没按格式回答，换个模型再试。",
+    no_api_key:"没读到 Key。"
+  };
+  return map[r]||("失败："+(r||"未知原因")+"。");
+}
+
+async function checkAI(){
+  if(USERLLM.key){setAIPill(true);return;}   // 用户自己带了 Key，不用问服务器
+  try{
+    const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),2500);
+    const j=await (await fetch("/api/health",{signal:ctl.signal})).json();
+    clearTimeout(t);
+    setAIPill(!!j.llm);
+  }catch(e){setAIPill(false);}
+}
+function setAIPill(on){
+  const el=document.getElementById("aiPill");if(!el)return;
+  el.classList.toggle("on",on);
+  el.textContent=on?"AI 在线":"本地规则";
+  el.title=on
+    ?"点这里改设置。LLM 只负责听懂你说的话；算冲突、算代价仍是本地确定性计算器"
+    :"点这里填你自己的 API Key；不填也能用，全部走本地规则";
+}
+async function askLLM(text){
+  const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),9000);
+  try{
+    const body={text,profile:DATA.profile};
+    if(USERLLM.key){body.api_key=USERLLM.key;body.base_url=USERLLM.base;body.model=USERLLM.model;}
+    const r=await fetch("/api/understand",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(body),
+      signal:ctl.signal
+    });
+    clearTimeout(t);
+    if(!r.ok)return null;
+    const j=await r.json();
+    if(j&&j.ok&&j.source==="llm")return j;
+    // Key 有问题时提示一次，别让用户以为是自己说话没被听懂
+    if(USERLLM.key&&j&&j.reason&&/^http_40[13]$|unsafe_base/.test(j.reason)&&!askLLM._warned){
+      askLLM._warned=true;toast(llmErr(j.reason));
+    }
+    return null;
+  }catch(e){clearTimeout(t);return null;}
+}
+function esc(s){
+  return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function setMsg(id,html){
+  const m=HISTORY.find(x=>x.id===id);if(!m)return;
+  m.html=html;
+  if(document.getElementById("fullChat").classList.contains("on"))renderHistory();
+  else showPeek(html);
+}
+async function handleUser(v){
   push("me",v);
   if(v.startsWith("/")){setTimeout(()=>slashCmd(v),150);return;}
-  setTimeout(()=>{
-    const r=replyTo(v);
-    if(r)push("ai",r);
-  },420);
+
+  // 安全话术永远走本地固定文案，不交给任何模型
+  if(SAFETY_RE.test(v)){setTimeout(()=>push("ai",SAFETY_TXT),300);return;}
+
+  const slot=push("ai","<span class='typing'>· · ·</span>");
+  const j=await askLLM(v);
+  if(!j){setMsg(slot.id,replyTo(v));return;}
+  routeLLM(j,slot.id,v);
+}
+function routeLLM(j,slotId,v){
+  // 1) 日程：时间由 LLM 抽取，撞了几处由本地计算器算
+  if(j.intent==="schedule"){
+    if(j.event){
+      const r=addStructuredEvent(j.event);
+      setMsg(slotId,r.delta>0
+        ?`「${esc(r.ev.name)} ${r.ev.start}-${r.ev.end}」加进时间轴了，撞出 <b>${r.delta}</b> 处冲突。代价在时间轴页。`
+        :`「${esc(r.ev.name)} ${r.ev.start}-${r.ev.end}」加进去了，没撞车。`);
+      return;
+    }
+    // 听懂了，但用户没说结束时间 —— 不编，问一句
+    const sub=j.subject?`「${esc(j.subject)}」`:"这件事";
+    setMsg(slotId,`${sub}我听懂了。但要进时间轴还差个开始和结束时间——几点到几点？`);
+    return;
+  }
+  // 2) 明确要求记住的规矩
+  if(j.intent==="memory"&&j.memory){
+    DATA.profile.known_weakness.push(j.memory.text);renderMe();updStats();saveData();
+    setMsg(slotId,`行，写进行为规矩了：「${esc(j.memory.text)}」。以后撞上它，代价那栏会出现。`);
+    return;
+  }
+  // 3) 长期目标
+  if(j.intent==="goal"&&j.goal){
+    DATA.profile.long_term_goal=j.goal;renderMe();updStats();saveData();
+    setMsg(slotId,`「${esc(j.goal)}」——这个我收进目标里了。<br>它今天不用开始。往后每次撞车，我先保它。`);
+    return;
+  }
+  // 4) 情绪 / 闲聊：模型只负责说话
+  if(j.reply){setMsg(slotId,esc(j.reply));return;}
+  // 5) 模型没给话，退回本地规则
+  setMsg(slotId,replyTo(v));
 }
 
 /* 先接住情绪，再看能不能落到日程 */
@@ -1013,104 +1295,151 @@ function slashCmd(v){
 document.getElementById("chatIn").addEventListener("keydown",e=>{if(e.key==="Enter")send()});
 document.getElementById("fullChatIn").addEventListener("keydown",e=>{if(e.key==="Enter")fullSend()});
 
-/* ════════ 语音输入 ════════ */
-let rec=null, micOn=false, micBtnEl=null, micInputEl=null;
-let mediaRec=null, recChunks=[], recStream=null;
+/* ════════ 语音输入：本地录音 → 本地识别（不碰云端，也不依赖 ffmpeg） ════════ */
+let micOn=false, micStarting=false, micBtnEl=null, micInputEl=null;
+let recProc=null, recStream=null, audioCtx=null;
+let pcmParts=[], pcmLen=0, recRate=48000, recStart=0, recHeard=false, recLastSound=0;
+
 function toast(msg){
   const t=document.getElementById("toast");if(!t)return;
   t.textContent=msg;t.classList.add("on");
   clearTimeout(toast._t);
-  toast._t=setTimeout(()=>t.classList.remove("on"),4600);
+  toast._t=setTimeout(()=>t.classList.remove("on"),5200);
 }
-function resetMic(){
-  micOn=false;
-  if(micBtnEl)micBtnEl.classList.remove("on");
-  if(micInputEl)micInputEl.removeAttribute("placeholder");
-  try{rec&&rec.abort();}catch(e){}
-  rec=null;
-  mediaRec=null;
+/* 开始/结束各响一声，让你知道它真的在录 */
+function blip(freq,dur){
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
+    const c=new AC(),o=c.createOscillator(),g=c.createGain();
+    o.type="sine";o.frequency.value=freq;g.gain.value=.05;
+    o.connect(g);g.connect(c.destination);
+    o.start();o.stop(c.currentTime+dur);
+    o.onended=()=>{try{c.close();}catch(e){}};
+  }catch(e){}
 }
 async function startVoice(btn,inp,cb){
-  // 再点一次 = 停止录音
-  if(micOn){
-    if(mediaRec&&mediaRec.state==="recording"){mediaRec.stop();}
-    else resetMic();
+  // 再点一次 = 提前结束，不用等静音判断
+  if(micOn){stopRecording(btn,inp,cb);return;}
+  if(micStarting)return;   // 权限弹窗还没点完时，别开第二条录音
+  if(location.protocol==="file:"){
+    toast("你现在是双击打开的网页，语音用不了。去双击项目里的「启动.bat」，它会自己开网页。");
     return;
   }
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
-    toast("这个地址不给麦克风权限。用 http://localhost:8000 或 https 打开页面。");
+    if(!window.isSecureContext)toast("浏览器不给这个地址麦克风。请用 http://localhost:8000 打开。");
+    else toast("这个浏览器拿不到麦克风，换 Chrome 或 Edge 试试。");
     return;
   }
   micBtnEl=btn;micInputEl=inp;
-
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  // 优先用浏览器自带识别；它不通就自动转本地录音识别
-  if(SR){
-    rec=new SR();rec.lang="zh-CN";rec.interimResults=true;rec.continuous=false;
-    micOn=true;btn.classList.add("on");inp.setAttribute("placeholder","在听…");
-    rec.onresult=(e)=>{
-      let fin="",mid="";
-      for(let i=e.resultIndex;i<e.results.length;i++){
-        const r=e.results[i];
-        if(r.isFinal)fin+=r[0].transcript;else mid+=r[0].transcript;
-      }
-      if(mid)inp.setAttribute("placeholder",mid);
-      if(fin.trim()){const txt=fin.trim();resetMic();cb(txt);}
-    };
-    rec.onerror=(e)=>{
-      const k=e.error;
-      resetMic();
-      if(k==="network"||k==="not-allowed"||k==="service-not-allowed") startRecord(btn,inp,cb);
-      else if(k==="no-speech") toast("没听到声音，再说一次。");
-      else if(k==="audio-capture") toast("没找到麦克风。");
-      else toast("语音识别出错（"+k+"），直接打字吧。");
-    };
-    rec.onend=()=>{if(micOn&&!mediaRec)resetMic();};
-    try{rec.start();return;}catch(e){resetMic();}
-  }
-  startRecord(btn,inp,cb);
+  micStarting=true;
+  try{await startRecord(btn,inp,cb);}finally{micStarting=false;}
 }
-/* 本地录音 → 服务端离线识别（Vosk，不用联网） */
+/* 点一次开始；听到你说话后，静音 1.2 秒自动结束 */
 async function startRecord(btn,inp,cb){
+  let stream;
   try{
-    recStream=await navigator.mediaDevices.getUserMedia({audio:true});
+    stream=await navigator.mediaDevices.getUserMedia({
+      audio:{echoCancellation:true,noiseSuppression:true,channelCount:1}
+    });
   }catch(e){
-    toast("麦克风被拦了：点地址栏左边的小锁 → 把麦克风改成「允许」，再点一次。");
+    const n=(e&&e.name)||"";
+    if(n==="NotAllowedError")toast("麦克风被拒绝了：点地址栏左边的小锁 → 把麦克风改成「允许」，再点一次。");
+    else if(n==="NotFoundError")toast("没找到麦克风。插上耳机或麦克风再试一次。");
+    else toast("麦克风打不开（"+(n||"未知错误")+"）。");
     return;
   }
-  recChunks=[];
-  try{mediaRec=new MediaRecorder(recStream);}catch(e){
-    recStream.getTracks().forEach(t=>t.stop());
-    toast("这个浏览器不支持录音，换 Chrome 或 Edge。");return;
-  }
-  micOn=true;micBtnEl=btn;micInputEl=inp;
-  btn.classList.add("on");
-  inp.setAttribute("placeholder","录音中… 说完再点一次停止");
-  mediaRec.ondataavailable=e=>{if(e.data&&e.data.size)recChunks.push(e.data);};
-  mediaRec.onstop=async()=>{
-    clearTimeout(startRecord._timer);
-    recStream&&recStream.getTracks().forEach(t=>t.stop());
-    btn.classList.remove("on");micOn=false;
-    inp.setAttribute("placeholder","识别中…");
-    const blob=new Blob(recChunks,{type:mediaRec.mimeType||"audio/webm"});
-    mediaRec=null;
-    if(blob.size<1500){inp.removeAttribute("placeholder");toast("没录到声音，再说一次。");return;}
-    try{
-      const fd=new FormData();fd.append("audio",blob,"a.webm");
-      const r=await fetch("/api/asr",{method:"POST",body:fd});
-      const j=await r.json();
-      inp.removeAttribute("placeholder");
-      if(j.text)cb(j.text);else toast("没听清，再说一次。");
-    }catch(e){
-      inp.removeAttribute("placeholder");
-      toast("语音服务没起来：先运行 python3 server.py，再用 localhost:8000 打开。");
-    }
+  const AC=window.AudioContext||window.webkitAudioContext;
+  if(!AC){stream.getTracks().forEach(t=>t.stop());toast("这个浏览器不支持录音，换 Chrome 或 Edge。");return;}
+  recStream=stream;
+  audioCtx=new AC();
+  if(audioCtx.resume)try{await audioCtx.resume();}catch(e){}
+  recRate=audioCtx.sampleRate||48000;
+
+  const src=audioCtx.createMediaStreamSource(stream);
+  recProc=audioCtx.createScriptProcessor(4096,1,1);
+  pcmParts=[];pcmLen=0;
+
+  micOn=true;btn.classList.add("on");btn.title="再说一次就停";
+  inp.setAttribute("placeholder","在听… 说完会自动停");
+  blip(880,.07);
+
+  recStart=performance.now();recHeard=false;recLastSound=recStart;
+
+  recProc.onaudioprocess=e=>{
+    if(!micOn)return;
+    const ch=e.inputBuffer.getChannelData(0);
+    pcmParts.push(new Float32Array(ch));
+    pcmLen+=ch.length;
+    let peak=0;
+    for(let i=0;i<ch.length;i+=4){const v=Math.abs(ch[i]);if(v>peak)peak=v;}
+    const now=performance.now();
+    if(peak>.02){recHeard=true;recLastSound=now;}
+    if(recHeard&&now-recLastSound>1200){stopRecording(btn,inp,cb);return;}
+    if(!recHeard&&now-recStart>8000){stopRecording(btn,inp,cb);return;}   // 8 秒没声音就放弃
+    if(now-recStart>20000){stopRecording(btn,inp,cb);}                    // 最长 20 秒
   };
-  mediaRec.start();
-  // 15 秒自动停，避免一直录
-  startRecord._timer=setTimeout(()=>{
-    if(mediaRec&&mediaRec.state==="recording")mediaRec.stop();
-  },15000);
+  src.connect(recProc);
+  const mute=audioCtx.createGain();mute.gain.value=0;
+  recProc.connect(mute);mute.connect(audioCtx.destination);
+}
+/* 把录到的 PCM 直接写成 16k 单声道 WAV，服务端不需要转码 */
+function encodeWav(parts,total,sr){
+  const all=new Float32Array(total);
+  let off=0;
+  for(const p of parts){all.set(p,off);off+=p.length;}
+  const target=16000;
+  let data=all;
+  if(sr!==target){
+    const ratio=sr/target,n=Math.floor(all.length/ratio),out=new Float32Array(n);
+    for(let i=0;i<n;i++){
+      const a=Math.floor(i*ratio),b=Math.min(Math.floor((i+1)*ratio),all.length);
+      let sum=0;
+      for(let j=a;j<b;j++)sum+=all[j];
+      out[i]=b>a?sum/(b-a):0;
+    }
+    data=out;
+  }
+  const buf=new ArrayBuffer(44+data.length*2),v=new DataView(buf);
+  const str=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));};
+  str(0,"RIFF");v.setUint32(4,36+data.length*2,true);str(8,"WAVE");
+  str(12,"fmt ");v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+  v.setUint32(24,target,true);v.setUint32(28,target*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);
+  str(36,"data");v.setUint32(40,data.length*2,true);
+  for(let i=0;i<data.length;i++){
+    const s=Math.max(-1,Math.min(1,data[i]));
+    v.setInt16(44+i*2,s<0?s*0x8000:s*0x7FFF,true);
+  }
+  return new Blob([buf],{type:"audio/wav"});
+}
+async function stopRecording(btn,inp,cb){
+  if(!micOn)return;
+  micOn=false;
+  const sr=recRate,parts=pcmParts,total=pcmLen;
+  pcmParts=[];pcmLen=0;
+  try{recProc&&(recProc.onaudioprocess=null);recProc&&recProc.disconnect();}catch(e){}
+  recProc=null;
+  try{recStream&&recStream.getTracks().forEach(t=>t.stop());}catch(e){}
+  recStream=null;
+  try{audioCtx&&audioCtx.close();}catch(e){}
+  audioCtx=null;
+  btn.classList.remove("on");btn.title="语音输入";
+  blip(620,.06);
+
+  const blob=encodeWav(parts,total,sr);
+  if(blob.size<1200){inp.removeAttribute("placeholder");toast("没录到声音，再说一次。");return;}
+  inp.setAttribute("placeholder","识别中…");
+  try{
+    const fd=new FormData();fd.append("audio",blob,"a.wav");
+    const r=await fetch("/api/asr",{method:"POST",body:fd});
+    if(!r.ok)throw new Error("http "+r.status);
+    const j=await r.json();
+    inp.removeAttribute("placeholder");
+    if(j&&j.text)cb(j.text.trim());
+    else toast("没听清，再说一次。");
+  }catch(e){
+    inp.removeAttribute("placeholder");
+    toast("服务没连上：先双击项目里的「启动.bat」，它会自己打开 http://localhost:8000。");
+  }
 }
 function toggleMic(){
   startVoice(document.getElementById("micBtn"),document.getElementById("chatIn"),handleUser);
@@ -1155,7 +1484,7 @@ function saveSchedule(){
     added++;
   });
   DATA.conflicts=detectConflicts();
-  renderGantt();renderConflicts();updStats();
+  renderGantt();renderConflicts();renderOrbs();renderMe();updStats();
   const delta=DATA.conflicts.length-before;
   res.className="result on"+(delta?" warn":"");
   res.innerHTML=`<span class="lbl">解析完成</span>成功导入 <b>${added}</b> 门课${failed?`，${failed} 行没认出（格式不对）`:""}。${delta?`新撞出 <b>${delta}</b> 处冲突，去时间轴页看代价。`:"暂时没撞车。"}`;
@@ -1166,12 +1495,16 @@ function saveSchedule(){
 function renderMe(){
   const p=DATA.profile;
   const kv=document.getElementById("kv");if(!kv)return;
+  const dash=v=>v?esc(v):'<span class="dash">还没说</span>';
+  const weak=p.known_weakness.length
+    ?p.known_weakness.map(w=>`<span class="chip">${esc(w)}</span>`).join("")
+    :'<span class="dash">还没说</span>';
   kv.innerHTML=`
-    <div>名字</div><div>${p.name}</div>
-    <div>长期目标</div><div>${p.long_term_goal}</div>
-    <div>睡眠硬约束</div><div>不晚于 ${p.hard_sleep_deadline}</div>
-    <div>精力最好时段</div><div>${p.preferred_focus_hours}</div>
-    <div>已知软肋</div><div><div class="chips">${p.known_weakness.map(w=>`<span class="chip">${w}</span>`).join("")}</div></div>
+    <div>名字</div><div>${dash(p.name)}</div>
+    <div>长期目标</div><div>${dash(p.long_term_goal)}</div>
+    <div>睡眠硬约束</div><div>${p.hard_sleep_deadline?"不晚于 "+esc(p.hard_sleep_deadline):'<span class="dash">还没说</span>'}</div>
+    <div>精力最好时段</div><div>${dash(p.preferred_focus_hours)}</div>
+    <div>已知软肋</div><div><div class="chips">${weak}</div></div>
     <div>今日事件</div><div>${DATA.events.filter(e=>e.type!=="sleep").length} 件 · 冲突 ${DATA.conflicts.length} 处</div>`;
   const jb=document.getElementById("jsonBox");
   if(jb)jb.innerHTML=syntax(JSON.stringify(p,null,2));
@@ -1237,7 +1570,8 @@ function delNote(i){DATA.notes.splice(i,1);renderNotes();updStats();}
 function updStats(){
   const c=DATA.conflicts.length,el=document.getElementById("sCf");
   if(el){el.textContent=c;el.className=c?"v red":"v green";}
-  document.getElementById("gazeTxt").textContent=c?`我盯着呢，今天有 ${c} 处冲突等你定`:"我盯着呢，今天没撞车";
+  document.getElementById("gazeTxt").textContent=c?`我盯着呢，今天有 ${c} 处冲突等你定`
+    :(DATA.events.length?"我盯着呢，今天没撞车":"今天还是一张白纸，你说一句我就开始记");
   document.getElementById("gazeMsg").className=c?"gaze-msg warn":"gaze-msg";
   const n=document.getElementById("fabN");
   if(DATA.notes.length){n.style.display="grid";n.textContent=DATA.notes.length;}else n.style.display="none";
@@ -1317,6 +1651,7 @@ function startGuide(){
 DATA.conflicts=detectConflicts();
 renderAxis();renderGantt();renderConflicts();initChat();renderOrbs();renderMe();renderNotes();updStats();
 go("home");
+checkAI();
 // 新手引导：首次打开自动播放，之后不再显示
 try{
   if(!localStorage.getItem("altiora_guide_done"))setTimeout(startGuide,600);
