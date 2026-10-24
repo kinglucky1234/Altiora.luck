@@ -11,3 +11,4 @@ node_modules/
 .screenshots/
 .uploads/
 .trae-html-share-packages/
+*.bundle

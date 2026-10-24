@@ -18,7 +18,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
 BASE = Path(__file__).resolve().parent
-MODEL_DIR = BASE / "altiora" / "backend" / "model" / "vosk-model-small-cn-0.22"
+MODEL_DIR = Path(
+    os.environ.get("VOSK_MODEL_PATH")
+    or BASE / "Altiora" / "backend" / "model" / "vosk-model-small-cn-0.22"
+)
+PORT = int(os.environ.get("PORT", "8000"))
 HTML = BASE / "Altiora-未来的我.html"
 
 app = FastAPI()
@@ -90,4 +94,4 @@ async def asr(audio: UploadFile = File(...)):
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="warning")
+    uvicorn.run(app, host="0.0.0.0", port=PORT, log_level="warning")
