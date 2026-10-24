@@ -568,7 +568,7 @@ pre.json .n{color:#FDBA74}
 <!-- 游戏式新手引导 -->
 <div class="guide-mask" id="guideMask"></div>
 <div class="guide-box" id="guideBox">
-  <div class="step" id="guideStep">1 / 4</div>
+  <div class="step" id="guideStep">1 / 5</div>
   <div class="txt" id="guideTxt"></div>
   <div class="guide-act">
     <button class="skip" onclick="endGuide()">跳过</button>
@@ -964,7 +964,7 @@ function apply(){
     ? `按 ${picked} 调完了，但这么一动又撞上 ${left} 处。位置已经在时间轴上了，要不要再动你自己看。`
     : `好，就按 ${picked} 来。我只动了和冲突有关的那两件事，其它一格没碰。今天冲突清零了。`),420);
 
-  renderGantt();renderConflicts();renderOrbs(true);updStats();
+  renderGantt();renderConflicts();renderOrbs(true);updStats();renderMe();
   const w=document.getElementById("cfWrap");
   if(w&&!left)w.innerHTML=
     `<div class="card" style="border-color:rgba(16,185,129,.3);background:rgba(16,185,129,.06);display:flex;align-items:center;gap:14px;justify-content:space-between">
