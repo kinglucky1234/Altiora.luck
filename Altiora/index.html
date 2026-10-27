@@ -1344,10 +1344,21 @@ function loadLLM(){
 }
 let USERLLM=loadLLM();
 
+/* Mask API Key：只显示前 4 + 后 4 位，中间用 ... 盖掉 */
+function maskKey(k){
+  if(!k)return "";
+  if(k.length<=8)return "****";
+  return k.slice(0,4)+"..."+k.slice(-4);
+}
+
 function openLLM(){
   const prov=USERLLM.provider||"deepseek";
   document.getElementById("llmProvider").value=prov;
-  document.getElementById("llmKey").value=USERLLM.key||"";
+  // 只显示掩码，不回显完整 Key
+  // 用户点输入框会自动清空，重新输入才会替换
+  const keyEl=document.getElementById("llmKey");
+  keyEl.value=USERLLM.key?"":"";  // 打开就清空，强制用户重新输入
+  keyEl.placeholder=USERLLM.key?("已保存: "+maskKey(USERLLM.key)+" (点这里重新输入)"):"sk-...";
   document.getElementById("llmBase").value=USERLLM.base||LLM_PRESETS[prov].base;
   document.getElementById("llmModel").value=USERLLM.model||LLM_PRESETS[prov].model;
   document.getElementById("llmHeaders").value=headersToText(USERLLM.headers);
@@ -1461,13 +1472,22 @@ function llmErr(r){
 }
 
 async function checkAI(){
-  if(USERLLM.key){setAIPill(true);return;}   // 用户自己带了 Key，不用问服务器
-  try{
-    const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),2500);
-    const j=await (await fetch("/api/health",{signal:ctl.signal})).json();
-    clearTimeout(t);
-    setAIPill(!!j.llm);
-  }catch(e){setAIPill(false);}
+  if(USERLLM.key){setAIPill(true);}else{
+    try{
+      const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),2500);
+      const j=await (await fetch("/api/health",{signal:ctl.signal})).json();
+      clearTimeout(t);
+      setAIPill(!!j.llm);
+      setMicEnabled(!!j.asr);
+    }catch(e){setAIPill(false);setMicEnabled(false);}
+  }
+}
+function setMicEnabled(on){
+  const b=document.getElementById("micBtn");if(!b)return;
+  b.disabled=!on;
+  b.style.opacity=on?"1":"0.35";
+  b.style.cursor=on?"pointer":"not-allowed";
+  b.title=on?"语音输入":(USERLLM.key?"已填 Key，仍可打字":"语音模型未就绪，用文字输入");
 }
 function setAIPill(on){
   const el=document.getElementById("aiPill");if(!el)return;

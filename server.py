@@ -72,10 +72,28 @@ app.add_middleware(
 _model = None
 
 
+def _asr_available() -> bool:
+    """完整检查：vosk 包能导入 + 模型目录存在 + 模型能加载。"""
+    if not MODEL_DIR.is_dir():
+        return False
+    try:
+        import vosk  # noqa: F401
+    except ImportError:
+        return False
+    try:
+        get_model()
+        return True
+    except Exception:
+        return False
+
+
 def get_model():
     global _model
     if _model is None:
-        from vosk import Model, SetLogLevel
+        try:
+            from vosk import Model, SetLogLevel
+        except ImportError as e:
+            raise RuntimeError(f"vosk 未安装: {e}") from e
         SetLogLevel(-1)
         _model = Model(str(MODEL_DIR))
     return _model
@@ -100,7 +118,7 @@ def health():
         "ok": True,
         "llm": llm.enabled(),
         "model": llm.model_name() if llm.enabled() else None,
-        "asr": MODEL_DIR.is_dir(),
+        "asr": _asr_available(),
     }
 
 
@@ -145,43 +163,56 @@ async def say(req: dict = Body(...)):
 
 @app.post("/api/asr")
 async def asr(audio: UploadFile = File(...)):
-    """浏览器录音（webm/ogg/wav）→ 文字。"""
+    """浏览器录音（webm/ogg/wav）→ 文字。
+
+    降级策略：vosk 包没装 / 模型目录不存在 / 模型损坏 → 返回空文本，
+    但不崩溃。前端看到空文本会提示用户，页面继续能用（只是没语音）。
+    """
     raw = await audio.read()
     if not raw:
         return {"text": ""}
-    with tempfile.TemporaryDirectory() as td:
-        wav = os.path.join(td, "out.wav")
-        if raw[:4] == b"RIFF" and raw[8:12] == b"WAVE":
-            # 浏览器直接录好的 16k 单声道 WAV，不用转码，也就不需要 ffmpeg
-            with open(wav, "wb") as f:
-                f.write(raw)
-        else:
-            src = os.path.join(td, "in.bin")
-            with open(src, "wb") as f:
-                f.write(raw)
-            if not shutil.which("ffmpeg"):
-                return {"text": "", "error": "ffmpeg not found"}
-            subprocess.run(
-                ["ffmpeg", "-y", "-i", src, "-ar", "16000", "-ac", "1", "-f", "wav", wav],
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False,
-            )
-            if not os.path.exists(wav):
-                return JSONResponse({"text": "", "error": "audio decode failed"})
 
-        from vosk import KaldiRecognizer
-        with wave.open(wav, "rb") as wf:
-            rec = KaldiRecognizer(get_model(), wf.getframerate())
-            parts = []
-            while True:
-                data = wf.readframes(4000)
-                if not data:
-                    break
-                if rec.AcceptWaveform(data):
-                    parts.append(json.loads(rec.Result()).get("text", ""))
-            parts.append(json.loads(rec.FinalResult()).get("text", ""))
+    # ① vsk 整体不可用 → 直接降级
+    if not _asr_available():
+        return {"text": "", "degraded": True, "hint": "语音模型未就绪，请用文字输入"}
 
-    text = "".join(parts).replace(" ", "")
-    return {"text": text}
+    try:
+        with tempfile.TemporaryDirectory() as td:
+            wav = os.path.join(td, "out.wav")
+            if raw[:4] == b"RIFF" and raw[8:12] == b"WAVE":
+                with open(wav, "wb") as f:
+                    f.write(raw)
+            else:
+                src = os.path.join(td, "in.bin")
+                with open(src, "wb") as f:
+                    f.write(raw)
+                if not shutil.which("ffmpeg"):
+                    return {"text": "", "error": "ffmpeg not found"}
+                subprocess.run(
+                    ["ffmpeg", "-y", "-i", src, "-ar", "16000", "-ac", "1", "-f", "wav", wav],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False,
+                )
+                if not os.path.exists(wav):
+                    return JSONResponse({"text": "", "error": "audio decode failed"})
+
+            from vosk import KaldiRecognizer
+            with wave.open(wav, "rb") as wf:
+                rec = KaldiRecognizer(get_model(), wf.getframerate())
+                parts = []
+                while True:
+                    data = wf.readframes(4000)
+                    if not data:
+                        break
+                    if rec.AcceptWaveform(data):
+                        parts.append(json.loads(rec.Result()).get("text", ""))
+                parts.append(json.loads(rec.FinalResult()).get("text", ""))
+
+        text = "".join(parts).replace(" ", "")
+        return {"text": text}
+    except Exception:
+        # 模型跑起来了但识别中间炸了（音频格式不对、内存不足等）
+        # 统一降级：返回空文本，不崩溃
+        return {"text": "", "degraded": True, "hint": "识别出错，请再说一次或用文字"}
 
 
 if __name__ == "__main__":

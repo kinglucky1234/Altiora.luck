@@ -14,7 +14,8 @@ from datetime import date
 
 
 # ─── Mock 模式：没有 API Key 时用规则兜底 ───────────────
-MOCK_MODE = os.environ.get("ALTIORA_API_KEY", "").strip() == ""
+# 统一读取 LLM_API_KEY，与 .env.example 和主实现 Altiora/backend/llm.py 保持一致
+MOCK_MODE = os.environ.get("LLM_API_KEY", "").strip() == ""
 
 
 def translate_cost_analysis_to_human(analysis: CostAnalysis, profile: UserProfile) -> dict[str, Any]:
@@ -36,43 +37,17 @@ def translate_cost_analysis_to_human(analysis: CostAnalysis, profile: UserProfil
             "shift_to": opt.shift_to.strftime("%H:%M") if opt.shift_to else None,
         })
 
-    # 冷血建议（计算器根据优先级自动给）
-    suggestion = _build_suggestion(analysis, profile)
-
+    # Altiora 的理念：不替用户做决定。
+    # 旧版 _build_suggestion 里硬编码了 priority=1 if choice=="A"，
+    # 不仅不准确（没读 Event 的真实 priority 字段），更和理念冲突——
+    # 计算器只负责算账，选 A 选 B 是用户的事，不是计算器的事。
+    # suggestion 字段保留占位但始终为空字符串。
     return {
         "conflict_id": analysis.conflict_id,
         "risk_note": analysis.risk_note,
         "cards": cards,
-        "suggestion": suggestion,
+        "suggestion": "",
     }
-
-
-def _build_suggestion(analysis: CostAnalysis, profile: UserProfile) -> str:
-    """计算器根据优先级给一句冷血建议（不调 LLM）。"""
-    # 找优先级最高的那个 event 对应的选项
-    best = None
-    best_priority = 999
-    for opt in analysis.options:
-        if opt.event_to_keep:
-            # 这里简化处理：优先级 A=选项A保留的那件
-            priority = 1 if opt.choice == "A" else 2
-            if priority < best_priority:
-                best_priority = priority
-                best = opt
-
-    # 检查用户画像里有没有相关的自我约束
-    weakness_hint = ""
-    for w in profile.known_weakness:
-        if "刷手机" in w or "熬夜" in w:
-            weakness_hint = "。根据你自己说的节奏，别让自己太辛苦"
-            break
-        if "连续" in w or "垮" in w:
-            weakness_hint = "。注意别超过自己能扛的强度"
-            break
-
-    if best:
-        return f"建议选 {best.choice}——守住优先级更高的事{weakness_hint}"
-    return "看你当前什么更重要，选就行"
 
 
 def parse_course_text(text: str) -> list[Event]:

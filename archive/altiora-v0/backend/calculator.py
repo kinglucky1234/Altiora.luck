@@ -121,7 +121,7 @@ def compute_cost_analysis(
         costs=costs_b,
     ))
 
-    # ── 选项 C：挪其中一件事（如果挪完不撞硬约束） ──────────
+    # ── 选项 C：挪其中一件事（挪完不撞任何硬约束也不撞别的事） ──
     shiftable = e_b if e_b.priority >= 2 else None
     if shiftable is None or shiftable.priority >= 2:
         shiftable = e_a if e_a.priority >= 2 else None
@@ -131,31 +131,60 @@ def compute_cost_analysis(
         other = e_a if shiftable.event_id == e_b.event_id else e_b
         new_start_min = _to_minutes(other.end) + 15
         new_end_min = new_start_min + (_to_minutes(shiftable.end) - _to_minutes(shiftable.start))
+        new_start = _from_minutes(new_start_min)
+        new_end = _from_minutes(new_end_min)
 
-        # 检查会不会撞到睡觉时间
+        # ① 硬约束：睡觉时间
         sleep_deadline_min = _to_minutes(profile.hard_sleep_deadline)
-        if new_end_min <= sleep_deadline_min:
-            new_start = _from_minutes(new_start_min)
-            gains_c = [
-                f"全都不放弃——「{shiftable.title}」往后挪 15 分钟到 {new_start.strftime('%H:%M')}",
-                "两件事都保住了",
+        if new_end_min > sleep_deadline_min:
+            pass  # 撞睡觉了，不给选项 C
+        else:
+            # ② 重跑 detect_conflicts：挪完会不会撞上别的事件
+            #    之前只查了睡觉，那是偷懒；现在算真的
+            shifted_copy = Event(
+                event_id=shiftable.event_id,
+                title=shiftable.title,
+                event_type=shiftable.event_type,
+                date=shiftable.date,
+                start=new_start,
+                end=new_end,
+                location=shiftable.location,
+                priority=shiftable.priority,
+                wage_per_hour=shiftable.wage_per_hour,
+                notes=shiftable.notes,
+            )
+            rest = [e for e in events if e.event_id != shiftable.event_id]
+            new_conflicts = detect_conflicts(rest + [shifted_copy])
+            # 排除原来那场冲突本身，只看挪完新产生的
+            original_pair = {conflict.event_a_id, conflict.event_b_id}
+            truly_new = [
+                c for c in new_conflicts
+                if {c.event_a_id, c.event_b_id} != original_pair
             ]
-            costs_c = [
-                f"连轴转，休息时间被压缩",
-                f"心理压力增加（连续做两件事）",
-            ]
-            # 如果挪完接近睡觉时间
-            if new_end_min > sleep_deadline_min - 60:
-                costs_c.append(f"睡觉时间可能被挤到 {_from_minutes(new_end_min).strftime('%H:%M')} 之后")
+            if truly_new:
+                pass  # 挪完又撞新的了，不给选项 C
+            else:
+                gains_c = [
+                    f"全都不放弃——「{shiftable.title}」往后挪 15 分钟到 {new_start.strftime('%H:%M')}",
+                    "两件事都保住了",
+                ]
+                costs_c = [
+                    "连轴转，休息时间被压缩",
+                    "心理压力增加（连续做两件事）",
+                ]
+                if new_end_min > sleep_deadline_min - 60:
+                    costs_c.append(
+                        f"睡觉时间可能被挤到 {new_end.strftime('%H:%M')} 之后"
+                    )
 
-            options.append(Option(
-                choice="C",
-                event_to_keep=e_a.event_id,
-                event_to_shift=shiftable.event_id,
-                shift_to=new_start,
-                gains=gains_c,
-                costs=costs_c,
-            ))
+                options.append(Option(
+                    choice="C",
+                    event_to_keep=e_a.event_id,
+                    event_to_shift=shiftable.event_id,
+                    shift_to=new_start,
+                    gains=gains_c,
+                    costs=costs_c,
+                ))
 
     # ── 定性风险评估（给 AI 翻译官用） ────────────────────
     max_cost = max(
