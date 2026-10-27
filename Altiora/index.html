@@ -426,6 +426,37 @@ pre.json .n{color:#FDBA74}
 .llm-msg.ok{color:#6EE7B7}
 .ai-pill{cursor:pointer}
 .ai-pill:hover{border-color:var(--line-hi);color:var(--t1)}
+
+/* ════════ 周课表 ════════ */
+.wk-tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:16px}
+.wk-tools .btn{padding:8px 14px;font-size:13px}
+.wk-scroll{overflow-x:auto;padding-bottom:6px}
+.wk-grid{display:grid;grid-template-columns:54px repeat(7,minmax(104px,1fr));gap:5px;min-width:800px}
+.wk-hd{font-size:12px;color:var(--t2);text-align:center;padding:7px 2px;font-weight:600;border-radius:8px}
+.wk-hd small{display:block;font-size:10px;color:var(--t3);font-weight:400;margin-top:1px}
+.wk-hd.today{color:#fff;background:rgba(59,130,246,.22)}
+.wk-t{font-size:9.5px;color:var(--t3);text-align:right;padding:5px 5px 0 0;line-height:1.35}
+.wk-t b{display:block;color:var(--t2);font-size:11.5px;margin-bottom:1px}
+.wk-cell{background:rgba(255,255,255,.018);border:1px dashed rgba(255,255,255,.055);border-radius:9px;min-height:64px}
+.wk-course{border-radius:9px;padding:6px 8px;font-size:10.5px;line-height:1.35;overflow:hidden;
+  border-left:3px solid;position:relative;z-index:2}
+.wk-course b{display:block;font-size:11.5px;color:#fff;margin-bottom:3px;line-height:1.3;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wk-course span{display:block;color:rgba(255,255,255,.6);font-size:9.5px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wk-empty{color:var(--t3);font-size:13px;text-align:center;padding:30px 10px;line-height:1.9}
+.wk-prev{max-height:230px;overflow:auto;border:1px solid var(--line);border-radius:10px;margin-top:12px}
+.wk-prev table{width:100%;border-collapse:collapse;font-size:12px}
+.wk-prev th{color:var(--t3);font-weight:500;text-align:left;padding:8px 10px;
+  border-bottom:1px solid var(--line);font-size:11px;position:sticky;top:0;background:#12182C}
+.wk-prev td{padding:7px 10px;border-bottom:1px solid rgba(255,255,255,.04);color:var(--t2)}
+.wk-prev td b{color:var(--t1);font-weight:500}
+.wk-prev .bad{color:#FCA5A5}
+.period-row{display:grid;grid-template-columns:40px 1fr 1fr;gap:9px;align-items:center;margin-bottom:8px}
+.period-row span{font-size:12px;color:var(--t2)}
+.period-row input{padding:8px 10px;border-radius:8px;border:1px solid var(--line);
+  background:rgba(255,255,255,.03);color:var(--t1);font-size:12.5px;font-family:inherit;outline:none}
+.period-row input:focus{border-color:rgba(59,130,246,.5)}
 </style>
 </head>
 <body>
@@ -444,6 +475,7 @@ pre.json .n{color:#FDBA74}
   <div class="tabs">
     <button class="tab on" data-p="home">主页</button>
     <button class="tab" data-p="timeline">时间轴</button>
+    <button class="tab" data-p="week">课表</button>
     <button class="tab" data-p="me">我的画像</button>
   </div>
 
@@ -487,7 +519,7 @@ pre.json .n{color:#FDBA74}
     <div class="card">
       <div class="timeline-head">
         <div class="ttl" style="margin:0">今日时间轴 <small>06:00 — 次日 02:00</small></div>
-        <button class="btn" onclick="openScheduleSheet()">+ 添加课表</button>
+        <button class="btn" onclick="openScheduleSheet()">+ 导入课表</button>
       </div>
       <div class="axis" id="axis"></div>
       <div class="gantt"><div class="grid" id="grid"></div><div id="bars"></div></div>
@@ -505,6 +537,27 @@ pre.json .n{color:#FDBA74}
     </div>
 
     <div id="cfWrap"></div>
+  </div>
+
+  <!-- ═══ 课表：一周网格 ═══ -->
+  <div class="page" id="p-week">
+    <div class="card">
+      <div class="wk-tools">
+        <div class="ttl" style="margin:0">本周课表 <small id="wkRange"></small></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn ghost" onclick="openPeriodSheet()">节次设置</button>
+          <button class="btn" onclick="openScheduleSheet()">+ 导入课表</button>
+        </div>
+      </div>
+      <div class="wk-scroll"><div class="wk-grid" id="wkGrid"></div></div>
+      <div class="wk-empty" id="wkEmpty" style="display:none">
+        课表还是空的。<br>点右上角「+ 导入课表」，把教务系统里的课表粘进来。
+      </div>
+      <div class="band-lbl" style="margin-top:14px">
+        <span>今天的课会自动进「时间轴」，参与冲突和代价计算</span>
+        <span id="wkTodayTxt"></span>
+      </div>
+    </div>
   </div>
 
   <!-- ═══ 我的画像 ═══ -->
@@ -554,13 +607,27 @@ pre.json .n{color:#FDBA74}
 <!-- 添加课表弹窗 -->
 <div class="sheet" id="schedSheet" onclick="if(event.target===this)closeSchedSheet()">
   <div class="sheet-box">
-    <h3>粘贴你的课表</h3>
-    <div class="sub">把教务系统里的课表复制进来，我帮你解析成日程。支持「星期 + 时间 + 课程名」的格式，一行一门课。</div>
-    <textarea id="schedIn" placeholder="例：&#10;周一 08:00-09:40 高数 教A101&#10;周一 10:00-12:00 英语 教B202&#10;周二 14:00-16:00 专业课 实验楼301"></textarea>
+    <h3>导入课表</h3>
+    <div class="sub">把教务系统的课表复制进来，一行一门课。支持「周一 08:00-09:40 高数 教A101」，也支持「周一 第1-2节 高等数学」。</div>
+    <textarea id="schedIn" placeholder="例：&#10;周一 08:30-10:10 高等数学 教A101&#10;周一 10:20-12:00 英语 教B202&#10;周二 第5-6节 大学物理 实验楼301"></textarea>
+    <div id="schedPrev"></div>
     <div class="result" id="schedRes"></div>
     <div class="sheet-act">
-      <button class="btn" onclick="saveSchedule()">解析并排进时间轴</button>
+      <button class="btn" id="schedActBtn" onclick="saveSchedule()">解析课表</button>
       <button class="btn ghost" onclick="closeSchedSheet()">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- 节次时间设置 -->
+<div class="sheet" id="periodSheet" onclick="if(event.target===this)closePeriodSheet()">
+  <div class="sheet-box">
+    <h3>节次时间设置</h3>
+    <div class="sub">按你们学校的作息改。导入课表时用这套时间对齐网格；写「第3节」的课也会按这里换算成具体时间。</div>
+    <div id="periodRows"></div>
+    <div class="sheet-act">
+      <button class="btn" onclick="savePeriods()">保存</button>
+      <button class="btn ghost" onclick="closePeriodSheet()">取消</button>
     </div>
   </div>
 </div>
@@ -651,7 +718,22 @@ const DATA = {
      long  长期记忆 = 上面的 profile。用户亲口说的事实，计算器唯一的输入。
      chat  聊天记忆 = 最近 3 轮。只为接住半句话，超过就滚掉，不沉淀。
      diary 日记     = 每次聊完一行「日期：摘要」。平时不出现，只在久别回来时翻。 */
-  memory:{chat:[],diary:[],last_seen:"",pending:null}
+  memory:{chat:[],diary:[],last_seen:"",pending:null},
+  /* 周课表：periods 是节次时间表（可在界面上改），courses 是一周课程 */
+  week:{
+    periods:[
+      {no:1,start:"08:30",end:"09:15"},
+      {no:2,start:"09:25",end:"10:10"},
+      {no:3,start:"10:20",end:"11:05"},
+      {no:4,start:"11:15",end:"12:00"},
+      {no:5,start:"14:00",end:"14:45"},
+      {no:6,start:"14:55",end:"15:40"},
+      {no:7,start:"15:50",end:"16:35"},
+      {no:8,start:"16:45",end:"17:30"}
+    ],
+    courses:[],
+    synced:{date:"",ids:[]}
+  }
 };
 
 /* 持久化：画像、日程、三层记忆。刷新不丢 */
@@ -663,6 +745,7 @@ try{localStorage.removeItem("altiora_state_v1");}catch(e){}
 function saveData(){
   try{localStorage.setItem(SAVE_KEY,JSON.stringify({
     profile:DATA.profile,events:DATA.events,
+    week:{periods:DATA.week.periods,courses:DATA.week.courses,synced:DATA.week.synced},
     memory:{chat:DATA.memory.chat,diary:DATA.memory.diary,
             last_seen:DATA.memory.last_seen,pending:DATA.memory.pending}
   }));}catch(e){}
@@ -671,6 +754,11 @@ try{
   const s=JSON.parse(localStorage.getItem(SAVE_KEY)||"null");
   if(s&&s.profile)Object.assign(DATA.profile,s.profile);
   if(s&&Array.isArray(s.events))DATA.events=s.events;
+  if(s&&s.week){
+    if(Array.isArray(s.week.periods)&&s.week.periods.length)DATA.week.periods=s.week.periods;
+    if(Array.isArray(s.week.courses))DATA.week.courses=s.week.courses;
+    if(s.week.synced&&typeof s.week.synced==="object")DATA.week.synced=s.week.synced;
+  }
   if(s&&s.memory){
     const m=s.memory;
     if(Array.isArray(m.chat))DATA.memory.chat=m.chat.slice(-CHAT_KEEP);
@@ -1379,10 +1467,12 @@ function topicOf(t){
 function localFallback(t){
   const k=topicOf(t);
   return pickFresh(k
-    ? [`「${esc(k)}」这句我没完全跟上——你是想排个时间，还是想让我先记着？`,
-       `你说的「${esc(k)}」，我记下了。它是今天要动的事，还是更远的那种？`]
-    : ["这句我没接住。你是想让我排个时间，还是想让我记着点什么？",
-       "我没听懂，也不想假装听懂。再说具体一点？给我一件事或一个时间就行。"]);
+    ? [`你说的「${esc(k)}」，我记下了。它是今天要动的事，还是更远的那种？`,
+       `「${esc(k)}」——这句我没找出时间。你要给个钟点，还是让我先记着？`]
+    : ["这句我没抓着重点。你把它说成「几点到几点，干什么」，我立刻能排。",
+       "没听懂，不装懂。换个说法，或者直接给我一个时间。",
+       "我离线的时候确实笨。要么给我一件事加一个时间，要么点右上角「本地规则」填个 Key。",
+       "这句接不住。要不你直接说：明天几点到几点，要干什么。"]);
 }
 /* 半句接龙：上一句我问了「几点到几点」，这句只给时间也接得上 */
 const CN_NUM={"零":0,"〇":0,"一":1,"二":2,"两":2,"三":3,"四":4,"五":5,"六":6,"七":7,"八":8,"九":9};
@@ -1401,7 +1491,7 @@ function parseTimeRange(t){
   const s=String(t).replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-65248));
   let m=s.match(/(\d{1,2})[:：](\d{2})\s*(?:[-~至到—－])\s*(\d{1,2})[:：](\d{2})/);
   if(m)return {start:pad2(+m[1])+":"+m[2],end:pad2(+m[3])+":"+m[4]};
-  m=s.match(/(上午|早上|中午|下午|晚上|夜里)?\s*([零〇一二三四五六七八九十两\d]{1,3})\s*[点时]\s*(半)?\s*(?:到|至|~|—|－|-)\s*(上午|早上|中午|下午|晚上|夜里)?\s*([零〇一二三四五六七八九十两\d]{1,3})\s*[点时]?\s*(半)?/);
+  m=s.match(/(上午|早上|中午|下午|晚上|夜里)?\s*([零〇一二三四五六七八九十两\d]{1,3})\s*[点时]?\s*(半)?\s*(?:到|至|~|—|－|-)\s*(上午|早上|中午|下午|晚上|夜里)?\s*([零〇一二三四五六七八九十两\d]{1,3})\s*[点时]?\s*(半)?/);
   if(!m)return null;
   const fix=(h,p)=>{
     if(isNaN(h))return NaN;
@@ -1415,6 +1505,25 @@ function parseTimeRange(t){
   if(!(h1>=0&&h1<24&&h2>=0&&h2<24))return null;
   if(h2*60+m2<=h1*60+m1)return null;
   return {start:pad2(h1)+":"+pad2(m1),end:pad2(h2)+":"+pad2(m2)};
+}
+/* 一句话可能说好几件事：按标点/连接词切开，每段单独抠时间和名字 */
+const TIME_PAT=/(上午|早上|中午|下午|晚上|夜里)?\s*[零〇一二三四五六七八九十两\d]{1,3}\s*[点时]?\s*(半)?\s*(?:到|至|~|—|－|-)\s*(上午|早上|中午|下午|晚上|夜里)?\s*[零〇一二三四五六七八九十两\d]{1,3}\s*[点时]?\s*(半)?/g;
+function parseEventsFromText(t){
+  const segs=String(t).split(/[，,；;、]|然后|还有|另外|顺便|再看|再排/).map(x=>x.trim()).filter(Boolean);
+  const out=[];
+  for(const seg of segs){
+    const r=parseTimeRange(seg);
+    if(!r)continue;
+    let name=seg
+      .replace(/(\d{1,2})[:：](\d{2})\s*(?:[-~至到—－])\s*(\d{1,2})[:：](\d{2})/g," ")
+      .replace(TIME_PAT," ")
+      .replace(/\d{1,2}[:：]\d{2}/g," ")
+      .replace(/^(?:(?:上午|下午|晚上|早上|中午|今天|明天|后天|上)\s*)+/,"")
+      .replace(/[，,。.、\s]+/g," ").trim();
+    if(!name)continue;
+    out.push({name:name.slice(0,12),start:r.start,end:r.end});
+  }
+  return out;
 }
 function tryFillPending(t){
   const p=DATA.memory.pending;
@@ -1442,6 +1551,7 @@ function setMsg(id,html){
   memPush("a",stripTags(html));
 }
 async function handleUser(v){
+  if(guideOn)endGuide();   // 开始对话就收起引导，别挡着干活
   push("me",v);
   if(v.startsWith("/")){setTimeout(()=>slashCmd(v),150);return;}
 
@@ -1576,6 +1686,65 @@ function extractGoal(t){
   return g;
 }
 
+/* 没配 Key 时的日常对话：常见话得接得住，不能让用户对着复读机说话 */
+const LOCAL_CHAT=[
+  {k:/^(你好|您好|hi|hello|嗨|哈喽|在吗|在不在|在么|早上好|中午好|下午好|晚上好|早|早啊)[!！。,.，~～\s]*$/i,r:[
+    "在。今天想排点什么，还是就想说说话？",
+    "来了。有事说事，没事坐着也行。",
+    "在呢。说吧。"
+  ]},
+  {k:/你是谁|你是什么|你叫什么|你的名字|你到底是|你是ai|你是机器人|你是真人|你是我的谁|你代表谁/i,r:[
+    "我是 Altiora，你想成为的那个自己，被搬进电脑里了。<br>我不替你做决定，只把每个选择的代价算清楚给你看。",
+    "你写下的那个「更好的自己」的样子。<br>我的活儿很窄：帮你排时间、算代价、守住你定的规矩。",
+    "Altiora。不是客服，也不是心理医生，是你在电脑里留的一个分身。"
+  ]},
+  {k:/你能干什么|你会什么|你能做什么|有什么功能|有啥功能|怎么用|能帮我做什么|你懂什么/,r:[
+    "三件事：<br>1）你说的话，我翻译成日程排进时间轴<br>2）撞车的时候，把 A/B/C 三个选项各自的代价算给你<br>3）记住你给自己定的规矩<br>别的我不装会。",
+    "排时间、算代价、守规矩。<br>不给建议，不替你做选择——那个位置留给你自己。",
+    "你说话，我记账。<br>几点到几点要干什么，撞了谁，丢了多少，我都算清楚。要不要改，你定。"
+  ]},
+  {k:/没跟上|听不懂|你听不懂|你接不住|你听不懂话|人工智障|什么破|你笨|你傻/,r:[
+    "是我没接住，不是你说话的问题。<br>刚才那句我没在里面找到「时间」或「事」，就卡住了。你再说一遍，或者直接给我一个钟点，这个我一定接得住。",
+    "这句是我的问题。要不你换个说法——给我一件事加一个时间，比如「周三下午三点到五点写论文」，我立刻排进去。",
+    "不怪你。我离线的时候只认几类话，闲聊是短板。<br>点右上角「本地规则」填个 Key，我就能真的跟你聊了。"
+  ]},
+  {k:/^(谢谢|谢了|感谢|多谢|thx|thanks|3q)[!！。,.，~～\s]*$/i,r:[
+    "不用谢。日程是你自己改的，谢你自己。",
+    "客气什么。下一件事呢？",
+    "嗯。这本来就是我该干的。"
+  ]},
+  {k:/再见|拜拜|晚安|先这样|回头聊|我走了|下次聊|先撤了|睡了/,r:[
+    "晚安。今天没做完的，明天还在。",
+    "走好。你要是半夜又想起来一件事，我还在。",
+    "行，去忙。时间轴我替你看着。"
+  ]},
+  {k:/天气|下雨|出太阳|好热|好冷|降温|下雪|台风/,r:[
+    "天气我查不了，我离线，也不联网。<br>但要是因为下雨不想出门，这件事可以排进日程——把原来那件事挪到几点，我帮你算代价。",
+    "这个我真不知道，别问我预报。<br>不过下雨天最容易把出门的计划冲掉，要不要先想想哪件事能挪？"
+  ]},
+  {k:/你在干嘛|你在做什么|你在吗|你忙吗|你闲吗|你在不在/,r:[
+    "在这儿等你说话。没有别的活儿。",
+    "没干嘛。你什么时候说话，我什么时候开始。"
+  ]},
+  {k:/夸夸我|夸我|鼓励我|说点好听的|安慰我|表扬我/,r:[
+    "我不夸人，夸了不值钱。<br>但你要是今天把一件事做完了，那件事本身就在夸你。",
+    "夸你什么？你说个具体的，我照着说。<br>空着夸，那是客服干的事。"
+  ]},
+  {k:/讲个笑话|说个笑话|好无聊|无聊|逗我|好玩吗/,r:[
+    "笑话没有。要不你讲一个，我听着。",
+    "无聊的话，把最不想做的那件事排到最前面试试。<br>不一定有用，但至少不无聊。"
+  ]},
+  {k:/陪我聊|聊聊天|聊聊|和我说说话|说说话|陪我|我好孤单|没人说话/,r:[
+    "行，聊。你想从哪件烦心事开始？",
+    "我在这儿。你说，我不打断。",
+    "聊就聊。不过先说好，我不会一直顺着你说。"
+  ]},
+  {k:/你好厉害|你真棒|你真好|喜欢你|爱你/,r:[
+    "别夸我，我只是你写下的那个标准。<br>真做到了，是你厉害。",
+    "我只是把你自己的规矩执行得比较死板。<br>这不叫厉害，叫不偷懒。"
+  ]}
+];
+
 function replyTo(v){
   const t=v.trim();
 
@@ -1590,13 +1759,21 @@ function replyTo(v){
     if(r){DATA.profile.known_weakness.push(r);renderMe();updStats();saveData();
       return `行，写进行为规矩了：「${r}」。以后撞上它，代价那栏会出现。`;}
   }
-  // 2) 带具体时间，才当成日程
-  if(/\d{1,2}[:：]\d{2}/.test(t)){
-    const r=addEventFromText(t);
-    if(r.dup)return `「${r.ev.name} ${r.s}-${r.e}」时间轴里已经有这条了，我没重复加。`;
-    return r.delta>0
-      ? `「${r.ev.name} ${r.s}-${r.e}」加进时间轴了，撞出 ${r.delta} 处冲突。代价在时间轴页。`
-      : `「${r.ev.name} ${r.s}-${r.e}」加进去了，没撞车。`;
+  // 2) 带具体时间，才当成日程（中文时间也认，一句话说几件事也认）
+  const evs=parseEventsFromText(t);
+  if(evs.length){
+    const added=[],dups=[];let total=0;
+    for(const ev of evs){
+      const r=addStructuredEvent(ev);
+      if(r.dup){dups.push(`「${esc(r.ev.name)} ${r.ev.start}-${r.ev.end}」`);continue;}
+      total+=r.delta;
+      added.push(`「${esc(r.ev.name)} ${r.ev.start}-${r.ev.end}」`);
+    }
+    if(!added.length)return `${dups.join("、")}时间轴里已经有了，我没重复加。`;
+    const dupTxt=dups.length?`；${dups.join("、")}重复，跳过`:"";
+    return total>0
+      ? `${added.join("、")}加进时间轴了，撞出 <b>${total}</b> 处冲突${dupTxt}。代价在时间轴页。`
+      : `${added.join("、")}加进去了，没撞车${dupTxt}。`;
   }
   // 3) 情绪优先——先当人，再当工具
   for(const e of EMOTIONS) if(e.k.test(t)){
@@ -1630,7 +1807,9 @@ function replyTo(v){
     const c=DATA.conflicts[0];
     return `现在撞的是「${c.a.name}」和「${c.b.name}」，重叠 ${c.overlap_min} 分钟。三个选项的代价我摆在时间轴页了。`;
   }
-  // 7) 兜底：不记，也不说万金油——没听懂就承认，并问一个具体问题
+  // 7) 日常对话：没配 Key 也得接得住，别让用户对着复读机说话
+  for(const c of LOCAL_CHAT) if(c.k.test(t)) return pickFresh(c.r);
+  // 8) 兜底：不记，也不说万金油——没听懂就承认，并问一个具体问题
   return localFallback(t);
 }
 function slashCmd(v){
@@ -1810,50 +1989,260 @@ function toggleMic(){
   startVoice(document.getElementById("micBtn"),document.getElementById("chatIn"),handleUser);
 }
 
-/* ════════ 添加课表 ════════ */
-function openScheduleSheet(){document.getElementById("schedSheet").classList.add("on");
-  setTimeout(()=>document.getElementById("schedIn").focus(),40);}
-function closeSchedSheet(){document.getElementById("schedSheet").classList.remove("on");
-  document.getElementById("schedRes").className="result";document.getElementById("schedIn").value="";}
-function parseScheduleLine(line){
-  // 支持：周一 08:00-09:40 高数 教A101
-  const m=line.match(/(周[一二三四五六日天]|星期[一二三四五六日天])\s*(\d{1,2})[:：](\d{2})\s*[-~至到]\s*(\d{1,2})[:：](\d{2})\s*(.+?)(?:\s+(\S+))?$/);
-  if(!m)return null;
-  const dayMap={"一":1,"二":2,"三":3,"四":4,"五":5,"六":6,"日":0,"天":0};
-  const dayKey=m[1].replace(/周|星期/,"");
-  const day=dayMap[dayKey];
-  const s=String(m[2]).padStart(2,"0")+":"+m[3];
-  const e=String(m[4]).padStart(2,"0")+":"+m[5];
-  let name=m[6]||"课程",loc="";
-  // 最后一段如果是地点（含楼/教/室/馆）就当地点
-  const last=m[7];
-  if(last&&/[楼教室馆AB栋]|^\d/.test(last)){loc=last;}
-  else if(last){name=(name+" "+last).trim();}
-  return {day,name,s,e,loc};
+/* ════════ 周课表 ════════ */
+const WK_DAYS=["周一","周二","周三","周四","周五","周六","周日"];
+const WK_COLORS=["#5B7CFA","#06B6D4","#10B981","#F97316","#8B5CF6","#EC4899","#F59E0B","#14B8A6"];
+
+function todayWeekday(){const d=new Date().getDay();return d===0?7:d;}
+function weekMonday(){
+  const n=new Date(),d=todayWeekday();
+  n.setDate(n.getDate()-(d-1));
+  n.setHours(0,0,0,0);
+  return n;
 }
-function saveSchedule(){
-  const el=document.getElementById("schedIn"),t=el.value.trim();
-  const res=document.getElementById("schedRes");
-  if(!t){res.className="result on";res.innerHTML='<span class="lbl">空的</span>先粘点课表进来。';return;}
-  const lines=t.split("\n").map(l=>l.trim()).filter(Boolean);
-  let added=0,failed=0;
-  const before=DATA.conflicts.length;
-  lines.forEach(line=>{
-    const p=parseScheduleLine(line);
-    if(!p){failed++;return;}
-    DATA.events.push({
-      id:"s"+Date.now()+Math.random().toString(36).slice(2,5),
-      name:p.name,type:"class",start:p.s,end:p.e,loc:p.loc,
-      priority:1,wage:0
-    });
-    added++;
+function courseColor(name){
+  let h=0;for(let i=0;i<name.length;i++)h=(h*31+name.charCodeAt(i))>>>0;
+  return WK_COLORS[h%WK_COLORS.length];
+}
+/* 一门课覆盖了哪几节：返回起始/结束行号，没对上返回 null */
+function periodSpan(start,end){
+  const ps=DATA.week.periods,s=toMin(start),e=toMin(end);
+  let a=-1,b=-1;
+  ps.forEach((p,i)=>{
+    if(toMin(p.start)<e&&toMin(p.end)>s){if(a<0)a=i;b=i;}
+  });
+  return a<0?null:{a,b};
+}
+function renderWeek(){
+  const grid=document.getElementById("wkGrid");if(!grid)return;
+  const ps=DATA.week.periods,wds=todayWeekday(),mon=weekMonday();
+  const cs=DATA.week.courses;
+  const empty=document.getElementById("wkEmpty");
+  if(empty)empty.style.display=cs.length?"none":"block";
+  grid.style.display=cs.length?"grid":"none";
+
+  const range=document.getElementById("wkRange");
+  if(range){
+    const end=new Date(mon);end.setDate(mon.getDate()+6);
+    range.textContent=(mon.getMonth()+1)+"月"+mon.getDate()+"日 - "+(end.getMonth()+1)+"月"+end.getDate()+"日";
+  }
+  const tt=document.getElementById("wkTodayTxt");
+  if(tt){
+    const n=cs.filter(c=>c.day===wds).length;
+    tt.textContent="今天 "+WK_DAYS[wds-1]+" · "+(n?n+" 门课":"没课");
+  }
+
+  let html=`<div class="wk-hd"></div>`;
+  for(let d=1;d<=7;d++){
+    const dt=new Date(mon);dt.setDate(mon.getDate()+d-1);
+    html+=`<div class="wk-hd${d===wds?" today":""}">${WK_DAYS[d-1]}<small>${dt.getMonth()+1}/${dt.getDate()}</small></div>`;
+  }
+  ps.forEach((p,i)=>{
+    html+=`<div class="wk-t" style="grid-row:${i+2}"><b>${p.no}</b>${esc(p.start)}<br>${esc(p.end)}</div>`;
+    for(let d=1;d<=7;d++)html+=`<div class="wk-cell" style="grid-row:${i+2};grid-column:${d+1}"></div>`;
+  });
+  cs.forEach(c=>{
+    const sp=periodSpan(c.start,c.end);
+    if(!sp)return;
+    const col=courseColor(c.name);
+    const sub=[c.loc,c.teacher].filter(Boolean).map(esc).join(" · ");
+    html+=`<div class="wk-course" style="grid-column:${c.day+1};grid-row:${sp.a+2}/${sp.b+3};background:${col}26;border-left-color:${col}" title="${esc(c.name)} ${esc(c.start)}-${esc(c.end)}${c.loc?" "+esc(c.loc):""}">
+      <b>${esc(c.name)}</b>${c.loc?`<span>${esc(c.loc)}</span>`:""}${c.teacher?`<span>${esc(c.teacher)}</span>`:""}
+    </div>`;
+  });
+  grid.innerHTML=html;
+}
+/* 今天的课自动落进今日时间轴；同一天同一门只同步一次，你删了就不再加回来 */
+function syncTodayCourses(noRender){
+  const wd=todayWeekday(),today=todayStr();
+  if(!DATA.week.synced||DATA.week.synced.date!==today)
+    DATA.week.synced={date:today,ids:[]};
+  const ids=DATA.week.synced.ids;
+  DATA.week.courses.filter(c=>c.day===wd).forEach(c=>{
+    if(ids.includes(c.id))return;
+    const dup=DATA.events.find(e=>e.name===c.name&&e.start===c.start&&e.end===c.end);
+    if(!dup){
+      DATA.events.push({id:"w"+c.id,name:c.name,type:"class",start:c.start,end:c.end,
+        loc:c.loc||"",priority:1,wage:0});
+    }
+    ids.push(c.id);
   });
   DATA.conflicts=detectConflicts();
-  renderGantt();renderConflicts();renderOrbs();renderMe();updStats();
-  const delta=DATA.conflicts.length-before;
-  res.className="result on"+(delta?" warn":"");
-  res.innerHTML=`<span class="lbl">解析完成</span>成功导入 <b>${added}</b> 门课${failed?`，${failed} 行没认出（格式不对）`:""}。${delta?`新撞出 <b>${delta}</b> 处冲突，去时间轴页看代价。`:"暂时没撞车。"}`;
-  setTimeout(closeSchedSheet,3000);
+  saveData();
+  if(noRender)return;
+  renderGantt();renderConflicts();renderOrbs();renderMe();updStats();renderWeek();
+}
+/* 节次设置 */
+function openPeriodSheet(){
+  const box=document.getElementById("periodRows");
+  box.innerHTML=DATA.week.periods.map(p=>
+    `<div class="period-row"><span>第 ${p.no} 节</span>
+      <input id="ps${p.no}a" value="${esc(p.start)}" placeholder="08:30">
+      <input id="ps${p.no}b" value="${esc(p.end)}" placeholder="09:15"></div>`).join("");
+  document.getElementById("periodSheet").classList.add("on");
+}
+function closePeriodSheet(){document.getElementById("periodSheet").classList.remove("on");}
+function savePeriods(){
+  const ok=v=>/^\d{1,2}[:：]\d{2}$/.test(v);
+  let bad="";
+  const next=DATA.week.periods.map(p=>{
+    let a=document.getElementById("ps"+p.no+"a").value.trim().replace(/：/g,":");
+    let b=document.getElementById("ps"+p.no+"b").value.trim().replace(/：/g,":");
+    if(!ok(a)||!ok(b)){bad="第 "+p.no+" 节时间格式不对，要写成 08:30 这样";return p;}
+    a=pad2(+a.split(":")[0])+":"+a.split(":")[1];
+    b=pad2(+b.split(":")[0])+":"+b.split(":")[1];
+    if(toMin(b)<=toMin(a)){bad="第 "+p.no+" 节结束时间必须晚于开始时间";return p;}
+    return {no:p.no,start:a,end:b};
+  });
+  if(bad){alert(bad);return;}
+  DATA.week.periods=next;saveData();renderWeek();closePeriodSheet();
+  toast("节次时间已更新");
+}
+
+/* ════════ 导入课表 ════════ */
+let schedPreview=null;
+function openScheduleSheet(){
+  schedPreview=null;
+  document.getElementById("schedSheet").classList.add("on");
+  document.getElementById("schedPrev").innerHTML="";
+  document.getElementById("schedActBtn").textContent="解析课表";
+  setTimeout(()=>document.getElementById("schedIn").focus(),40);
+}
+function closeSchedSheet(){
+  schedPreview=null;
+  document.getElementById("schedSheet").classList.remove("on");
+  document.getElementById("schedRes").className="result";
+  document.getElementById("schedPrev").innerHTML="";
+  document.getElementById("schedActBtn").textContent="解析课表";
+  document.getElementById("schedIn").value="";
+}
+/* 一行课表 → {day,start,end,name,loc,teacher}。认不出返回 null */
+function parseScheduleLine(line){
+  const raw=String(line).replace(/\t/g," ").replace(/[，,]/g," ").replace(/\s+/g," ").trim();
+  if(!raw)return null;
+  const dm=raw.match(/(?:周|星期)([一二三四五六日天])/);
+  if(!dm)return null;
+  const dayMap={"一":1,"二":2,"三":3,"四":4,"五":5,"六":6,"日":7,"天":7};
+  const day=dayMap[dm[1]];
+  if(!day)return null;
+
+  let start="",end="";
+  const tm=raw.match(/(\d{1,2})[:：](\d{2})\s*[-~至到—－]\s*(\d{1,2})[:：](\d{2})/);
+  if(tm){
+    start=pad2(+tm[1])+":"+tm[2];
+    end=pad2(+tm[3])+":"+tm[4];
+  }else{
+    // 第1-2节 / 第3节
+    const pm=raw.match(/第\s*(\d{1,2})\s*(?:[-~至到]\s*(\d{1,2}))?\s*节/);
+    if(!pm)return null;
+    const p1=+pm[1],p2=pm[2]?+pm[2]:p1;
+    const A=DATA.week.periods.find(x=>x.no===p1),B=DATA.week.periods.find(x=>x.no===p2);
+    if(!A||!B)return null;
+    start=A.start;end=B.end;
+  }
+  if(toMin(end)<=toMin(start))return null;
+
+  let rest=raw
+    .replace(/(?:周|星期)[一二三四五六日天]/," ")
+    .replace(/(\d{1,2})[:：](\d{2})\s*[-~至到—－]\s*(\d{1,2})[:：](\d{2})/," ")
+    .replace(/第\s*\d{1,2}\s*(?:[-~至到]\s*\d{1,2})?\s*节/," ")
+    .replace(/[\s]+/g," ").trim();
+  const parts=rest.split(" ").filter(Boolean);
+  if(!parts.length)return null;
+
+  let name=parts[0],loc="",teacher="";
+  // 「高等数学（教A101）」把括号里的当地点
+  const bm=name.match(/^(.+?)[（(](.+?)[）)]$/);
+  if(bm){name=bm[1];loc=bm[2];parts.shift();}
+  // 找地点段：带楼/教/室/馆/场/栋，或以数字开头、纯房间号
+  const isLoc=p=>/[楼教室馆场栋]|^\d|^[A-Za-z]\d|\d{3,4}$/.test(p);
+  const isTeacher=p=>/老师|教授|讲师|助教/.test(p);
+  const li=parts.findIndex(p=>!isTeacher(p)&&isLoc(p));
+  if(li>0){
+    loc=parts[li];
+    if(li>=2&&isTeacher(parts[li-1])){
+      teacher=parts[li-1];
+      name=parts.slice(0,li-1).join(" ");
+    }else{
+      name=parts.slice(0,li).join(" ");
+    }
+    const after=parts.slice(li+1).join(" ");
+    if(after)teacher=teacher?teacher+" "+after:after;
+  }else if(li===0&&!bm){
+    // 第一段就是地点，说明名字在后面
+    loc=parts[0];
+    name=parts.slice(1).join(" ")||"课程";
+  }else if(!bm){
+    if(parts.length>=2&&isTeacher(parts[parts.length-1])){
+      teacher=parts[parts.length-1];
+      name=parts.slice(0,-1).join(" ");
+    }else{
+      name=parts.join(" ");
+    }
+  }
+  if(!name||name.length>20)return null;
+  return {day,start,end,name:name.slice(0,14),loc:loc.slice(0,16),teacher:teacher.slice(0,16)};
+}
+function saveSchedule(){
+  const t=document.getElementById("schedIn").value.trim();
+  const res=document.getElementById("schedRes");
+  const prev=document.getElementById("schedPrev");
+  const act=document.getElementById("schedActBtn");
+
+  if(!t){
+    res.className="result on";
+    res.innerHTML='<span class="lbl">空的</span>先粘点课表进来。';
+    return;
+  }
+
+  // 第一步：解析并给预览，让你先确认
+  if(!schedPreview){
+    const lines=t.split("\n").map(l=>l.trim()).filter(Boolean);
+    const ok=[],bad=[];
+    lines.forEach((line,i)=>{
+      const p=parseScheduleLine(line);
+      if(p)ok.push(p);else bad.push({no:i+1,text:line});
+    });
+    if(!ok.length){
+      res.className="result on warn";
+      res.innerHTML='<span class="lbl">一行都没认出来</span>格式参考：<b>周一 08:30-10:10 高等数学 教A101</b>，或者 <b>周一 第1-2节 高等数学</b>。';
+      return;
+    }
+    schedPreview={ok,bad};
+    prev.innerHTML=`<div class="wk-prev"><table>
+      <thead><tr><th>周几</th><th>时间</th><th>课程</th><th>地点</th><th>老师</th></tr></thead>
+      <tbody>${ok.map(p=>`<tr><td>${WK_DAYS[p.day-1]}</td><td>${esc(p.start)}-${esc(p.end)}</td>
+        <td><b>${esc(p.name)}</b></td><td>${esc(p.loc)||"—"}</td><td>${esc(p.teacher)||"—"}</td></tr>`).join("")}
+      ${bad.map(b=>`<tr><td class="bad" colspan="5">第 ${b.no} 行没认出：${esc(b.text.slice(0,40))}</td></tr>`).join("")}
+      </tbody></table></div>`;
+    res.className="result on";
+    res.innerHTML=`<span class="lbl">识别结果</span>共 <b>${ok.length}</b> 门课${bad.length?`，<b class="bad">${bad.length}</b> 行没认出（会跳过）`:""}。确认无误就点下面的按钮载入。`;
+    act.textContent="确认载入 "+ok.length+" 门课";
+    return;
+  }
+
+  // 第二步：真正载入
+  let add=0,dup=0;
+  schedPreview.ok.forEach(p=>{
+    const same=DATA.week.courses.find(c=>c.day===p.day&&c.name===p.name&&c.start===p.start&&c.end===p.end);
+    if(same){dup++;return;}
+    DATA.week.courses.push({
+      id:"c"+Date.now()+Math.random().toString(36).slice(2,6),
+      day:p.day,start:p.start,end:p.end,name:p.name,loc:p.loc,teacher:p.teacher
+    });
+    add++;
+  });
+  schedPreview=null;
+  saveData();
+  syncTodayCourses();
+  renderWeek();
+  const wd=todayWeekday();
+  const todayN=DATA.week.courses.filter(c=>c.day===wd).length;
+  res.className="result on";
+  res.innerHTML=`<span class="lbl">载入完成</span>新加 <b>${add}</b> 门课${dup?`，${dup} 门重复已跳过`:""}。
+    今天（${WK_DAYS[wd-1]}）有 <b>${todayN}</b> 门课，已自动同步到时间轴。`;
+  act.textContent="解析课表";
+  setTimeout(closeSchedSheet,2200);
 }
 
 /* ════════ 画像页 ════════ */
@@ -1904,6 +2293,7 @@ function go(p){
   document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t.dataset.p===p));
   document.querySelectorAll(".page").forEach(x=>x.classList.toggle("on",x.id==="p-"+p));
   document.body.dataset.tab=p;
+  if(p==="week")renderWeek();
 }
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>go(t.dataset.p));
 
@@ -1978,15 +2368,20 @@ const GUIDE_STEPS=[
   {sel:".timeline-head .btn",tab:"timeline",txt:"课表粘进来，我帮你排进时间轴。"}
 ];
 let guideIdx=0;
+let guideOn=false;   // 引导是否正在进行；结束后挂起的定时器不再把它重新弹出来
 function showGuideStep(){
+  if(!guideOn)return;
   const step=GUIDE_STEPS[guideIdx];
+  if(!step)return;
   if(step.tab)go(step.tab);
   setTimeout(()=>{
+    if(!guideOn)return;
     const el=document.querySelector(step.sel);
     if(!el){nextGuide();return;}
     // 先把目标滚到视口中央，避免气泡被挡住
     el.scrollIntoView({block:"center",behavior:"smooth"});
     setTimeout(()=>{
+      if(!guideOn)return;   // 用户已跳过/完成，别再弹回来
       const r=el.getBoundingClientRect();
       const pad=10;
       const mask=document.getElementById("guideMask");
@@ -2019,6 +2414,7 @@ function nextGuide(){
   showGuideStep();
 }
 function endGuide(){
+  guideOn=false;
   document.getElementById("guideMask").classList.remove("on");
   document.getElementById("guideMask").style.display="none";
   document.getElementById("guideBox").classList.remove("on");
@@ -2026,13 +2422,14 @@ function endGuide(){
   guideIdx=0;
 }
 function startGuide(){
-  guideIdx=0;
+  guideIdx=0;guideOn=true;
   showGuideStep();
 }
 
 /* ════════ 启动 ════════ */
 DATA.conflicts=detectConflicts();
-renderAxis();renderGantt();renderConflicts();initChat();renderOrbs();renderMe();renderNotes();updStats();
+syncTodayCourses(true);   // 今天有课的，先落进今日时间轴
+renderAxis();renderGantt();renderConflicts();initChat();renderOrbs();renderMe();renderNotes();updStats();renderWeek();
 // 今天来过就算「见过」：三天没来才翻日记
 DATA.memory.last_seen=todayStr();saveData();
 go("home");
