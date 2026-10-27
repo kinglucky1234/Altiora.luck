@@ -200,7 +200,9 @@ body[data-tab="home"] .fab{display:none}
 .hint{font-size:11.5px;color:var(--t3)}
 
 /* ── 甘特图 ── */
-.timeline-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.timeline-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap}
+.daynav{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.daynav .btn{padding:6px 12px;font-size:13px}
 .axis{position:relative;height:18px;margin-bottom:6px}
 .axis i{position:absolute;transform:translateX(-50%);font-size:10.5px;color:var(--t3);font-style:normal;font-variant-numeric:tabular-nums}
 .gantt{position:relative;height:44px;background:rgba(255,255,255,.022);border-radius:8px;border:1px solid var(--line)}
@@ -518,8 +520,13 @@ pre.json .n{color:#FDBA74}
   <div class="page" id="p-timeline">
     <div class="card">
       <div class="timeline-head">
-        <div class="ttl" style="margin:0">今日时间轴 <small>06:00 — 次日 02:00</small></div>
-        <button class="btn" onclick="openScheduleSheet()">+ 导入课表</button>
+        <div class="ttl" style="margin:0" id="dayTitle">今日时间轴 <small>06:00 — 次日 02:00</small></div>
+        <div class="daynav">
+          <button class="btn ghost" onclick="shiftView(-1)" title="前一天">‹</button>
+          <button class="btn ghost" id="dayToday" onclick="goToday()">今天</button>
+          <button class="btn ghost" onclick="shiftView(1)" title="后一天">›</button>
+          <button class="btn" onclick="openScheduleSheet()">+ 导入课表</button>
+        </div>
       </div>
       <div class="axis" id="axis"></div>
       <div class="gantt"><div class="grid" id="grid"></div><div id="bars"></div></div>
@@ -753,7 +760,7 @@ function saveData(){
 try{
   const s=JSON.parse(localStorage.getItem(SAVE_KEY)||"null");
   if(s&&s.profile)Object.assign(DATA.profile,s.profile);
-  if(s&&Array.isArray(s.events))DATA.events=s.events;
+  if(s&&Array.isArray(s.events))DATA.events=s.events.map(e=>({...e,date:e.date||todayStr()}));
   if(s&&s.week){
     if(Array.isArray(s.week.periods)&&s.week.periods.length)DATA.week.periods=s.week.periods;
     if(Array.isArray(s.week.courses))DATA.week.courses=s.week.courses;
@@ -772,6 +779,43 @@ try{
 function todayStr(d){
   d=d||new Date();
   return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+/* 日期轴：时间轴看的到底是哪一天 */
+const WD_CN=["日","一","二","三","四","五","六"];
+let VIEW_DATE=todayStr();
+function addDays(iso,n){
+  const d=new Date(iso+"T00:00:00");d.setDate(d.getDate()+n);return todayStr(d);
+}
+function weekLabel(iso){
+  return "周"+WD_CN[new Date(iso+"T00:00:00").getDay()];
+}
+/* 说人话的日子标签 */
+function dayTag(iso){
+  const t=todayStr();
+  if(iso===t)return "今天";
+  if(iso===addDays(t,1))return "明天";
+  if(iso===addDays(t,2))return "后天";
+  if(iso===addDays(t,-1))return "昨天";
+  return cuteDate(iso)+" "+weekLabel(iso);
+}
+/* 从一句话里认出是哪天：今天/明天/后天/周X/下周X，认不出就当今天 */
+function resolveDate(text,baseIso){
+  const base=baseIso||todayStr();
+  if(/大后天/.test(text))return addDays(base,3);
+  if(/后天/.test(text))return addDays(base,2);
+  if(/明天|明早|明晚|明儿/.test(text))return addDays(base,1);
+  if(/今天|今早|今晚|待会|一会儿|等下/.test(text))return base;
+  const m=String(text).match(/(下下个?周|下个?周|下个?星期|周|星期)([一二三四五六日天])/);
+  if(m){
+    const tgt={"一":1,"二":2,"三":3,"四":4,"五":5,"六":6,"日":0,"天":0}[m[2]];
+    const cur=new Date(base+"T00:00:00").getDay();
+    let diff=tgt-cur;
+    if(diff<0)diff+=7;
+    if(/下下/.test(m[1]))diff+=14;
+    else if(/下周|下个?星期/.test(m[1]))diff+=7;
+    return addDays(base,diff);
+  }
+  return base;
 }
 function daysBetween(fromIso,toIso){
   const a=new Date(fromIso+"T00:00:00"),b=new Date(toIso+"T00:00:00");
@@ -896,7 +940,7 @@ function renderOrbs(joy){
     s.className="hero-state";
     if(joy){s.textContent="排好了";s.classList.add("blue");}
     else if(mood==="worry"){s.textContent="撞车了，账算好了";}
-    else{s.textContent=DATA.events.length?"今天稳着":"还没开始，先聊两句";s.classList.add("green");}
+    else{s.textContent=DATA.events.filter(e=>e.date===todayStr()).length?"今天稳着":"还没开始，先聊两句";s.classList.add("green");}
   }
 }
 
@@ -913,8 +957,9 @@ function renderAxis(){
 function renderGantt(){
   const box=document.getElementById("bars");if(!box)return;
   box.innerHTML="";
+  const list=DATA.events.filter(e=>e.date===VIEW_DATE);
   const cfIds=new Set();DATA.conflicts.forEach(c=>{cfIds.add(c.a.id);cfIds.add(c.b.id);});
-  DATA.events.forEach(e=>{
+  list.forEach(e=>{
     const s=toMin(e.start),en=toMin(e.end);
     const d=document.createElement("div");
     d.className="bar"+(cfIds.has(e.id)?" cf":"");
@@ -936,13 +981,31 @@ function renderGantt(){
   }
   const em=document.getElementById("ganttEmpty");
   if(em){
-    em.style.display=DATA.events.length?"none":"block";
-    if(!DATA.events.length)em.textContent="今天还是一张白纸。贴一份课表，或者直接对球说一句「三点到五点去家教」。";
+    em.style.display=list.length?"none":"block";
+    if(!list.length)em.textContent=(VIEW_DATE===todayStr()
+      ?"今天还是一张白纸。贴一份课表，或者直接说一句「三点到五点去家教」。"
+      :"这一天还是空的。说一句「明天三点到五点开会」，我就排进来。");
   }
 }
 function hexA(hex,a){
   const n=parseInt(hex.slice(1),16);
   return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`;
+}
+/* ════════ 日期轴：切到哪一天，就只看那一天 ════════ */
+function renderDayBar(){
+  const el=document.getElementById("dayTitle");if(!el)return;
+  const isToday=VIEW_DATE===todayStr();
+  el.innerHTML=`${isToday?"今日":cuteDate(VIEW_DATE)}时间轴
+    <small>${weekLabel(VIEW_DATE)}${isToday?"":" · "+cuteDate(VIEW_DATE)} · 06:00 — 次日 02:00</small>`;
+  const b=document.getElementById("dayToday");
+  if(b)b.style.opacity=isToday?".45":"1";
+}
+function shiftView(n){VIEW_DATE=addDays(VIEW_DATE,n);refreshDay();}
+function goToday(){VIEW_DATE=todayStr();refreshDay();}
+function refreshDay(){
+  DATA.conflicts=detectConflicts();
+  saveData();
+  renderDayBar();renderGantt();renderConflicts();renderOrbs();renderMe();updStats();
 }
 
 /* ════════ 渲染：冲突卡片 ════════ */
@@ -950,9 +1013,11 @@ function renderConflicts(){
   const w=document.getElementById("cfWrap");if(!w)return;
   w.innerHTML="";
   if(!DATA.conflicts.length){
+    const isToday=VIEW_DATE===todayStr();
+    const dayEvents=DATA.events.filter(e=>e.date===VIEW_DATE);
     w.innerHTML=`<div class="card" style="border-color:rgba(16,185,129,.22);background:rgba(16,185,129,.04)">
-      <div class="ttl" style="margin:0;color:#6EE7B7">今天没有撞车
-      <small>${DATA.events.length?"安排都在时间轴上，互不重叠":"还没有安排——先告诉我一件带时间的事"}</small></div></div>`;
+      <div class="ttl" style="margin:0;color:#6EE7B7">${isToday?"今天":"这一天"}没有撞车
+      <small>${dayEvents.length?"安排都在时间轴上，互不重叠":"还没有安排——先告诉我一件带时间的事"}</small></div></div>`;
     return;
   }
   DATA.conflicts.forEach(c=>{
@@ -1004,19 +1069,22 @@ function undoApply(){
 }
 function addStructuredEvent(ev){
   const name=(ev.name||"新安排").slice(0,12);
-  // 同名同时间段不重复加，否则会自己跟自己「撞车」，算出一堆假冲突
-  const dup=DATA.events.find(e=>e.name===name&&e.start===ev.start&&e.end===ev.end);
+  const date=ev.date||VIEW_DATE;
+  // 同一天、同名、同时间段不重复加，否则会自己跟自己「撞车」，算出一堆假冲突
+  const dup=DATA.events.find(e=>e.date===date&&e.name===name&&e.start===ev.start&&e.end===ev.end);
   if(dup)return {ev:dup,delta:0,dup:true};
+  // 加进去之前，先数一遍这天有几处冲突——顺序不能反，否则 delta 永远是 0
+  const before=detectConflicts(date).length;
   const e={id:"n"+Date.now()+Math.random().toString(36).slice(2,4),
-    name,type:ev.type||"work",
+    name,type:ev.type||"work",date,
     start:ev.start,end:ev.end,loc:ev.loc||"",priority:ev.priority||2,wage:ev.wage||0};
   DATA.events.push(e);
-  SESS.events.push(name+" "+e.start+"-"+e.end);
+  SESS.events.push((date===todayStr()?"":dayTag(date)+" ")+name+" "+e.start+"-"+e.end);
   saveData();
-  const before=DATA.conflicts.length;
   DATA.conflicts=detectConflicts();
-  renderGantt();renderConflicts();renderNotes();renderOrbs();renderMe();updStats();
-  return {ev:e,delta:DATA.conflicts.length-before};
+  const delta=detectConflicts(date).length-before;
+  renderDayBar();renderGantt();renderConflicts();renderNotes();renderOrbs();renderMe();updStats();
+  return {ev:e,delta,dup:false};
 }
 function addEventFromText(t){
   const m=t.match(/(\d{1,2})[:：](\d{2})\s*(?:至|-|到|~)?\s*(\d{1,2})?[:：]?(\d{2})?/);
@@ -1084,10 +1152,13 @@ function makeConflict(a,b,ov){
     advice:`我不替你选。三个代价都摆在这儿了${DATA.profile.known_weakness[0]?`；你自己说过「${DATA.profile.known_weakness[0]}」，扛不扛得住你比我清楚`:""}。`,
     risk:money?`存在金钱损失（${money} 元），请结合长期目标判断`:"暂无直接金钱损失"};
 }
-function detectConflicts(){
+function detectConflicts(dateIso){
   const cs=[];
-  for(let i=0;i<DATA.events.length;i++)for(let j=i+1;j<DATA.events.length;j++){
-    const a=DATA.events[i],b=DATA.events[j];
+  // 只比同一天的事，跨天的两件事不会「撞车」
+  const day=dateIso||VIEW_DATE;
+  const list=DATA.events.filter(e=>e.date===day);
+  for(let i=0;i<list.length;i++)for(let j=i+1;j<list.length;j++){
+    const a=list[i],b=list[j];
     if(a.type==="sleep"||b.type==="sleep")continue;
     const ov=Math.min(toMin(a.end),toMin(b.end))-Math.max(toMin(a.start),toMin(b.start));
     if(ov>0)cs.push(makeConflict(a,b,ov));
@@ -1514,14 +1585,17 @@ function parseEventsFromText(t){
   for(const seg of segs){
     const r=parseTimeRange(seg);
     if(!r)continue;
+    const date=resolveDate(seg);
     let name=seg
       .replace(/(\d{1,2})[:：](\d{2})\s*(?:[-~至到—－])\s*(\d{1,2})[:：](\d{2})/g," ")
       .replace(TIME_PAT," ")
       .replace(/\d{1,2}[:：]\d{2}/g," ")
-      .replace(/^(?:(?:上午|下午|晚上|早上|中午|今天|明天|后天|上)\s*)+/,"")
+      .replace(/^(?:(?:下下个?周|下个?周|下个?星期|周|星期)[一二三四五六日天]\s*)+/,"")
+      .replace(/^(?:(?:大后天|后天|明天|明早|明晚|今天|今早|今晚)\s*)+/,"")
+      .replace(/^(?:(?:上午|下午|晚上|早上|中午|上)\s*)+/,"")
       .replace(/[，,。.、\s]+/g," ").trim();
     if(!name)continue;
-    out.push({name:name.slice(0,12),start:r.start,end:r.end});
+    out.push({name:name.slice(0,12),start:r.start,end:r.end,date});
   }
   return out;
 }
@@ -1531,13 +1605,18 @@ function tryFillPending(t){
   if(Date.now()-p.ts>30*60000){DATA.memory.pending=null;saveData();return "";}
   const r=parseTimeRange(t);
   if(!r)return "";
+  const date=p.date||todayStr();
   DATA.memory.pending=null;saveData();
-  const res=addStructuredEvent({name:p.name,start:r.start,end:r.end});
-  if(res.dup)return `「${esc(res.ev.name)} ${r.start}-${r.end}」时间轴里已经有这条了，我没重复加。`;
-  const c=DATA.conflicts.find(x=>x.a===res.ev||x.b===res.ev);
+  const res=addStructuredEvent({name:p.name,start:r.start,end:r.end,date});
+  const tag=date!==todayStr()
+    ? `「${dayTag(date)} ${esc(res.ev.name)} ${r.start}-${r.end}」`
+    : `「${esc(res.ev.name)} ${r.start}-${r.end}」`;
+  if(res.dup)return `${tag}时间轴里已经有这条了，我没重复加。`;
+  if(date!==VIEW_DATE){VIEW_DATE=date;refreshDay();}
+  const c=detectConflicts(date).find(x=>x.a===res.ev||x.b===res.ev);
   return res.delta>0
-    ? `「${esc(res.ev.name)} ${r.start}-${r.end}」补上了，撞出 <b>${res.delta}</b> 处冲突${c?`——和「${esc(c.a===res.ev?c.b.name:c.a.name)}」重叠 ${c.overlap_min} 分钟`:""}。代价在时间轴页。`
-    : `「${esc(res.ev.name)} ${r.start}-${r.end}」补上了，没撞车。`;
+    ? `${tag}补上了，撞出 <b>${res.delta}</b> 处冲突${c?`——和「${esc(c.a===res.ev?c.b.name:c.a.name)}」重叠 ${c.overlap_min} 分钟`:""}。代价在时间轴页。`
+    : `${tag}补上了，那天没撞车。`;
 }
 function esc(s){
   return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -1575,9 +1654,10 @@ async function routeLLM(j,slotId,v){
   // 1) 日程：时间由 LLM 抽取，撞了几处由本地计算器算，再由 LLM 说成人话
   if(j.intent==="schedule"){
     if(j.event){
-      const r=addStructuredEvent(j.event);
+      const r=addStructuredEvent({...j.event,date:j.event.date||resolveDate(v)});
       if(r.dup){setMsg(slotId,`「${esc(r.ev.name)} ${r.ev.start}-${r.ev.end}」时间轴里已经有这条了，我没重复加。`);return;}
-      const c=DATA.conflicts.find(x=>x.a===r.ev||x.b===r.ev);
+      if(r.ev.date&&r.ev.date!==VIEW_DATE){VIEW_DATE=r.ev.date;refreshDay();}
+      const c=detectConflicts(r.ev.date||todayStr()).find(x=>x.a===r.ev||x.b===r.ev);
       const line=await askSay({
         事件:{名称:r.ev.name,开始:r.ev.start,结束:r.ev.end},
         新撞出的冲突数:r.delta,
@@ -1590,7 +1670,7 @@ async function routeLLM(j,slotId,v){
     }
     // 听懂了，但用户没说结束时间 —— 不编，问一句；记住它，等下补时间
     const sub=j.subject?`「${esc(j.subject)}」`:"这件事";
-    if(j.subject){DATA.memory.pending={name:j.subject.slice(0,10),ts:Date.now()};saveData();}
+    if(j.subject){DATA.memory.pending={name:j.subject.slice(0,10),date:resolveDate(v),ts:Date.now()};saveData();}
     setMsg(slotId,j.reply||`${sub}我听懂了。但要进时间轴还差个开始和结束时间——几点到几点？`);
     return;
   }
@@ -1762,18 +1842,23 @@ function replyTo(v){
   // 2) 带具体时间，才当成日程（中文时间也认，一句话说几件事也认）
   const evs=parseEventsFromText(t);
   if(evs.length){
-    const added=[],dups=[];let total=0;
+    const added=[],dups=[];let total=0,lastDate=null;
     for(const ev of evs){
       const r=addStructuredEvent(ev);
-      if(r.dup){dups.push(`「${esc(r.ev.name)} ${r.ev.start}-${r.ev.end}」`);continue;}
-      total+=r.delta;
-      added.push(`「${esc(r.ev.name)} ${r.ev.start}-${r.ev.end}」`);
+      const tag=r.ev.date&&r.ev.date!==todayStr()
+        ? `「${dayTag(r.ev.date)} ${esc(r.ev.name)} ${r.ev.start}-${r.ev.end}」`
+        : `「${esc(r.ev.name)} ${r.ev.start}-${r.ev.end}」`;
+      if(r.dup){dups.push(tag);continue;}
+      total+=r.delta;lastDate=r.ev.date;
+      added.push(tag);
     }
+    // 排到别的日子，就把时间轴切过去，别让人以为没生效
+    if(lastDate&&lastDate!==VIEW_DATE){VIEW_DATE=lastDate;refreshDay();}
     if(!added.length)return `${dups.join("、")}时间轴里已经有了，我没重复加。`;
     const dupTxt=dups.length?`；${dups.join("、")}重复，跳过`:"";
     return total>0
-      ? `${added.join("、")}加进时间轴了，撞出 <b>${total}</b> 处冲突${dupTxt}。代价在时间轴页。`
-      : `${added.join("、")}加进去了，没撞车${dupTxt}。`;
+      ? `${added.join("、")}排进去了，撞出 <b>${total}</b> 处冲突${dupTxt}。代价在时间轴页。`
+      : `${added.join("、")}排进去了，那天没撞车${dupTxt}。`;
   }
   // 3) 情绪优先——先当人，再当工具
   for(const e of EMOTIONS) if(e.k.test(t)){
@@ -1791,7 +1876,7 @@ function replyTo(v){
   if(sub){
     const name=sub[1].replace(/[啊呀吧呢了]+$/,"").slice(0,10);
     if(name&&name.length>=2&&!/(哭|睡|累|休息|放弃|躺|摆烂|逃)/.test(name)){
-      DATA.memory.pending={name,ts:Date.now()};saveData();
+      DATA.memory.pending={name,date:resolveDate(t),ts:Date.now()};saveData();
       return `「${esc(name)}」我接住了。要进时间轴还差个时间——几点到几点？`;
     }
   }
@@ -2060,9 +2145,9 @@ function syncTodayCourses(noRender){
   const ids=DATA.week.synced.ids;
   DATA.week.courses.filter(c=>c.day===wd).forEach(c=>{
     if(ids.includes(c.id))return;
-    const dup=DATA.events.find(e=>e.name===c.name&&e.start===c.start&&e.end===c.end);
+    const dup=DATA.events.find(e=>e.date===today&&e.name===c.name&&e.start===c.start&&e.end===c.end);
     if(!dup){
-      DATA.events.push({id:"w"+c.id,name:c.name,type:"class",start:c.start,end:c.end,
+      DATA.events.push({id:"w"+c.id,name:c.name,type:"class",date:today,start:c.start,end:c.end,
         loc:c.loc||"",priority:1,wage:0});
     }
     ids.push(c.id);
@@ -2259,7 +2344,7 @@ function renderMe(){
     <div>睡眠硬约束</div><div>${p.hard_sleep_deadline?"不晚于 "+esc(p.hard_sleep_deadline):'<span class="dash">还没说</span>'}</div>
     <div>精力最好时段</div><div>${dash(p.preferred_focus_hours)}</div>
     <div>已知软肋</div><div><div class="chips">${weak}</div></div>
-    <div>今日事件</div><div>${DATA.events.filter(e=>e.type!=="sleep").length} 件 · 冲突 ${DATA.conflicts.length} 处</div>`;
+    <div>今日事件</div><div>${DATA.events.filter(e=>e.date===todayStr()&&e.type!=="sleep").length} 件 · 冲突 ${detectConflicts(todayStr()).length} 处</div>`;
   const jb=document.getElementById("jsonBox");
   if(jb)jb.innerHTML=syntax(JSON.stringify(p,null,2));
   const mk=document.getElementById("memKv");
@@ -2344,7 +2429,7 @@ function updStats(){
   const c=DATA.conflicts.length,el=document.getElementById("sCf");
   if(el){el.textContent=c;el.className=c?"v red":"v green";}
   document.getElementById("gazeTxt").textContent=c?`我盯着呢，今天有 ${c} 处冲突等你定`
-    :(DATA.events.length?"我盯着呢，今天没撞车":"今天还是一张白纸，你说一句我就开始记");
+    :(DATA.events.filter(e=>e.date===todayStr()).length?"我盯着呢，今天没撞车":"今天还是一张白纸，你说一句我就开始记");
   document.getElementById("gazeMsg").className=c?"gaze-msg warn":"gaze-msg";
   const n=document.getElementById("fabN");
   if(DATA.notes.length){n.style.display="grid";n.textContent=DATA.notes.length;}else n.style.display="none";
@@ -2429,7 +2514,7 @@ function startGuide(){
 /* ════════ 启动 ════════ */
 DATA.conflicts=detectConflicts();
 syncTodayCourses(true);   // 今天有课的，先落进今日时间轴
-renderAxis();renderGantt();renderConflicts();initChat();renderOrbs();renderMe();renderNotes();updStats();renderWeek();
+renderDayBar();renderAxis();renderGantt();renderConflicts();initChat();renderOrbs();renderMe();renderNotes();updStats();renderWeek();
 // 今天来过就算「见过」：三天没来才翻日记
 DATA.memory.last_seen=todayStr();saveData();
 go("home");
