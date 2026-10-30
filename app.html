@@ -984,7 +984,7 @@ function renderOrbs(joy){
   if(s){
     s.className="hero-state";
     if(joy){s.textContent="排好了";s.classList.add("blue");}
-    else if(mood==="worry"){s.textContent="撞车了，账算好了";}
+    else if(mood==="worry"){s.textContent="有冲突了，账算好了";}
     else{s.textContent=DATA.events.filter(e=>e.date===todayStr()).length?"今天稳着":"还没开始，先聊两句";s.classList.add("green");}
   }
 }
@@ -1061,7 +1061,7 @@ function renderConflicts(){
     const isToday=VIEW_DATE===todayStr();
     const dayEvents=DATA.events.filter(e=>e.date===VIEW_DATE);
     w.innerHTML=`<div class="card" style="border-color:rgba(16,185,129,.22);background:rgba(16,185,129,.04)">
-      <div class="ttl" style="margin:0;color:#6EE7B7">${isToday?"今天":"这一天"}没有撞车
+      <div class="ttl" style="margin:0;color:#6EE7B7">${isToday?"今天":"这一天"}没有冲突
       <small>${dayEvents.length?"安排都在时间轴上，互不重叠":"还没有安排——先告诉我一件带时间的事"}</small></div></div>`;
     return;
   }
@@ -1120,7 +1120,7 @@ function undoApply(){
 function addStructuredEvent(ev){
   const name=(ev.name||"新安排").slice(0,12);
   const date=ev.date||VIEW_DATE;
-  // 同一天、同名、同时间段不重复加，否则会自己跟自己「撞车」，算出一堆假冲突
+  // 同一天、同名、同时间段不重复加，否则会自己跟自己「冲突」，算出一堆假冲突
   const dup=DATA.events.find(e=>e.date===date&&e.name===name&&e.start===ev.start&&e.end===ev.end);
   if(dup)return {ev:dup,delta:0,dup:true};
   // 加进去之前，先数一遍这天有几处冲突——顺序不能反，否则 delta 永远是 0
@@ -1213,7 +1213,7 @@ function makeConflict(a,b,ov){
 }
 function detectConflicts(dateIso){
   const cs=[];
-  // 只比同一天的事，跨天的两件事不会「撞车」
+  // 只比同一天的事，跨天的两件事不会「冲突」
   const day=dateIso||VIEW_DATE;
   const list=DATA.events.filter(e=>e.date===day);
   for(let i=0;i<list.length;i++)for(let j=i+1;j<list.length;j++){
@@ -1864,7 +1864,7 @@ function tryFillPending(t){
   const c=detectConflicts(date).find(x=>x.a===res.ev||x.b===res.ev);
   return res.delta>0
     ? `${tag}补上了，撞出 <b>${res.delta}</b> 处冲突${c?`——和「${esc(c.a===res.ev?c.b.name:c.a.name)}」重叠 ${c.overlap_min} 分钟`:""}。代价在时间轴页。`
-    : `${tag}补上了，那天没撞车。`;
+    : `${tag}补上了，那天没冲突。`;
 }
 function esc(s){
   return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -1913,7 +1913,7 @@ async function routeLLM(j,slotId,v){
       });
       setMsg(slotId,line||(r.delta>0
         ?`「${esc(r.ev.name)} ${r.ev.start}-${r.ev.end}」加进时间轴了，撞出 <b>${r.delta}</b> 处冲突。代价在时间轴页。`
-        :`「${esc(r.ev.name)} ${r.ev.start}-${r.ev.end}」加进去了，没撞车。`));
+        :`「${esc(r.ev.name)} ${r.ev.start}-${r.ev.end}」加进去了，没冲突。`));
       return;
     }
     // 听懂了，但用户没说结束时间 —— 不编，问一句；记住它，等下补时间
@@ -1931,7 +1931,7 @@ async function routeLLM(j,slotId,v){
   // 3) 长期目标
   if(j.intent==="goal"&&j.goal){
     DATA.profile.long_term_goal=j.goal;SESS.goal=j.goal;renderMe();updStats();saveData();
-    setMsg(slotId,j.reply||`「${esc(j.goal)}」——这个我收进目标里了。<br>它今天不用开始。往后每次撞车，我先保它。`);
+    setMsg(slotId,j.reply||`「${esc(j.goal)}」——这个我收进目标里了。<br>它今天不用开始。往后每次有冲突，我先保它。`);
     return;
   }
   // 4) 情绪 / 闲聊：模型只负责说话
@@ -2027,7 +2027,7 @@ const LOCAL_CHAT=[
     "Altiora。不是客服，也不是心理医生，是你在电脑里留的一个分身。"
   ]},
   {k:/你能干什么|你会什么|你能做什么|有什么功能|有啥功能|怎么用|能帮我做什么|你懂什么/,r:[
-    "三件事：<br>1）你说的话，我翻译成日程排进时间轴<br>2）撞车的时候，把 A/B/C 三个选项各自的代价算给你<br>3）记住你给自己定的规矩<br>别的我不装会。",
+    "三件事：<br>1）你说的话，我翻译成日程排进时间轴<br>2）有冲突的时候，把 A/B/C 三个选项各自的代价算给你<br>3）记住你给自己定的规矩<br>别的我不装会。",
     "排时间、算代价、守规矩。<br>不给建议，不替你做选择——那个位置留给你自己。",
     "你说话，我记账。<br>几点到几点要干什么，撞了谁，丢了多少，我都算清楚。要不要改，你定。"
   ]},
@@ -2106,7 +2106,7 @@ function replyTo(v){
     const dupTxt=dups.length?`；${dups.join("、")}重复，跳过`:"";
     return total>0
       ? `${added.join("、")}排进去了，撞出 <b>${total}</b> 处冲突${dupTxt}。代价在时间轴页。`
-      : `${added.join("、")}排进去了，那天没撞车${dupTxt}。`;
+      : `${added.join("、")}排进去了，那天没冲突${dupTxt}。`;
   }
   // 3) 情绪优先——先当人，再当工具
   for(const e of EMOTIONS) if(e.k.test(t)){
@@ -2117,7 +2117,7 @@ function replyTo(v){
   const goal=extractGoal(t);
   if(goal){
     DATA.profile.long_term_goal=goal;SESS.goal=goal;renderMe();updStats();saveData();
-    return `「${esc(goal)}」——这个我收进目标里了。<br>它今天不用开始。往后每次撞车，我先保它。`;
+    return `「${esc(goal)}」——这个我收进目标里了。<br>它今天不用开始。往后每次有冲突，我先保它。`;
   }
   // 5) 说了一件要办的事，但没给钟点——问时间，并记着它等下补
   const sub=t.match(/^(?:我)?(?:明天|后天|今天|今晚|下周[一二三四五六日天]|周[一二三四五六日天]|周末)?\s*(?:要|得|需要|准备|打算)\s*(?:去|跟|和|找)?\s*([^，,。！？\s]{2,12})/);
@@ -2148,7 +2148,7 @@ function replyTo(v){
 function slashCmd(v){
   const cmd=v.split(/\s+/)[0];
   if(cmd==="/冲突"){
-    if(!DATA.conflicts.length){push("ai","现在没冲突。想试，可以用 <b>/加事 周五 15:00-16:00 临时事</b> 看看撞车效果。");return;}
+    if(!DATA.conflicts.length){push("ai","现在没冲突。想试，可以用 <b>/加事 周五 15:00-16:00 临时事</b> 看看冲突是什么样。");return;}
     DATA.conflicts.forEach(c=>{
       push("ai",`「${c.a.name} ${c.a.start}-${c.a.end}」和「${c.b.name} ${c.b.start}-${c.b.end}」重叠 ${c.overlap_min} 分钟：<br>${c.options.map(o=>`<b>${o.k}</b> ${o.name}（${o.costs[0]}）`).join("<br>")}<br>——去时间轴页，我替你把账摆好了。`);
     });
@@ -2160,7 +2160,7 @@ function slashCmd(v){
       ?`「${r.ev.name} ${r.s}-${r.e}」时间轴里已经有一条一模一样的了，我没重复加。`
       :r.delta>0
       ?`「${r.ev.name} ${r.s}-${r.e}」已加进今天，<b>撞出 ${r.delta} 处冲突</b>——代价在时间轴页，我算好了。`
-      :`「${r.ev.name} ${r.s}-${r.e}」已加进今天，没撞车。`);
+      :`「${r.ev.name} ${r.s}-${r.e}」已加进今天，没冲突。`);
   }else if(cmd==="/规矩"){
     const r=v.slice(3).trim();
     if(!r){push("ai","格式：/规矩 周一不接活");return;}
@@ -2695,7 +2695,7 @@ function saveNote(){
     if(r.ev.date&&r.ev.date!==VIEW_DATE){VIEW_DATE=r.ev.date;refreshDay();}
     if(r.delta>0){res.className="result on warn";
       res.innerHTML=`<span class="lbl">记为日程，并且撞了</span>「${r.ev.name} ${r.s}-${r.e}」已进${when}。<b>新产生 ${r.delta} 处冲突</b>——去时间轴页，代价我算好了，你看完再定。`;
-    }else res.innerHTML=`<span class="lbl">记为日程</span>「${r.ev.name} ${r.s}-${r.e}」已进${when}，没撞车。`;
+    }else res.innerHTML=`<span class="lbl">记为日程</span>「${r.ev.name} ${r.s}-${r.e}」已进${when}，没冲突。`;
   }else if(ty==="rule"){
     const r=t.replace(/^(以后|记住|必须|别再)/,"").trim();
     DATA.profile.known_weakness.push(r);renderMe();updStats();saveData();
@@ -2724,7 +2724,7 @@ function updStats(){
   const c=detectConflicts(todayStr()).length,el=document.getElementById("sCf");
   if(el){el.textContent=c;el.className=c?"v red":"v green";}
   document.getElementById("gazeTxt").textContent=c?`我盯着呢，今天有 ${c} 处冲突等你定`
-    :(DATA.events.filter(e=>e.date===todayStr()).length?"我盯着呢，今天没撞车":"今天还是一张白纸，你说一句我就开始记");
+    :(DATA.events.filter(e=>e.date===todayStr()).length?"我盯着呢，今天没冲突":"今天还是一张白纸，你说一句我就开始记");
   document.getElementById("gazeMsg").className=c?"gaze-msg warn":"gaze-msg";
   const n=document.getElementById("fabN");
   if(DATA.notes.length){n.style.display="grid";n.textContent=DATA.notes.length;}else n.style.display="none";
@@ -2741,11 +2741,11 @@ document.addEventListener("keydown",e=>{
 
 /* ════════ 首进问卷 ════════ */
 const INTRO_STEPS=[
-  {key:"weak",title:"你明知道该改、就是改不掉的是哪些？",sub:"选 1–3 个。以后每次撞车，我会拿它们提醒你。",
+  {key:"weak",title:"你明知道该改、就是改不掉的是哪些？",sub:"选 1–3 个。以后每次有冲突，我会拿它们提醒你。",
    type:"multi",opts:["熬夜刷手机","拖延","起床困难","乱花钱","暴饮暴食","容易暴躁","焦虑内耗","学不进去","戒不掉游戏","其他"]},
-  {key:"sleep",title:"你每晚最晚几点必须睡？",sub:"过了这个点就算熬夜，撞车时我会拿它算代价。",
+  {key:"sleep",title:"你每晚最晚几点必须睡？",sub:"过了这个点就算熬夜，有冲突时我会拿它算代价。",
    type:"single",opts:["22:30","23:00","23:30","00:00","不固定"]},
-  {key:"goal",title:"你现在最想做成的一件事？",sub:"不用很大，一件就够。撞车时我优先保它。",
+  {key:"goal",title:"你现在最想做成的一件事？",sub:"不用很大，一件就够。有冲突时我优先保它。",
    type:"pick",opts:["考研上岸","拿奖学金","减肥","找到实习","学会一门技能"]},
   {key:"name",title:"我该怎么称呼你？",sub:"可以不填。",
    type:"text"},
