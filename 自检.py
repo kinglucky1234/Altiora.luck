@@ -79,7 +79,7 @@ def check_frontend():
         fail("前端页面", "找不到 Altiora-未来的我.html")
         return
     text = HTML.read_text(encoding="utf-8")
-    ids = ["chatIn", "sendBtn", "ttsBtn", "aiPill", "llmMask", "llmHeaders", "memKv", "diaryList"]
+    ids = ["chatIn", "sendBtn", "ttsBtn", "aiPill", "llmMask", "llmHeaders", "kv", "diaryListBox"]
     missing = [i for i in ids if f'id="{i}"' not in text]
     if missing:
         fail("前端控件", "缺：" + "、".join(missing))
