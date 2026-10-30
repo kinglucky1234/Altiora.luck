@@ -752,7 +752,7 @@ const DIARY_KEEP=180;   // 日记最多留半年
 try{localStorage.removeItem("altiora_state_v1");}catch(e){}
 function saveData(){
   try{localStorage.setItem(SAVE_KEY,JSON.stringify({
-    profile:DATA.profile,events:DATA.events,
+    profile:DATA.profile,events:DATA.events,notes:DATA.notes,
     week:{periods:DATA.week.periods,courses:DATA.week.courses,synced:DATA.week.synced},
     memory:{chat:DATA.memory.chat,diary:DATA.memory.diary,
             last_seen:DATA.memory.last_seen,pending:DATA.memory.pending}
@@ -762,6 +762,7 @@ try{
   const s=JSON.parse(localStorage.getItem(SAVE_KEY)||"null");
   if(s&&s.profile)Object.assign(DATA.profile,s.profile);
   if(s&&Array.isArray(s.events))DATA.events=s.events.map(e=>({...e,date:e.date||todayStr()}));
+  if(s&&Array.isArray(s.notes))DATA.notes=s.notes;
   if(s&&s.week){
     if(Array.isArray(s.week.periods)&&s.week.periods.length)DATA.week.periods=s.week.periods;
     if(Array.isArray(s.week.courses))DATA.week.courses=s.week.courses;
@@ -1021,7 +1022,7 @@ function renderConflicts(){
       <small>${dayEvents.length?"安排都在时间轴上，互不重叠":"还没有安排——先告诉我一件带时间的事"}</small></div></div>`;
     return;
   }
-  DATA.conflicts.forEach(c=>{
+  DATA.conflicts.forEach((c,ci)=>{
     const card=document.createElement("div");card.className="cf-card";
     card.innerHTML=`
       <div class="cf-head">
@@ -1041,19 +1042,24 @@ function renderConflicts(){
       </div>
       <div class="advice"><span class="lbl">分身建议</span>${c.advice}</div>
       <div class="act">
-        <button class="btn" id="cfBtn" disabled onclick="apply()">采纳并重新排布</button>
-        <span class="hint" id="cfHint">先选一个选项</span>
+        <button class="btn cf-apply" disabled onclick="apply(${ci})">采纳并重新排布</button>
+        <span class="hint cf-hint">先选一个选项</span>
       </div>`;
     w.appendChild(card);
   });
 }
 
-let picked=null;
+/* 每个冲突卡片各自记自己选中的方案，互不影响 */
 function pick(el,k){
-  el.parentElement.querySelectorAll(".opt").forEach(o=>o.classList.remove("sel"));
-  el.classList.add("sel");picked=k;
-  document.getElementById("cfBtn").disabled=false;
-  document.getElementById("cfHint").textContent="已选 "+k+" · 点了采纳才会真的改你的日程";
+  const card=el.closest(".cf-card");
+  if(!card)return;
+  card.querySelectorAll(".opt").forEach(o=>o.classList.remove("sel"));
+  el.classList.add("sel");
+  card.dataset.picked=k;
+  const btn=card.querySelector(".cf-apply");
+  if(btn)btn.disabled=false;
+  const hint=card.querySelector(".cf-hint");
+  if(hint)hint.textContent="已选 "+k+" · 点了采纳才会真的改你的日程";
 }
 
 let snapshot=null;
@@ -1065,7 +1071,7 @@ function undoApply(){
   const s=JSON.parse(snapshot);snapshot=null;
   DATA.events=s.events;DATA.conflicts=s.conflicts;
   saveData();
-  renderConflicts();renderGantt();renderOrbs();updStats();
+  renderDayBar();renderConflicts();renderGantt();renderOrbs();updStats();
   push("ai","已撤销上一次采纳，日程回到改动前");
 }
 function addStructuredEvent(ev){
@@ -1099,8 +1105,11 @@ function addEventFromText(t){
   return {ev:r.ev,s,e,delta:r.delta,dup:r.dup};
 }
 const fmtHM=m=>{m=((m%1440)+1440)%1440;return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0");};
-function apply(){
-  const c=DATA.conflicts[0];if(!c)return;
+function apply(ci){
+  const idx=ci||0;
+  const c=DATA.conflicts[idx];if(!c)return;
+  const card=document.querySelectorAll(".cf-card")[idx];
+  const picked=card?card.dataset.picked:"";
   const o=c.options.find(x=>x.k===picked);if(!o)return;
   takeSnapshot();
 
@@ -1119,13 +1128,13 @@ function apply(){
   push("me",`就按 ${picked} 来：${o.name}`);
   setTimeout(()=>push("ai",left
     ? `按 ${picked} 调完了，但这么一动又撞上 ${left} 处。位置已经在时间轴上了，要不要再动你自己看。`
-    : `好，就按 ${picked} 来。我只动了和冲突有关的那两件事，其它一格没碰。今天冲突清零了。`),420);
+    : `好，就按 ${picked} 来。我只动了和冲突有关的那两件事，其它一格没碰。冲突清零了。`),420);
 
   renderGantt();renderConflicts();renderOrbs(true);updStats();renderMe();
   const w=document.getElementById("cfWrap");
   if(w&&!left)w.innerHTML=
     `<div class="card" style="border-color:rgba(16,185,129,.3);background:rgba(16,185,129,.06);display:flex;align-items:center;gap:14px;justify-content:space-between">
-       <div class="ttl" style="color:#6EE7B7;margin:0">✓ 今日冲突已清零 <small>采纳了 ${picked}：${o.name} · 只改了冲突相关项</small></div>
+       <div class="ttl" style="color:#6EE7B7;margin:0">✓ 冲突已清零 <small>采纳了 ${picked}：${o.name} · 只改了冲突相关项</small></div>
        <button class="btn ghost" onclick="undoApply()">撤销这次改动</button>
      </div>`;
   go("timeline");
@@ -1175,7 +1184,11 @@ function push(who,html){
   HISTORY.push({who,html,id});
   if(document.getElementById("fullChat").classList.contains("on")) renderHistory();
   else if(who==="ai") showPeek(html);
-  if(who==="ai"){maybeSpeak(html);memPush("a",stripTags(html));}
+  if(who==="ai"){
+    maybeSpeak(html);
+    // 「· · ·」只是占位气泡，不能混进聊天记忆，否则模型会以为你说过一句省略号
+    if(!/class=["']typing/.test(html||""))memPush("a",stripTags(html));
+  }
   return {who,html,id};
 }
 function showPeek(html){
@@ -1477,14 +1490,17 @@ function llmErr(r){
 }
 
 async function checkAI(){
-  if(USERLLM.key){setAIPill(true);}else{
-    try{
-      const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),2500);
-      const j=await (await fetch("/api/health",{signal:ctl.signal})).json();
-      clearTimeout(t);
-      setAIPill(!!j.llm);
-      setMicEnabled(!!j.asr);
-    }catch(e){setAIPill(false);setMicEnabled(false);}
+  /* 有 Key：AI 直接在线；不管有没有 Key，都要问一句本地服务，决定麦克风能不能开 */
+  if(USERLLM.key)setAIPill(true);
+  try{
+    const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),2500);
+    const j=await (await fetch("/api/health",{signal:ctl.signal})).json();
+    clearTimeout(t);
+    if(!USERLLM.key)setAIPill(!!j.llm);
+    setMicEnabled(!!j.asr);
+  }catch(e){
+    if(!USERLLM.key)setAIPill(false);
+    setMicEnabled(false);
   }
 }
 function setMicEnabled(on){
@@ -1492,7 +1508,7 @@ function setMicEnabled(on){
   b.disabled=!on;
   b.style.opacity=on?"1":"0.35";
   b.style.cursor=on?"pointer":"not-allowed";
-  b.title=on?"语音输入":(USERLLM.key?"已填 Key，仍可打字":"语音模型未就绪，用文字输入");
+  b.title=on?"语音输入":"语音不可用，请用文字输入（双击 启动.bat 启动后可用语音）";
 }
 function setAIPill(on){
   const el=document.getElementById("aiPill");if(!el)return;
@@ -2574,6 +2590,8 @@ function saveNote(){
   const el=document.getElementById("noteIn"),t=el.value.trim();if(!t)return;
   const ty=classify(t),res=document.getElementById("noteRes");
   DATA.notes.unshift({text:t,type:ty});
+  saveData();   // 随手记也要落盘，刷新后还在
+  renderNotes();
   res.className="result on";
   if(ty==="event"){
     const r=addEventFromText(t);
@@ -2601,10 +2619,11 @@ function renderNotes(){
       <span class="tx">${n.text}</span>
       <span class="del" onclick="delNote(${i})">×</span></div>`;}).join("");
 }
-function delNote(i){DATA.notes.splice(i,1);renderNotes();updStats();}
+function delNote(i){DATA.notes.splice(i,1);saveData();renderNotes();updStats();}
 
 function updStats(){
-  const c=DATA.conflicts.length,el=document.getElementById("sCf");
+  // 侧栏和分身说的是「今天」，所以只数今天的冲突，别把明天那页的算进来
+  const c=detectConflicts(todayStr()).length,el=document.getElementById("sCf");
   if(el){el.textContent=c;el.className=c?"v red":"v green";}
   document.getElementById("gazeTxt").textContent=c?`我盯着呢，今天有 ${c} 处冲突等你定`
     :(DATA.events.filter(e=>e.date===todayStr()).length?"我盯着呢，今天没撞车":"今天还是一张白纸，你说一句我就开始记");

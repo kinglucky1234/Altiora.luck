@@ -35,11 +35,14 @@ LLM 的边界被写死在代码里（`Altiora/backend/llm.py`）：
 
 ## 2.1 评委 90 秒上手
 
-**不需要 Key、不需要注册、不需要联网。**
+**不需要注册、不需要装 Python。** 按时间选一条路：
 
-1. 双击 `启动.bat`（macOS / Linux：`bash start.sh`）
-2. 浏览器自动打开 `http://localhost:8000`
-3. 直接说话或打字 —— 语音识别、日程计算、冲突代价全部在本机完成
+| 想多快看到 | 操作 | 能用什么 |
+|---|---|---|
+| 最快，30 秒 | 双击 `Altiora-未来的我.html` | 打字对话、排日程、算冲突代价、刷新不丢；在设置里填了自己的 Key 后，AI 由浏览器直连厂商，不用开任何后台窗口 |
+| 完整体验，含语音 | 双击 `启动.bat`（macOS / Linux：`bash start.sh`），浏览器自动打开 `http://localhost:8000` | 上面全部 + 麦克风语音输入 |
+
+双击 HTML 时唯一的限制是麦克风：浏览器不给 `file://` 页面录音权限，语音用不了，打字不受影响。要语音就用第二种方式启动。
 
 到这一步就是完整体验：球的四种表情、冲突卡片、真实修改日程、刷新不丢、没有重开键。「AI 在线」只是让口语理解更准、话术更像人，不是功能前提。
 
@@ -121,7 +124,7 @@ python server.py
 
 打开浏览器访问 **http://localhost:8000**。
 
-> 一定要用 `localhost` 打开。双击 HTML 文件（地址以 `file://` 开头）时浏览器不给麦克风，语音用不了，文字聊天不受影响。
+> 语音一定要用 `localhost` 打开：双击 HTML 文件（地址以 `file://` 开头）时浏览器不给麦克风。文字聊天不受影响，填过 Key 的话 AI 也照常直连。
 
 ### 出问题先跑自检
 
@@ -196,22 +199,23 @@ python3 server.py
 
 ```
 Altiora.luck/
-├── 启动.bat / start.sh             # ★ 一键启动（自动装依赖 + 开服务 + 开浏览器）
+├── Altiora-未来的我.html           # ★ 单文件成品，双击即用（同源副本：Altiora/index.html、app.html）
+├── 启动.bat / start.sh             # ★ 完整体验：装依赖 + 开服务 + 开浏览器（含语音）
 ├── 配置大模型.bat                   # 单人自用：交互式写 .env
-├── Altiora/                       # 可运行版本（和根目录同源）
-│   ├── server.py                  # 本地服务 + 语音识别 + AI 翻译官接口
+├── 自检.py / 自检.bat                # 十项复现自检
+├── Altiora/                       # 可运行版本（前端与根目录同源）
+│   ├── server.py                  # 本地服务 + 语音识别 + 可选 LLM 代理
 │   ├── index.html                 # 单文件前端（球 / 对话 / 冲突卡片）
+│   ├── requirements.txt
 │   ├── run.bat / run.command      # 备用启动脚本
 │   └── backend/
 │       ├── llm.py                 # AI 翻译官：只抽取、只说话，不做计算
 │       └── model/                 # Vosk 中文离线模型
-├── altiora/backend/               # 三段式架构与计算器实现
-│   ├── calculator.py              # 代价测算核心（确定性）
-│   ├── schemas.py                 # 数据结构定义
-│   └── translator.py              # 自然语言 ↔ 结构化
-├── Altiora-未来的我.html           # 单文件原型（开发过程版本）
 ├── Altiora-需求文档.docx           # 需求与设计文档
-├── prompt-snapshots/              # AI 对话历史快照（比赛材料）
+├── Altiora-给老师看.html           # 一页版作品说明
+├── avatar-preview.html            # 分身单独预览
+├── prompt-snapshots/              # AI 对话历史快照（6 组迭代）
+├── archive/altiora-v0/            # 早期版本，仅存档
 ├── .env.example                   # 环境变量模板
 └── README.md
 ```
