@@ -2183,18 +2183,29 @@ function maskKey(k){
 function openLLM(){
   const prov=USERLLM.provider||"deepseek";
   document.getElementById("llmProvider").value=prov;
-  // 只显示掩码，不回显完整 Key
-  // 用户点输入框会自动清空，重新输入才会替换
+  // Key 不回显明文，但显示圆点让用户知道"已保存"；点输入框才清空重输
   const keyEl=document.getElementById("llmKey");
-  keyEl.value=USERLLM.key?"":"";  // 打开就清空，强制用户重新输入
-  keyEl.placeholder=USERLLM.key?("已保存: "+maskKey(USERLLM.key)+" (点这里重新输入)"):"sk-...";
+  if(USERLLM.key){
+    keyEl.value="\u2022".repeat(Math.min(16,USERLLM.key.length));
+    keyEl.dataset.saved="1";
+    keyEl.placeholder="已保存: "+maskKey(USERLLM.key)+"（点这里重新输入）";
+  }else{
+    keyEl.value="";
+    keyEl.dataset.saved="";
+    keyEl.placeholder="sk-...";
+  }
+  let _autoFocusing=true;   // 打开弹窗时的自动聚焦不算用户操作
+  keyEl.onfocus=function(){
+    if(_autoFocusing)return;
+    if(keyEl.dataset.saved){keyEl.value="";keyEl.dataset.saved="";}
+  };
   document.getElementById("llmBase").value=USERLLM.base||LLM_PRESETS[prov].base;
   document.getElementById("llmModel").value=USERLLM.model||LLM_PRESETS[prov].model;
   document.getElementById("llmHeaders").value=headersToText(USERLLM.headers);
   llmPreset(true);
   setLLMMsg("","");
   document.getElementById("llmMask").classList.add("on");
-  setTimeout(()=>document.getElementById("llmKey").focus(),80);
+  setTimeout(()=>{document.getElementById("llmKey").focus();_autoFocusing=false;},80);
 }
 function closeLLM(){document.getElementById("llmMask").classList.remove("on");}
 function llmPreset(keep){
@@ -2234,7 +2245,9 @@ function setLLMMsg(t,cls){
 }
 function readLLMForm(){
   const prov=document.getElementById("llmProvider").value;
-  const key=document.getElementById("llmKey").value.trim();
+  const keyEl=document.getElementById("llmKey");
+  // 字段显示圆点说明用户没改 Key，沿用已保存的；否则用新输入的
+  const key=keyEl.dataset.saved?USERLLM.key:keyEl.value.trim();
   const model=document.getElementById("llmModel").value.trim();
   // URL 始终可见、可改；留空就回落到该厂商的默认地址
   const rawBase=document.getElementById("llmBase").value.trim()||LLM_PRESETS[prov].base;
@@ -2323,11 +2336,22 @@ async function checkAI(){
 function webSpeechCtor(){return window.SpeechRecognition||window.webkitSpeechRecognition||null;}
 function setMicEnabled(on){
   const b=document.getElementById("micBtn");if(!b)return;
-  const usable=on||(location.protocol!=="file:"&&!!webSpeechCtor());   // 本地服务没开时，浏览器自带识别也能顶；file:// 下浏览器不给麦克风
+  const onChrome=!!webSpeechCtor();
+  const isFile=location.protocol==="file:";
+  let usable,title;
+  if(on){
+    usable=true;title="语音输入（离线 Vosk）";
+  }else if(isFile){
+    usable=false;title="双击打开的 HTML 用不了麦克风。请运行 python server.py，然后打开 http://localhost:8000";
+  }else if(onChrome){
+    usable=true;title="语音输入（浏览器在线识别，需联网）。想要完全离线请运行服务器并装 vosk";
+  }else{
+    usable=false;title="当前浏览器不支持语音。换 Chrome/Edge，或运行 python server.py 后用 http://localhost:8000 打开";
+  }
   b.disabled=!usable;
   b.style.opacity=usable?"1":"0.35";
   b.style.cursor=usable?"pointer":"not-allowed";
-  b.title=usable?"语音输入":"语音不可用，请用文字输入";
+  b.title=title;
 }
 function setAIPill(on){
   const el=document.getElementById("aiPill");if(!el)return;
@@ -3122,7 +3146,7 @@ function startWebSpeech(btn,inp,cb){
     if(err==="not-allowed"||err==="service-not-allowed")
       toast("浏览器没给麦克风权限。点地址栏左边的锁→允许麦克风；不行就直接打字。");
     else if(err==="no-speech")toast("没听到声音，再说一次。");
-    else if(err==="network")toast("语音识别要联网，网络不通就直接打字。");
+    else if(err==="network")toast("浏览器语音识别要联网且不稳定。装个 vosk 跑服务器就能离线用：pip install vosk，再 python server.py。");
     else toast("语音识别不可用，直接打字就行。");
   };
   r.onend=()=>{
