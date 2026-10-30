@@ -631,6 +631,8 @@ story += H2("9.1 细粒度 Git 提交历史")
 story.append(P("禁止「initial commit 包含全部功能」。每次提交对应一次与 AI 的核心对话或一个功能模块的落地。近期提交示例："))
 git_tbl = [
     ["提交哈希", "说明"],
+    ["39c6c39", "chore: 自检脚本前端控件 ID 修正（memKv→kv，diaryList→diaryListBox）"],
+    ["0309bbf", "chore: Python 版本要求从 3.8+ 统一升级为 3.10+"],
     ["ccbc732", "fix: 规矩前导逗号 + 「我以后想」解析 + 日记 flush"],
     ["51eb90b", "fix: LLM 事件缺字段/损坏数据/日记健壮性修复"],
     ["5d13f0c", "fix(goal): extractGoal 前导冒号/判断词「是」残留"],
@@ -661,7 +663,7 @@ story.append(TBL(shot_tbl, [55*mm, 12*mm, 93*mm]))
 story.append(CAP("表 9-2 Prompt 快照清单（共 11 张，覆盖 6 个迭代）"))
 
 story += H2("9.3 自检脚本")
-story.append(P("自检.py 提供十项检查：Python 版本、四个依赖、语音模型完整性、前端关键控件、页面无真实 API Key、服务启动、识别接口连通。不联网、不调大模型、不消耗额度。全过退出码 0。"))
+story.append(P("自检.py 提供十一项检查：Python 版本、四个依赖、语音模型完整性、前端关键控件、页面无真实 API Key、前端脚本语法、服务启动、识别接口连通。不联网、不调大模型、不消耗额度。全过退出码 0。"))
 
 story += H2("9.4 确定性断言")
 story.append(P("排程核心可脱离浏览器环境单独断言。同一输入永远同一输出，证明排程逻辑完全确定、可复现。详见 8.1 节。"))
