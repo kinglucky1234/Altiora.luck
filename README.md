@@ -3,6 +3,19 @@
 > 用户理想中更好的自己在电脑里的投影 —— 数字孪生分身 + 代价测算引擎
 > 赛道：AI 创新应用挑战赛 · 个人效能与数字孪生具身仿真
 
+## 目录
+
+- [1. 一句话定位](#1-一句话定位)
+- [2. 三段式架构](#2-三段式架构)
+  - [2.1 评委 90 秒上手](#21-评委-90-秒上手)
+  - [2.2 记忆三层（长期 / 聊天 / 日记）](#22-记忆三层长期--聊天--日记)
+- [3. 十分钟极速复现](#3-十分钟极速复现)
+- [4. 环境变量](#4-环境变量)
+- [5. 目录结构](#5-目录结构)
+- [6. 常见问题](#6-常见问题)
+- [7. 评审材料索引](#7-评审材料索引)
+- [8. 设计原则（为什么这样做）](#8-设计原则为什么这样做)
+
 ## 1. 一句话定位
 
 市面上的 AI 助手、日历、习惯养成 App 都在**替你做决定**。
@@ -35,19 +48,26 @@ LLM 的边界被写死在代码里（`Altiora/backend/llm.py`）：
 
 ## 2.1 评委 90 秒上手
 
-**不需要注册、不需要装 Python、不需要开后台。一个 HTML 文件就是完整程序：双击 `Altiora-未来的我.html`。**
+**核心：一个 HTML 文件就是完整程序。** 不需要注册、不需要装 Python、不需要开后台 —— 双击 `Altiora-未来的我.html` 即可。
 
-| 你能得到 | 怎么来的 |
+#### 你能得到什么
+
+| 功能 | 怎么来的 |
 |---|---|
 | 打字对话、排日程、算冲突代价、刷新不丢 | 双击就能用，全部在前端完成 |
-| 语音输入 | 浏览器自带识别：用 Chrome / Edge 打开 `http://localhost` 或 https 页面时点麦克风即可，不装 Python、不下模型 |
+| 语音输入 | 浏览器自带识别：用 Chrome / Edge 打开 `http://localhost` 或 https 页面，点麦克风即可，不装 Python、不下模型 |
 | AI 在线（口语理解更准、话术更像人） | 点右上角状态标签，30 秒填自己的 Key，浏览器直连厂商 |
 
-**关于语音的硬限制**：浏览器只在 `localhost` / https 下给麦克风权限，双击 `file://` 页面时任何网页都拿不到麦克风，这是浏览器规则，不是本项目的问题。评委只看文字链路时完全不需要 Python；要语音就在项目目录运行 `python server.py`，浏览器打开 `http://localhost:8000`。
+#### 关于语音的硬限制
+
+浏览器只在 `localhost` / https 下给麦克风权限，双击 `file://` 页面时任何网页都拿不到麦克风 —— 这是浏览器规则，不是本项目的问题。
+
+- 评委只看文字链路 → 完全不需要 Python，双击 HTML 即可
+- 要语音 → 在项目目录运行 `python server.py`，浏览器打开 `http://localhost:8000`
 
 到这一步就是完整体验：球的四种表情、冲突卡片、真实修改日程、刷新不丢、没有重开键。「AI 在线」只是让理解更准，不是功能前提。
 
-想专门看大模型部分，两条路：
+#### 想专门看大模型部分
 
 | 方式 | 操作 | 适合 |
 |---|---|---|
@@ -56,7 +76,11 @@ LLM 的边界被写死在代码里（`Altiora/backend/llm.py`）：
 
 > 仓库里**不含任何 API Key**。作者的 Key 只存在本机浏览器（localStorage），用于录制演示视频，不进提交物。
 
-语音输出用的是**系统自带的语音合成**（Windows 的 Huihui / Xiaoxiao、macOS 的 Tingting），免费、离线、不用下载模型。右上角小喇叭开关，开了以后回复会念出来，每条回复旁边也能点 ▶ 单独重听。系统里没有中文语音时：Windows「设置 → 时间和语言 → 语音」里加一个中文语音包即可。
+#### 语音输出（TTS）
+
+用的是**系统自带的语音合成**（Windows 的 Huihui / Xiaoxiao、macOS 的 Tingting），免费、离线、不用下载模型。右上角小喇叭开关，开了以后回复会念出来，每条回复旁边也能点 ▶ 单独重听。
+
+系统里没有中文语音时：Windows「设置 → 时间和语言 → 语音」里加一个中文语音包即可。
 
 ## 2.2 记忆三层（长期 / 聊天 / 日记）
 
@@ -74,7 +98,7 @@ LLM 的边界被写死在代码里（`Altiora/backend/llm.py`）：
 - 聊天记忆**只滚不沉淀**，所以不会出现「三周前你说过」这种越界
 - 只有久别才翻日记，每天都来的人永远看不到它，不会被「它一直记着我」压到
 
-## 3. 十 分钟极速复现
+## 3. 十分钟极速复现
 
 ### 0-2 分钟：环境准备
 
@@ -92,7 +116,7 @@ LLM 的边界被写死在代码里（`Altiora/backend/llm.py`）：
 
 ```bash
 git clone https://github.com/kinglucky1234/Altiora.luck.git
-cd Altiora.luck/Altiora
+cd Altiora.luck
 pip install -r requirements.txt
 ```
 
@@ -107,23 +131,21 @@ vosk               # 离线中文语音识别
 
 > **语音模型不进 git**（约 66 MB，进 git 克隆会很慢）。只有想用语音识别时才需要下载：
 > ```bash
-> cd ..   # 回到仓库根目录
 > python3 scripts/download_vosk.py
 > ```
 > 脚本会自动下载 `vosk-model-small-cn-0.22` 到 `Altiora/backend/model/`。
-> 不用语音的话可跳过这一步——双击 HTML 文字与 AI 功能完整。
+> 不用语音的话可跳过这一步 —— 双击 HTML 文字与 AI 功能完整。
 
-### 5-6 分钟：启动（只有想用语音时才需要）
+### 5-6 分钟：启动服务（只有想用语音时才需要）
 
 ```bash
-pip install -r requirements.txt
 python server.py
 ```
 
 看到 `Uvicorn running on http://0.0.0.0:8000`，浏览器打开 **http://localhost:8000**。
 
 > 评委不需要这一步：双击 HTML 就能用文字与 AI。只有想在这台机器上录音识别时才起服务。
-
+>
 > 为什么双击 HTML 录不了音：浏览器只在 `localhost` / https 下给麦克风权限，`file://` 页面一律拒绝，任何网页都一样。
 
 ### 出问题先跑自检
@@ -195,23 +217,28 @@ python3 server.py
 
 ```
 Altiora.luck/
-├── Altiora-未来的我.html           # ★ 单文件成品，双击即用（同源副本：Altiora/index.html、app.html）
-├── server.py                      # 唯一后端入口：语音识别 + 可选 LLM 代理（评委可忽略）
-├── 自检.py                         # 十项复现自检
-├── Altiora/                       # 可运行版本（前端与根目录同源）
-│   ├── server.py                  # 与根目录同一份
-│   ├── index.html                 # 单文件前端（球 / 对话 / 冲突卡片）
+├── Altiora-未来的我.html           # ★ 单文件成品，双击即用
+├── index.html                      # 同源副本（部署用）
+├── app.html                        # 同源副本
+├── server.py                       # 唯一后端入口：语音识别 + 可选 LLM 代理
+├── 自检.py                          # 十项复现自检
+├── requirements.txt
+├── .env.example                    # 环境变量模板
+├── scripts/
+│   └── download_vosk.py            # 下载 Vosk 中文离线模型（约 66 MB）
+├── Altiora/                        # 可运行版本（与根目录同源）
+│   ├── server.py                   # 与根目录同一份
+│   ├── index.html
 │   ├── requirements.txt
 │   └── backend/
-│       ├── llm.py                 # AI 翻译官：只抽取、只说话，不做计算
-│       └── model/                 # Vosk 中文离线模型
-├── Altiora-需求文档.docx           # 需求与设计文档
-├── Altiora-给老师看.html           # 一页版作品说明
-├── avatar-preview.html            # 分身单独预览
-├── prompt-snapshots/              # AI 对话历史快照（6 组迭代）
-├── archive/altiora-v0/            # 早期版本，仅存档
-├── .env.example                   # 环境变量模板
-└── README.md
+│       ├── llm.py                  # AI 翻译官：只抽取、只说话，不做计算
+│       └── model/                  # Vosk 模型（不进 git，用 scripts/download_vosk.py 下载）
+├── Altiora-需求文档.docx            # 需求与设计文档
+├── Altiora-给老师看.html            # 一页版作品说明
+├── avatar-preview.html             # 分身单独预览
+├── prompt-snapshots/               # AI 对话历史快照（6 组迭代）
+├── PROMPT_LOG.md                   # Prompt 迭代日志
+└── archive/altiora-v0/             # 早期版本，仅存档
 ```
 
 ## 6. 常见问题
