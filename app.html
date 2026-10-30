@@ -811,10 +811,15 @@ function resolveDate(text,baseIso){
   if(m){
     const tgt={"一":1,"二":2,"三":3,"四":4,"五":5,"六":6,"日":0,"天":0}[m[2]];
     const cur=new Date(base+"T00:00:00").getDay();
-    let diff=tgt-cur;
-    if(diff<0)diff+=7;
-    if(/下下/.test(m[1]))diff+=14;
-    else if(/下周|下个?星期/.test(m[1]))diff+=7;
+    const curMon=(cur+6)%7, tgtMon=(tgt+6)%7;   // 周一=0 … 周日=6
+    let diff;
+    if(/下下/.test(m[1])){
+      diff=(7-curMon)+tgtMon+7;                 // 下下周
+    }else if(/下周|下个?星期/.test(m[1])){
+      diff=(7-curMon)+tgtMon;                   // 下周：先到下周周一，再走到那天
+    }else{
+      diff=tgt-cur;if(diff<0)diff+=7;           // 本周：说过的那天还没到就本周，过了就下周
+    }
     return addDays(base,diff);
   }
   return base;
@@ -1094,6 +1099,12 @@ function addStructuredEvent(ev){
   return {ev:e,delta,dup:false};
 }
 function addEventFromText(t){
+  // 先走和聊天同一套解析：认「周五 / 明天」等日期，也认名字在前或在后
+  const p=parseEventsFromText(t);
+  if(p.length){
+    const r=addStructuredEvent(p[0]);
+    return {ev:r.ev,s:p[0].start,e:p[0].end,delta:r.delta,dup:r.dup,date:r.ev.date};
+  }
   const m=t.match(/(\d{1,2})[:：](\d{2})\s*(?:至|-|到|~)?\s*(\d{1,2})?[:：]?(\d{2})?/);
   // 名字可能写时间前面，也可能写时间后面，两边都要认
   let name=t.replace(/\d{1,2}[:：]\d{2}/g," ")
@@ -1101,8 +1112,8 @@ function addEventFromText(t){
            .replace(/[，,。.\s]+/g," ").trim()||"新安排";
   let s="19:00",e="21:00";
   if(m){s=String(m[1]).padStart(2,"0")+":"+m[2];if(m[3]&&m[4])e=String(m[3]).padStart(2,"0")+":"+m[4];}
-  const r=addStructuredEvent({name:name.slice(0,10),type:"work",start:s,end:e});
-  return {ev:r.ev,s,e,delta:r.delta,dup:r.dup};
+  const r=addStructuredEvent({name:name.slice(0,10),type:"work",start:s,end:e,date:resolveDate(t)});
+  return {ev:r.ev,s,e,delta:r.delta,dup:r.dup,date:r.ev.date};
 }
 const fmtHM=m=>{m=((m%1440)+1440)%1440;return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0");};
 function apply(ci){
@@ -2642,9 +2653,11 @@ function saveNote(){
   res.className="result on";
   if(ty==="event"){
     const r=addEventFromText(t);
+    const when=r.ev.date===todayStr()?"今天":dayTag(r.ev.date);
+    if(r.ev.date&&r.ev.date!==VIEW_DATE){VIEW_DATE=r.ev.date;refreshDay();}
     if(r.delta>0){res.className="result on warn";
-      res.innerHTML=`<span class="lbl">记为日程，并且撞了</span>「${r.ev.name} ${r.s}-${r.e}」已进今天。<b>新产生 ${r.delta} 处冲突</b>——去时间轴页，代价我算好了，你看完再定。`;
-    }else res.innerHTML=`<span class="lbl">记为日程</span>「${r.ev.name} ${r.s}-${r.e}」已进今天，没撞车。`;
+      res.innerHTML=`<span class="lbl">记为日程，并且撞了</span>「${r.ev.name} ${r.s}-${r.e}」已进${when}。<b>新产生 ${r.delta} 处冲突</b>——去时间轴页，代价我算好了，你看完再定。`;
+    }else res.innerHTML=`<span class="lbl">记为日程</span>「${r.ev.name} ${r.s}-${r.e}」已进${when}，没撞车。`;
   }else if(ty==="rule"){
     const r=t.replace(/^(以后|记住|必须|别再)/,"").trim();
     DATA.profile.known_weakness.push(r);renderMe();updStats();saveData();
