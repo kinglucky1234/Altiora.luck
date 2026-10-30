@@ -2747,6 +2747,12 @@ async function handleUser(v){
 async function routeLLM(j,slotId,v){
   // 1) 日程：时间由 LLM 抽取，撞了几处由本地计算器算，再由 LLM 说成人话
   if(j.intent==="schedule"){
+    if(!j.event){
+      // LLM 没抽出 event，但用户原话里明明有时间——用本地解析器兜底，
+      // 别因为 LLM 偶尔格式不对就让用户重说一遍。
+      const local=parseEventsFromText(v);
+      if(local.length)j.event=local[0];
+    }
     if(j.event){
       const r=addStructuredEvent({...j.event,date:j.event.date||resolveDate(v)});
       if(r.dup){setMsg(slotId,`「${esc(r.ev.name)} ${r.ev.start}-${r.ev.end}」时间轴里已经有这条了，我没重复加。`);return;}
