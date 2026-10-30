@@ -2762,6 +2762,16 @@ async function handleUser(v){
     }
   }
 
+  // 「以后不…」「再也不…」也是确定性命令：本地写进缺点，不交给模型判意图，避免判错漏记
+  if(/以后不|以后别|再也不|不许|别再|不要再/.test(v)){
+    const r=stripPunct(v.replace(/^(我|以后)/,""));
+    if(r){
+      DATA.profile.known_weakness.push(r);renderMe();updStats();saveData();
+      setTimeout(()=>push("ai",`「${esc(r)}」，我记住了。下次你快撞上去的时候，我会先把代价摆出来。`),180);
+      return;
+    }
+  }
+
   const tp=topicOf(v);if(tp&&SESS.topics[SESS.topics.length-1]!==tp)SESS.topics.push(tp);
 
   // 半句接龙：上一句我问了「几点到几点」，这句只给时间也接得上
