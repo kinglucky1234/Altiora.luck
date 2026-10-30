@@ -993,7 +993,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
   <div class="gaze-in">
     <div class="logo">Altiora<span>记录自我，向着更高处成长</span></div>
     <div class="gaze-msg" id="gazeMsg"><span class="dot"></span><span id="gazeTxt">今天还是一张白纸，你说一句我就开始记</span></div>
-    <div class="ai-pill" id="aiPill" onclick="openLLM()" title="点这里填你自己的 API Key">本地规则</div>
+    <div class="ai-pill" id="aiPill" onclick="openLLM()" title="点这里填你自己的 API Key">模型</div>
     <button class="tts-btn" id="ttsBtn" onclick="toggleTTS()" title="朗读回复"></button>
     <div class="avatar-mini" id="gazeAvatar"></div>
   </div>
@@ -1117,8 +1117,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
         <div class="goal-col" id="goalMid"></div>
         <div class="goal-col" id="goalShort"></div>
       </div>
-      <div class="hint" style="margin-top:10px">聊天里说「我要…」，我会按远近自动归到一档。</div>
-    </div>
+      </div>
 
     <div class="card">
       <div class="ttl">我眼里的你 <small>关于你的真实记录</small></div>
@@ -1126,7 +1125,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
     </div>
 
     <div class="card">
-      <div class="ttl">我的三个入口 <small>点进去就能写，只存在这台电脑</small></div>
+      <div class="ttl">我的三个入口</div>
       <div class="dsrc-grid">
         <div class="dsrc" onclick="openDiary()">
           <b id="dsrcDiary">0</b><span>日记</span><em>按日历写</em>
@@ -1138,7 +1137,6 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
           <b id="dsrcSocial">0</b><span>我的生活圈</span><em>导入发言</em>
         </div>
       </div>
-      <div class="hint" style="margin-top:10px">日程在「时间轴」页。这三块拼起来，就是 AI 一点点认识的你。</div>
     </div>
 
     <div class="card" style="display:none">
@@ -1151,7 +1149,6 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
     <div class="card">
       <div class="ttl">外观 <small>换皮肤、换主色，只存在这台电脑</small></div>
       <div class="skin-row" id="skinRow"></div>
-      <div class="hint" style="margin-top:10px">只改观感，不改任何数据。选择存在这台电脑上。</div>
     </div>
   </div>
 </div>
@@ -1301,7 +1298,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 <div class="llm-mask" id="llmMask" onclick="if(event.target===this)closeLLM()">
   <div class="llm-card">
     <div class="llm-head"><b>大模型设置</b><button class="llm-x" onclick="closeLLM()" title="关闭">×</button></div>
-    <p class="llm-tip">用你自己的 Key。它只存在这台电脑的浏览器里，请求直接发给你选的厂商，不经过任何中转服务器，也不进仓库。<br>不填也能用：全部走本地规则。填了就能直接用，不用开任何后台窗口。</p>
+    <p class="llm-tip">用你自己的 Key。它只存在这台电脑的浏览器里，请求直接发给你选的厂商，不经过任何中转服务器，也不进仓库。<br>不填也能用：全部走模型。填了就能直接用，不用开任何后台窗口。</p>
     <label>厂商</label>
     <select id="llmProvider" onchange="llmPreset()">
       <option value="deepseek">DeepSeek</option>
@@ -2153,7 +2150,7 @@ function send(){
   const i=document.getElementById("chatIn"),v=i.value.trim();if(!v)return;
   i.value="";handleUser(v);
 }
-/* ════════ AI 翻译官：先问 LLM 听懂了吗，听不懂就本地规则兜底 ════════ */
+/* ════════ AI 翻译官：先问 LLM 听懂了吗，听不懂就本地兜底 ════════ */
 const SAFETY_RE=/不想活|活不下去|活着没意思|想消失|自杀|结束自己|重开人生|重开这辈子|不值得活|没意思活了/;
 const SAFETY_TXT="这句话我不轻飘飘地接。我在这儿，你也需要有一个真人在场——室友、家人、学校的心理老师，哪个最近找哪个；打 <b>12356</b>（全国心理援助热线）也可以，24 小时有人。<br>我不劝你，也不跟你讲道理。你现在只要做一件事：让一个人的声音真的出现在你身边。";
 
@@ -2267,7 +2264,7 @@ function clearLLM(){
   document.getElementById("llmHeaders").value="";
   setAIPill(false);
   checkAI();   // 服务器 .env 里还有 Key 的话，会自动变回在线
-  setLLMMsg("已清除，回到本地规则。","ok");
+  setLLMMsg("已清除，回到模型。","ok");
 }
 async function testLLM(){
   const c=readLLMForm();
@@ -2335,10 +2332,10 @@ function setMicEnabled(on){
 function setAIPill(on){
   const el=document.getElementById("aiPill");if(!el)return;
   el.classList.toggle("on",on);
-  el.textContent=on?"AI 在线":"本地规则";
+  el.textContent=on?"AI 在线":"模型";
   el.title=on
     ?"点这里改设置。LLM 只负责听懂你说的话；算冲突、算代价仍是本地确定性计算器"
-    :"点这里填你自己的 API Key；不填也能用，全部走本地规则";
+    :"点这里填你自己的 API Key；不填也能用，全部走模型";
 }
 
 /* ════════ 浏览器直连：不开本地服务也能用 AI ════════
@@ -2415,7 +2412,7 @@ function profileBrief(p){
   if(p&&p.mid_term_goal)lines.push(`- 中期目标：${p.mid_term_goal}`);
   if(p&&p.short_term_goal)lines.push(`- 短期目标：${p.short_term_goal}`);
   if(p&&Array.isArray(p.known_weakness)&&p.known_weakness.length){
-    lines.push("- 已知软肋："+p.known_weakness.slice(0,5).join("、"));
+    lines.push("- 我的缺点："+p.known_weakness.slice(0,5).join("、"));
   }
   if(p&&Array.isArray(p.social_insights)&&p.social_insights.length){
     lines.push("- 生活圈里关于自己的话："+p.social_insights.slice(-5).map(x=>x.text).join("、"));
@@ -2526,7 +2523,7 @@ async function askLLM(text){
       return null;
     }
   }
-  /* ② 没 Key：问本地服务（服务端 .env 里可能配了 Key），失败就回本地规则 */
+  /* ② 没 Key：问本地服务（服务端 .env 里可能配了 Key），失败就回本地兜底 */
   const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),9000);
   try{
     const r=await fetch("/api/understand",{
@@ -2579,7 +2576,7 @@ function localFallback(t){
        `「${esc(k)}」——这句我没找出时间。你要给个钟点，还是让我先记着？`]
     : ["这句我没抓着重点。你把它说成「几点到几点，干什么」，我立刻能排。",
        "没听懂，不装懂。换个说法，或者直接给我一个时间。",
-       "我离线的时候确实笨。要么给我一件事加一个时间，要么点右上角「本地规则」填个 Key。",
+       "我离线的时候确实笨。要么给我一件事加一个时间，要么点右上角「模型」填个 Key。",
        "这句接不住。要不你直接说：明天几点到几点，要干什么。"]);
 }
 /* 半句接龙：上一句我问了「几点到几点」，这句只给时间也接得上 */
@@ -2732,7 +2729,7 @@ async function routeLLM(j,slotId,v){
   }
   // 4) 情绪 / 闲聊：模型只负责说话
   if(j.reply){setMsg(slotId,esc(j.reply));return;}
-  // 5) 模型没给话，退回本地规则
+  // 5) 模型没给话，退回本地兜底
   setMsg(slotId,replyTo(v));
 }
 
@@ -2882,7 +2879,7 @@ const LOCAL_CHAT=[
   {k:/没跟上|听不懂|你听不懂|你接不住|你听不懂话|人工智障|什么破|你笨|你傻/,r:[
     "是我没接住，不是你说话的问题。<br>刚才那句我没在里面找到「时间」或「事」，就卡住了。你再说一遍，或者直接给我一个钟点，这个我一定接得住。",
     "这句是我的问题。要不你换个说法——给我一件事加一个时间，比如「周三下午三点到五点写论文」，我立刻排进去。",
-    "不怪你。我离线的时候只认几类话，闲聊是短板。<br>点右上角「本地规则」填个 Key，我就能真的跟你聊了。"
+    "不怪你。我离线的时候只认几类话，闲聊是短板。<br>点右上角「模型」填个 Key，我就能真的跟你聊了。"
   ]},
   {k:/^(谢谢|谢了|感谢|多谢|thx|thanks|3q)[!！。,.，~～\s]*$/i,r:[
     "不用谢。日程是你自己改的，谢你自己。",
@@ -3526,7 +3523,7 @@ function renderMe(){
   kv.innerHTML=`
     <div>睡眠底线</div><div>${p.hard_sleep_deadline?"不晚于 "+esc(p.hard_sleep_deadline):'<span class="dash">还没说</span>'}</div>
     <div>精力高峰</div><div>${dash(p.preferred_focus_hours)}</div>
-    <div>内心的软肋</div><div><div class="chips">${weak}</div></div>
+    <div>我的缺点</div><div><div class="chips">${weak}</div></div>
     <div>今日记录</div><div>${DATA.events.filter(e=>e.date===todayStr()&&e.type!=="sleep").length} 件 · 冲突 ${detectConflicts(todayStr()).length} 处</div>`;
   // 三个入口计数（日记 / 随手记 / 我的生活圈）
   const dd=document.getElementById("dsrcDiary");
