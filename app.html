@@ -973,6 +973,18 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
 }
+/* 今日方案 */
+.plan-caption{font-size:12.5px;color:var(--t2);line-height:1.7;padding:10px 12px;border-radius:9px;
+  background:var(--card);border:1px solid var(--line);border-left:2px solid var(--blue);margin-bottom:12px}
+.plan-list{display:flex;flex-direction:column;gap:8px}
+.plan-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;
+  background:var(--card);border:1px solid var(--line)}
+.plan-dot{width:10px;height:10px;border-radius:50%;flex:none}
+.plan-nm{font-size:13px;font-weight:600;color:var(--t1);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.plan-tm{font-size:12px;color:var(--t2);font-variant-numeric:tabular-nums;white-space:nowrap;margin-left:auto}
+.plan-flag{font-size:10.5px;padding:2px 7px;border-radius:999px;color:var(--t3);border:1px solid var(--line);white-space:nowrap;flex:none}
+.plan-flag.on{color:#6EE7B7;border-color:rgba(16,185,129,.35);background:rgba(16,185,129,.1)}
+.plan-flag.cf{color:#FCA5A5;border-color:rgba(239,68,68,.35);background:rgba(239,68,68,.1)}
 </style>
 </head>
 <body>
@@ -1042,6 +1054,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
           <button class="btn ghost" id="dayToday" onclick="goToday()">今天</button>
           <button class="btn ghost" onclick="shiftView(1)" title="后一天">›</button>
           <button class="btn" onclick="openScheduleSheet('day')">+ 导入日程</button>
+          <button class="btn" onclick="openPlan()">生成今日方案</button>
         </div>
       </div>
       <div class="vtl">
@@ -1062,6 +1075,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
     </div>
 
     <div id="cfWrap"></div>
+    <div id="planWrap"></div>
   </div>
 
   <!-- ═══ 课表：一周网格 ═══ -->
@@ -1894,6 +1908,89 @@ function planCaption(plan){
   }
   if(p.known_weakness.length)bits.push(`按你说过的「${p.known_weakness[0]}」，高峰段排满脑力活，晚上留缓冲`);
   return bits.join("；")+"。";
+}
+
+/* ════════ 今日方案 · 展示 + LLM 说明 ════════ */
+const PLAN_SYS=`你是 Altiora，负责把本地计算器已经排好的「今日方案」说成一到两句人话，解释这张表为什么长这样。
+铁律（漏一条都算失败）：
+- 只能引用「档案」和「方案」里出现的事实，一个都不能编、不能加、不能四舍五入
+- 必须明确说出哪件事被排进了哪个精力高峰时段（引用档案里的时段）
+- 档案里有睡眠硬约束或软肋时，要覆盖它对方案的影响
+- 不替用户选择、不给建议、不评价对错
+- 25 到 50 字，语气平静具体；禁止「加油」「你可以的」「相信自己」
+只输出那一两句话，不要引号，不要解释。`;
+
+function planFacts(plan){
+  const p=DATA.profile;
+  return {
+    focus: plan.win?fmtHM(plan.win.s)+"–"+fmtHM(plan.win.e):"未填写",
+    moved: plan.flex.filter(f=>f._moved).map(f=>f.name+" "+f.start+"-"+f.end),
+    conflicts: plan.conflicts.length,
+    sleep_deadline: p.hard_sleep_deadline||"",
+    weakness: (p.known_weakness||[]).slice(0,3),
+    goals: [p.long_term_goal,p.mid_term_goal,p.short_term_goal].filter(Boolean)
+  };
+}
+
+/* LLM 只把确定结果说成人话；说漏了精力高峰就算失败，回退确定性文案 */
+async function explainPlan(plan){
+  const facts=planFacts(plan);
+  const msgs=[
+    {role:"system",content:PLAN_SYS},
+    {role:"user",content:"档案：\n"+profileBrief(DATA.profile)+"\n\n方案（只解释，不改）：\n"+JSON.stringify(facts)}
+  ];
+  let text=String(await directChat(USERLLM,msgs,140)||"").trim();
+  text=text.replace(/^[“"'`]+|[”"'`]+$/g,"").trim().slice(0,160);
+  if(!text||LLM_BANNED.test(text))return "";
+  // 反制「LLM 忽略档案」：精力高峰填了，话里必须带出时段或那件被挪的事，否则不算数
+  if(plan.win){
+    const hm=fmtHM(plan.win.s)+"–"+fmtHM(plan.win.e);
+    const ok=text.includes(hm)||text.includes(fmtHM(plan.win.s))
+      || plan.flex.filter(f=>f._moved).some(f=>text.includes(f.name));
+    if(!ok)return "";
+  }
+  return text;
+}
+
+function renderPlan(plan, caption){
+  const w=document.getElementById("planWrap"); if(!w)return;
+  const focusTxt=plan.win?fmtHM(plan.win.s)+"–"+fmtHM(plan.win.e):"未填写";
+  const rows=plan.total.map(e=>{
+    const inFocus=!!e._moved;
+    const col=COLORS[e.type]||"#3B82F6";
+    const typeFlag=inFocus?'<span class="plan-flag on">● 精力高峰</span>'
+      :(e._fixed?'<span class="plan-flag">'+TYPE_CN[e.type]+'</span>':'<span class="plan-flag">原时间</span>');
+    const cfFlag=plan.cfIds.has(e.id)?'<span class="plan-flag cf">冲突</span>':'';
+    return `<div class="plan-row">
+      <span class="plan-dot" style="background:${col}"></span>
+      <span class="plan-nm">${esc(e.name)}</span>
+      <span class="plan-tm">${e.start}–${e.end}</span>
+      ${typeFlag}${cfFlag}
+    </div>`;
+  }).join("");
+  w.innerHTML=`<div class="card" id="planCard">
+    <div class="ttl">今日方案 <small>精力高峰：${esc(focusTxt)} · 只做展示，不改你已排好的日程</small></div>
+    <div class="plan-caption" id="planCaption">${esc(caption)}</div>
+    <div class="plan-list">${rows||'<div class="hint">今天还没有日程。先贴一份课表，或说一句「三点到五点去家教」。</div>'}</div>
+  </div>`;
+}
+
+async function openPlan(){
+  go("timeline");
+  const plan=buildTodayPlan();
+  renderPlan(plan, planCaption(plan));                 // 先落可复现的确定性文案
+  const cap=document.getElementById("planCaption");
+  if(USERLLM&&USERLLM.key){
+    if(cap)cap.textContent="正在让分身用一句话说清这张表…";
+    try{
+      const t=await withTimeout(explainPlan(plan),12000);
+      if(t&&cap)cap.textContent=t;
+    }catch(e){
+      if(cap)cap.textContent=planCaption(plan);
+    }
+  }
+  const card=document.getElementById("planCard");
+  if(card)setTimeout(()=>card.scrollIntoView({behavior:"smooth",block:"nearest"}),60);
 }
 
 /* ════════ 对话：唯一消息流（主页只显示一句预览） ════════ */
