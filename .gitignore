@@ -16,3 +16,7 @@ node_modules/
 # Vosk 离线语音模型（约 66 MB）：不进 git，用 scripts/download_vosk.py 下载
 Altiora/backend/model/*
 !Altiora/backend/model/README.md
+
+# 交付物不走 Git：技术文档 PDF、演示视频单独发百度网盘
+Altiora-技术文档.pdf
+Altiora-演示视频脚本.md
