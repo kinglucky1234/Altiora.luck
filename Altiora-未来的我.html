@@ -355,6 +355,11 @@ pre.json .n{color:#FDBA74}
 .diary-card .dc-text{font-size:13px;color:var(--t1);line-height:1.65;white-space:pre-wrap;word-break:break-word}
 .diary-card .dc-del{position:absolute;top:8px;right:10px;color:var(--t3);cursor:pointer;font-size:14px;line-height:1;padding:2px 5px;border-radius:4px}
 .diary-card .dc-del:hover{color:var(--red);background:rgba(239,68,68,.1)}
+.dc-sec{font-size:12px;color:var(--t3);margin:14px 2px 8px;padding-left:4px;border-left:3px solid var(--hue-line);letter-spacing:.3px}
+.diary-card.auto{opacity:.72;background:linear-gradient(135deg,rgba(59,130,246,.06),rgba(59,130,246,.02));border-style:dashed;cursor:default}
+.diary-card.auto:hover{transform:none;border-color:var(--line)}
+.dc-recall{font-size:12px;color:var(--t2);background:rgba(59,130,246,.08);border:1px dashed var(--hue-line);border-radius:10px;padding:10px 12px;margin-top:10px;line-height:1.7}
+.dc-recall span{color:var(--hue)}
 /* 弹窗内的小清单 */
 .note-list,.soc-list{max-height:180px;overflow:auto;display:none;margin-bottom:12px}
 .note-list.on,.soc-list.on{display:block}
@@ -1528,7 +1533,7 @@ function sessFlush(){
   SESS.users.length=0;SESS.topics.length=0;SESS.events.length=0;SESS.goal="";SESS.mood="";
   SESS.t0=Date.now();
 }
-setInterval(()=>{if(Date.now()-SESS.last>5*60000)sessFlush();},60000);
+setInterval(()=>{if(Date.now()-SESS.last>60*1000)sessFlush();},15000);
 window.addEventListener("pagehide",sessFlush);
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")sessFlush();});
 
@@ -1725,7 +1730,7 @@ function addStructuredEvent(ev){
     start:ev.start,end:ev.end,loc:ev.loc||"",priority:ev.priority||2,wage:ev.wage||0};
   DATA.events.push(e);
   SESS.events.push((date===todayStr()?"":dayTag(date)+" ")+name+" "+e.start+"-"+e.end);
-  saveData();
+  saveData();sessFlush();
   DATA.conflicts=detectConflicts();
   const delta=detectConflicts(date).length-before;
   renderDayBar();renderGantt();renderConflicts();renderNotes();renderOrbs();renderMe();updStats();
@@ -2492,7 +2497,7 @@ function cleanEvent(raw){
 }
 function cleanMemory(raw){
   if(!raw||typeof raw!=="object")return null;
-  const text=String(raw.text||"").trim().slice(0,60);
+  const text=stripPunct(raw.text).slice(0,60);
   if(!text)return null;
   return {kind:raw.kind==="weakness"?"weakness":"rule",text};
 }
@@ -2721,6 +2726,12 @@ function tryFillPending(t){
 function esc(s){
   return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
+/* 去掉首尾标点（中英文逗号/顿号/分号/冒号/句号/问号/叹号/引号）。
+   用户说「记住，我晚上容易刷手机」，去掉前缀后剩「，我晚上容易刷手机」，
+   不刮掉这个逗号，画像页一眼假。 */
+function stripPunct(s){
+  return String(s||"").replace(/^[，,、；;：:。！!？?\s"'「」『』“”‘’]+|[，,、；;：:。！!？?\s"'「」『』"''""]+$/g,"").trim();
+}
 function setMsg(id,html){
   const m=HISTORY.find(x=>x.id===id);if(!m)return;
   m.html=html;
@@ -2789,7 +2800,7 @@ async function routeLLM(j,slotId,v){
   // 3) 目标（长期 / 中期 / 短期）
   if(j.intent==="goal"&&j.goal){
     const h=j.goal_horizon||goalHorizon(v)||"mid";
-    DATA.profile[GOAL_KEY[h]]=j.goal;SESS.goal=j.goal;renderMe();updStats();saveData();
+    DATA.profile[GOAL_KEY[h]]=j.goal;SESS.goal=j.goal;renderMe();updStats();saveData();sessFlush();
     setMsg(slotId,j.reply||`「${esc(j.goal)}」——收进${GOAL_LABEL[h]}里了。<br>它今天不用开始。往后有冲突，我先保它。`);
     return;
   }
@@ -2856,7 +2867,7 @@ function extractGoal(t){
   let s=t.trim()
     .replace(/^(你好|您好|嗨|哈喽|在吗|那个|就是|嗯+|诶|哎|嘿)[，,。！!？?、\s]*/,"")
     .replace(/[。！!？?]+$/,"");
-  const M=/(我的目标|目标是|我以后要|以后要|我希望|我打算|我想|我要)/;
+  const M=/(我的目标|目标是|我以后想|以后想|我以后要|以后要|我希望|我打算|我想|我要)/;
   const m=s.match(M);
   if(!m)return "";
   let g=s.slice(m.index+m[1].length).trim().replace(/^[，,、\s]+/,"");
@@ -2880,7 +2891,7 @@ function extractGoal(t){
 }
 /* 从一句话里判断目标属于长期 / 中期 / 短期。拿不准就空，由调用方默认 mid。 */
 function goalHorizon(t){
-  if(/长[远久]|最终|一辈子|这辈子|一生|十年|五年|退休|梦想|理想|成为|以后想|将来|未来/.test(t))return "long";
+  if(/长[远久]|最终|一辈子|这辈子|一生|十年|五年|退休|梦想|理想|成为|以后想|以后要|将来|未来/.test(t))return "long";
   if(/这学期|本学期|学期|期末|期中|半年|几个月|明年|今年|考研|考公|求职|找实习|比赛|答辩|毕业/.test(t))return "mid";
   if(/这周|本周|这个月|本月|月底|近期|马上|最近|明天|后天|今天|这几天|眼下|当下|这两天/.test(t))return "short";
   return "";
@@ -3000,7 +3011,7 @@ function replyTo(v){
 
   // 1) 明确让你记住，才写进画像（普通吐槽一律不记）
   if(/^(记住|记一下|帮我记住|规矩)/.test(t)){
-    const r=t.replace(/^(记住|记一下|帮我记住|规矩)/,"").trim();
+    const r=stripPunct(t.replace(/^(记住|记一下|帮我记住|规矩)/,""));
     if(r){DATA.profile.known_weakness.push(r);renderMe();updStats();saveData();
       return `行，写进行为规矩了：「${r}」。以后撞上它，代价那栏会出现。`;}
   }
@@ -3041,7 +3052,7 @@ function replyTo(v){
   const goal=extractGoal(t);
   if(goal){
     const h=goalHorizon(t)||"mid";
-    DATA.profile[GOAL_KEY[h]]=goal;SESS.goal=goal;renderMe();updStats();saveData();
+    DATA.profile[GOAL_KEY[h]]=goal;SESS.goal=goal;renderMe();updStats();saveData();sessFlush();
     return `「${esc(goal)}」——收进${GOAL_LABEL[h]}里了。<br>它今天不用开始。往后有冲突，我先保它。`;
   }
   // 5) 说了一件要办的事，但没给钟点——问时间，并记着它等下补
@@ -3688,7 +3699,7 @@ function saveNote(){
       res.innerHTML=`<span class="lbl">记为日程，并且撞了</span>「${r.ev.name} ${r.s}-${r.e}」已进${when}。<b>新产生 ${r.delta} 处冲突</b>——去时间轴页，代价我算好了，你看完再定。`;
     }else res.innerHTML=`<span class="lbl">记为日程</span>「${r.ev.name} ${r.s}-${r.e}」已进${when}，没冲突。`;
   }else if(ty==="rule"){
-    const r=t.replace(/^(以后|记住|必须|别再)/,"").trim();
+    const r=stripPunct(t.replace(/^(以后|记住|必须|别再)/,""));
     DATA.profile.known_weakness.push(r);renderMe();updStats();saveData();
     res.className="result on warn";
     res.innerHTML=`<span class="lbl">记为规矩</span>「${r}」已写进画像。<b>以后排日程我替你守这条。</b>`;
@@ -3766,16 +3777,32 @@ function renderDiaryDay(){
 /* 已保存的日记以小卡片列出，不是输入框样式 */
 function renderDiaryList(){
   const box=document.getElementById("diaryListBox");if(!box)return;
-  if(!DATA.diary.length){box.innerHTML="";return;}
-  const sorted=[].concat(DATA.diary).sort((a,b)=>b.d.localeCompare(a.d));
-  box.innerHTML=sorted.map((x,i)=>{
-    const idx=DATA.diary.indexOf(x);
-    return `<div class="diary-card" onclick="pickDiaryDay('${x.d}')">
-      <div class="dc-date">${dayTag(x.d)}</div>
-      <div class="dc-text">${esc(x.t)}</div>
-      <span class="dc-del" onclick="event.stopPropagation();delDiary(${idx})">×</span>
-    </div>`;
-  }).join("");
+  const parts=[];
+  // 手写日记
+  if(DATA.diary.length){
+    const sorted=[].concat(DATA.diary).sort((a,b)=>b.d.localeCompare(a.d));
+    parts.push(`<div class="dc-sec">我的日记</div>`+sorted.map((x,i)=>{
+      const idx=DATA.diary.indexOf(x);
+      return `<div class="diary-card" onclick="pickDiaryDay('${x.d}')">
+        <div class="dc-date">${dayTag(x.d)}</div>
+        <div class="dc-text">${esc(x.t)}</div>
+        <span class="dc-del" onclick="event.stopPropagation();delDiary(${idx})">×</span>
+      </div>`;
+    }).join(""));
+  }
+  // 自动日记：每次聊完攒的一行摘要（久别重逢的数据源）
+  const auto=DATA.memory&&DATA.memory.diary?DATA.memory.diary:[];
+  if(auto.length){
+    const last=auto[auto.length-1];
+    const frag=last.s.split(/[，,；;]/)[0].replace(/[。.]$/,"").slice(0,18);
+    parts.push(`<div class="dc-sec">分身自动记的（隔 3 天以上回来会翻）</div>`+
+      auto.slice(-5).reverse().map(x=>`<div class="diary-card auto">
+        <div class="dc-date">${dayTag(x.d)}</div>
+        <div class="dc-text">${esc(x.s)}</div>
+      </div>`).join("")+
+      (frag?`<div class="dc-recall">久别重逢预览：<span>上次（${esc(cuteDate(last.d))}）你说${esc(frag)}，后来怎么样了？</span></div>`:""));
+  }
+  box.innerHTML=parts.join("")||'<div class="hint">还没有日记。排一件事、说一个目标，或者挑一天写点什么。</div>';
 }
 function delDiary(i){DATA.diary.splice(i,1);saveData();renderDiaryCal();renderDiaryList();renderMe();updStats();}
 function saveDiary(){
