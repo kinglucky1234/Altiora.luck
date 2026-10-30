@@ -681,10 +681,11 @@ pre.json .n{color:#FDBA74}
 <div class="llm-mask" id="llmMask" onclick="if(event.target===this)closeLLM()">
   <div class="llm-card">
     <div class="llm-head"><b>大模型设置</b><button class="llm-x" onclick="closeLLM()" title="关闭">×</button></div>
-    <p class="llm-tip">用你自己的 Key。它只存在这台电脑的浏览器里，每句话临时发给本地服务，服务端不保存、不写日志，也不会进仓库。<br>不填也能用：全部走本地规则。</p>
+    <p class="llm-tip">用你自己的 Key。它只存在这台电脑的浏览器里，请求直接发给你选的厂商，不经过任何中转服务器，也不进仓库。<br>不填也能用：全部走本地规则。填了就能直接用，不用开任何后台窗口。</p>
     <label>厂商</label>
     <select id="llmProvider" onchange="llmPreset()">
       <option value="deepseek">DeepSeek</option>
+      <option value="deepseek_manual">DeepSeek（手动填模型名）</option>
       <option value="dashscope">通义千问（阿里云百炼）</option>
       <option value="ark">火山方舟（豆包）</option>
       <option value="custom">自定义（OpenAI 兼容）</option>
@@ -1332,6 +1333,7 @@ const SAFETY_TXT="这句话我不轻飘飘地接。我在这儿，你也需要�
 const LLM_STORE="altiora_llm_v1";
 const LLM_PRESETS={
   deepseek:{base:"https://api.deepseek.com/v1",model:"deepseek-chat"},
+  deepseek_manual:{base:"https://api.deepseek.com/v1",model:""},
   dashscope:{base:"https://dashscope.aliyuncs.com/compatible-mode/v1",model:"qwen-plus"},
   ark:{base:"https://ark.cn-beijing.volces.com/api/v3",model:""},
   custom:{base:"",model:""}
@@ -1344,10 +1346,21 @@ function loadLLM(){
 }
 let USERLLM=loadLLM();
 
+/* Mask API Key：只显示前 4 + 后 4 位，中间用 ... 盖掉 */
+function maskKey(k){
+  if(!k)return "";
+  if(k.length<=8)return "****";
+  return k.slice(0,4)+"..."+k.slice(-4);
+}
+
 function openLLM(){
   const prov=USERLLM.provider||"deepseek";
   document.getElementById("llmProvider").value=prov;
-  document.getElementById("llmKey").value=USERLLM.key||"";
+  // 只显示掩码，不回显完整 Key
+  // 用户点输入框会自动清空，重新输入才会替换
+  const keyEl=document.getElementById("llmKey");
+  keyEl.value=USERLLM.key?"":"";  // 打开就清空，强制用户重新输入
+  keyEl.placeholder=USERLLM.key?("已保存: "+maskKey(USERLLM.key)+" (点这里重新输入)"):"sk-...";
   document.getElementById("llmBase").value=USERLLM.base||LLM_PRESETS[prov].base;
   document.getElementById("llmModel").value=USERLLM.model||LLM_PRESETS[prov].model;
   document.getElementById("llmHeaders").value=headersToText(USERLLM.headers);
@@ -1361,7 +1374,10 @@ function llmPreset(keep){
   const prov=document.getElementById("llmProvider").value;
   const p=LLM_PRESETS[prov];
   const modelEl=document.getElementById("llmModel");
-  modelEl.placeholder=prov==="ark"?"接入点 ID（ep-…）":prov==="custom"?"填这个接口要的模型名":"deepseek-chat";
+  modelEl.placeholder=prov==="ark"?"接入点 ID（ep-…）"
+    :prov==="custom"?"填这个接口要的模型名"
+    :prov==="deepseek_manual"?"填开放平台里的模型名（如 deepseek-chat）"
+    :"deepseek-chat";
   if(!keep){
     modelEl.value=p.model;
     document.getElementById("llmBase").value=p.base;
@@ -1426,32 +1442,32 @@ function clearLLM(){
 async function testLLM(){
   const c=readLLMForm();
   if(!c.key){setLLMMsg("先把 API Key 填上。","err");return;}
+  if(!/^https:\/\//.test(c.base)){setLLMMsg("Base URL 要以 https:// 开头。","err");return;}
+  if(!c.model){setLLMMsg("模型名不能空。火山方舟要填接入点 ID（ep-…）。","err");return;}
   const btn=document.getElementById("llmTest");
   btn.disabled=true;setLLMMsg("正在连…","");
   try{
-    const r=await fetch("/api/understand",{
-      method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({text:"你好",profile:{},api_key:c.key,base_url:c.base,model:c.model,headers:c.headers})
-    });
-    const j=await r.json();
-    if(j&&j.ok){
-      saveLLM(true);
-      askLLM._warned=false;
-      setLLMMsg("通了，已保存。当前模型："+(j.model||c.model),"ok");
-    }else{
-      setLLMMsg(llmErr(j&&j.reason),"err");
-    }
+    // 直接从浏览器发一个最小请求，不经过本地服务
+    await withTimeout(directChat(c,[{role:"user",content:"ping"}],16),15000);
+    USERLLM=c;
+    try{localStorage.setItem(LLM_STORE,JSON.stringify(c));}catch(e){}
+    setAIPill(true);
+    askLLM._warned=false;
+    setLLMMsg("通了，已保存。当前模型："+c.model,"ok");
   }catch(e){
-    setLLMMsg("连不上本地服务。确认「启动.bat」的黑窗口还开着。","err");
+    const reason=e&&e.status?"http_"+e.status:(e&&e.message==="bad_base"?"unsafe_base":"network");
+    setLLMMsg(llmErr(reason),"err");
   }finally{btn.disabled=false;}
 }
 function llmErr(r){
   const map={
+    http_400:"请求被拒（400）。通常是模型名写错了，去控制台核对一下。",
     http_401:"Key 不对（401）。检查是不是复制全了，或者这个 Key 已失效。",
     http_403:"没有权限（403）。看看这个 Key 有没有开通该模型。",
     http_404:"找不到模型或地址（404）。检查模型名和 Base URL。",
     http_429:"额度或频率超了（429），过一会儿再试。",
     network:"连不上模型服务。检查网络，或者厂商地址写错了。",
+    timeout:"模型太慢，超时了。换个模型再试。",
     unsafe_base:"地址不被允许：只接受 https 的公网地址。",
     bad_json:"模型返回的不是 JSON，换个模型再试。",
     bad_intent:"模型没按格式回答，换个模型再试。",
@@ -1461,13 +1477,22 @@ function llmErr(r){
 }
 
 async function checkAI(){
-  if(USERLLM.key){setAIPill(true);return;}   // 用户自己带了 Key，不用问服务器
-  try{
-    const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),2500);
-    const j=await (await fetch("/api/health",{signal:ctl.signal})).json();
-    clearTimeout(t);
-    setAIPill(!!j.llm);
-  }catch(e){setAIPill(false);}
+  if(USERLLM.key){setAIPill(true);}else{
+    try{
+      const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),2500);
+      const j=await (await fetch("/api/health",{signal:ctl.signal})).json();
+      clearTimeout(t);
+      setAIPill(!!j.llm);
+      setMicEnabled(!!j.asr);
+    }catch(e){setAIPill(false);setMicEnabled(false);}
+  }
+}
+function setMicEnabled(on){
+  const b=document.getElementById("micBtn");if(!b)return;
+  b.disabled=!on;
+  b.style.opacity=on?"1":"0.35";
+  b.style.cursor=on?"pointer":"not-allowed";
+  b.title=on?"语音输入":(USERLLM.key?"已填 Key，仍可打字":"语音模型未就绪，用文字输入");
 }
 function setAIPill(on){
   const el=document.getElementById("aiPill");if(!el)return;
@@ -1477,42 +1502,195 @@ function setAIPill(on){
     ?"点这里改设置。LLM 只负责听懂你说的话；算冲突、算代价仍是本地确定性计算器"
     :"点这里填你自己的 API Key；不填也能用，全部走本地规则";
 }
+
+/* ════════ 浏览器直连：不开本地服务也能用 AI ════════
+   Key 只在浏览器里，请求直接发给厂商，不经过任何中转。
+   仍然只做「听懂人话」和「把结果说成人话」，冲突与代价一律由本地计算器算。 */
+const LLM_INTENTS=["safety","emotion","schedule","memory","goal","chat"];
+const LLM_EMOTIONS=["sad","tired","anxious","selfblame","relapse","lonely","numb","none"];
+const LLM_BANNED=/嗯[，,]\s*我在听|我在听|你接着说|我在这儿|我都在|会好起来的|会好一点|加油|你可以的|相信自己|慢慢来|不要放弃|你能做到/;
+const LLM_SYS=`你叫 Altiora，是「用户理想中更好的自己」在电脑里的投影，不是客服，也不是心理医生。
+
+你的职责只有翻译，不做决策。
+
+【判断 intent，只能选一个】
+- safety：出现不想活、自伤、结束生命的意味
+- emotion：在倾诉情绪、状态、自我否定
+- schedule：明确说出一件带开始与结束时间的事，要排进日程
+- memory：明确要求记住一条规矩或软肋（如「记住…」「以后不…」）
+- goal：说出长期目标
+- chat：其它闲聊
+
+【抽取规则】
+- event 只在 intent=schedule 时给，且必须同时有 start 和 end（24 小时制 HH:MM）。
+  用户没说结束时间，event 就填 null，不要猜。
+- memory 只在用户明确要求记住时给，text 原样保留用户的话，不要改写。
+- goal 只保留目标本身，去掉「我想」这类前缀。
+
+【绝对不能做】
+- 不计算时间重叠、时长、金钱、代价
+- 不替用户选方案，不说「你应该选 A」
+- 不编造用户没说的地点、时间、人物
+- 不说「加油」「你可以的」「相信自己」，不喊口号，不做心理诊断
+- 不复述用户原话，不用客服腔
+
+【reply 的写法】
+- intent=safety：null
+- intent=schedule 且 event 完整：null。账要由计算器算完再回来说，你不能抢答。
+- 其它情况一律要写，一到两句，40 字以内。
+- 必须指涉用户刚说的具体内容。
+- 禁止「嗯，我在听」「你接着说」「会好起来的」「加油」「你可以的」这类句子。
+- 不确定就问一个具体问题，不要问「你还好吗」这种空问题。
+
+只输出 JSON，不要解释，不要 Markdown 代码块：
+{"intent":"emotion","emotion":"tired","event":null,"memory":null,"goal":null,"reply":"..."}`;
+const LLM_SAY_SYS=`你是 Altiora，用户理想中更好的自己在电脑里的投影。下面是本地计算器算出的确定结果，你只负责把它说成一句人话。
+
+规则：
+- 只能引用给定数字，一个都不许改、不许加、不许四舍五入、不许推算新数字
+- 不替用户选择，不给建议，不评价对错
+- 一到两句，50 字以内
+- 语气平静、具体，说清发生了什么
+- 禁止「加油」「你可以的」「相信自己」这类句子
+- 只说结果，不要重复用户原话
+
+只输出那一句话，不要引号，不要解释。`;
+
+function withTimeout(p,ms){
+  return new Promise((res,rej)=>{
+    const t=setTimeout(()=>rej(new Error("timeout")),ms);
+    p.then(v=>{clearTimeout(t);res(v);},e=>{clearTimeout(t);rej(e);});
+  });
+}
+function profileBrief(p){
+  const lines=[];
+  if(p&&p.hard_sleep_deadline)lines.push(`- 睡觉硬约束：${p.hard_sleep_deadline} 前`);
+  if(p&&p.long_term_goal)lines.push(`- 长期目标：${p.long_term_goal}`);
+  if(p&&Array.isArray(p.known_weakness)&&p.known_weakness.length){
+    lines.push("- 已知软肋："+p.known_weakness.slice(0,5).join("、"));
+  }
+  return lines.join("\n")||"（无）";
+}
+function parseJsonLoose(c){
+  let s=String(c||"").trim();
+  if(s.startsWith("```"))s=s.replace(/^```[A-Za-z]*\s*/,"").replace(/```$/,"").trim();
+  try{return JSON.parse(s);}catch(e){}
+  const l=s.indexOf("{"),r=s.lastIndexOf("}");
+  if(l<0||r<=l)return null;
+  try{return JSON.parse(s.slice(l,r+1));}catch(e){return null;}
+}
+function normTime(v){
+  if(typeof v!=="string")return null;
+  const m=v.trim().replace("：",":").match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
+  return m?`${String(+m[1]).padStart(2,"0")}:${m[2]}`:null;
+}
+function minutesOf(hm){const a=hm.split(":");return (+a[0])*60+(+a[1]);}
+function cleanEvent(raw){
+  if(!raw||typeof raw!=="object")return null;
+  const name=String(raw.name||"").trim().slice(0,20);
+  const s=normTime(raw.start),e=normTime(raw.end);
+  if(!name||!s||!e)return null;
+  if(minutesOf(e)<=minutesOf(s))return null;
+  return {name,start:s,end:e,loc:String(raw.loc||"").trim().slice(0,20)};
+}
+function cleanMemory(raw){
+  if(!raw||typeof raw!=="object")return null;
+  const text=String(raw.text||"").trim().slice(0,60);
+  if(!text)return null;
+  return {kind:raw.kind==="weakness"?"weakness":"rule",text};
+}
+async function directChat(cfg,messages,maxTokens){
+  const base=String(cfg.base||"").replace(/\/+$/,"");
+  if(!/^https:\/\//.test(base))throw new Error("bad_base");
+  const headers={"Content-Type":"application/json","Authorization":"Bearer "+cfg.key};
+  if(cfg.headers&&typeof cfg.headers==="object")Object.assign(headers,cfg.headers);
+  const r=await fetch(base+"/chat/completions",{
+    method:"POST",
+    headers,
+    body:JSON.stringify({model:cfg.model,messages,temperature:0.5,max_tokens:maxTokens||400})
+  });
+  if(!r.ok){const err=new Error("http_"+r.status);err.status=r.status;throw err;}
+  const p=await r.json();
+  const c=p&&p.choices&&p.choices[0]&&p.choices[0].message&&p.choices[0].message.content;
+  if(!c)throw new Error("bad_json");
+  return c;
+}
+/* 第一段翻译官：自然语言 → 结构化字段（不计算，不替用户选） */
+async function directUnderstand(text){
+  const msgs=[{role:"system",content:LLM_SYS}];
+  memRecent().slice(-6).forEach(m=>{
+    const t=String((m&&m.t)||"").trim().slice(0,120);
+    if(t)msgs.push({role:m.r==="u"?"user":"assistant",content:t});
+  });
+  msgs.push({role:"user",content:
+    "用户画像（已知事实，不要重复询问，也不要复述）：\n"+
+    profileBrief(DATA.profile)+"\n\n用户刚刚说："+String(text||"").slice(0,600)});
+  const obj=parseJsonLoose(await directChat(USERLLM,msgs,400));
+  if(!obj||!LLM_INTENTS.includes(obj.intent))return null;
+  const intent=obj.intent;
+  let emotion=obj.emotion;
+  if(!LLM_EMOTIONS.includes(emotion))emotion="none";
+  const event=intent==="schedule"?cleanEvent(obj.event):null;
+  // 时间不全时保留主题，前端追问时间，而不是替用户编
+  const subject=(intent==="schedule"&&obj.event&&typeof obj.event==="object")
+    ?(String(obj.event.name||"").trim().slice(0,20)||null):null;
+  const memory=intent==="memory"?cleanMemory(obj.memory):null;
+  const goal=intent==="goal"?(String(obj.goal||"").trim().slice(0,60)||null):null;
+  let reply=typeof obj.reply==="string"?obj.reply.trim().slice(0,120):null;
+  // 硬约束：完整日程不给话术（账还没算），安全一律本地处理
+  if(intent==="safety"||(intent==="schedule"&&event))reply=null;
+  if(reply&&LLM_BANNED.test(reply))reply=null;
+  return {ok:true,source:"llm",intent,emotion,event,subject,memory,goal,reply,model:USERLLM.model};
+}
+/* 第二段翻译官：只许引用给定数字，多写一个就整句作废 */
+async function directSay(facts){
+  const msgs=[{role:"system",content:LLM_SAY_SYS},
+    {role:"user",content:"计算结果（JSON）：\n"+JSON.stringify(facts)}];
+  let text=String(await directChat(USERLLM,msgs,160)||"").trim();
+  text=text.replace(/^[“"'`]+|[”"'`]+$/g,"").trim().slice(0,120);
+  if(!text||LLM_BANNED.test(text))return "";
+  const allowed=new Set((JSON.stringify(facts).match(/\d+(?:\.\d+)?/g)||[]));
+  const nums=text.match(/\d+(?:\.\d+)?/g)||[];
+  if(nums.some(n=>!allowed.has(n)))return "";
+  return text;
+}
+
 async function askLLM(text){
+  const history=memRecent().map(m=>({role:m.r==="u"?"user":"assistant",text:m.t}));
+  /* ① 有 Key：浏览器直接请求厂商接口，不需要本地服务，双击 HTML 就能用 */
+  if(USERLLM.key){
+    try{
+      return await withTimeout(directUnderstand(text),12000);
+    }catch(e){
+      const reason=e&&e.status?"http_"+e.status:(e&&e.message==="bad_base"?"unsafe_base":"network");
+      if(!askLLM._warned){askLLM._warned=true;toast(llmErr(reason));}
+      return null;
+    }
+  }
+  /* ② 没 Key：问本地服务（服务端 .env 里可能配了 Key），失败就回本地规则 */
   const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),9000);
   try{
-    const body={text,profile:DATA.profile,history:memRecent().map(m=>({role:m.r==="u"?"user":"assistant",text:m.t}))};
-    if(USERLLM.key){
-      body.api_key=USERLLM.key;body.base_url=USERLLM.base;body.model=USERLLM.model;
-      if(USERLLM.headers&&Object.keys(USERLLM.headers).length)body.headers=USERLLM.headers;
-    }
     const r=await fetch("/api/understand",{
       method:"POST",
       headers:{"Content-Type":"application/json"},
-      body:JSON.stringify(body),
+      body:JSON.stringify({text,profile:DATA.profile,history}),
       signal:ctl.signal
     });
     clearTimeout(t);
     if(!r.ok)return null;
     const j=await r.json();
-    if(j&&j.ok&&j.source==="llm")return j;
-    // Key 有问题时提示一次，别让用户以为是自己说话没被听懂
-    if(USERLLM.key&&j&&j.reason&&/^http_40[13]$|unsafe_base/.test(j.reason)&&!askLLM._warned){
-      askLLM._warned=true;toast(llmErr(j.reason));
-    }
-    return null;
+    return (j&&j.ok&&j.source==="llm")?j:null;
   }catch(e){clearTimeout(t);return null;}
 }
 async function askSay(facts){
+  if(USERLLM.key){
+    try{return await withTimeout(directSay(facts),12000);}catch(e){return "";}
+  }
   const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),9000);
   try{
-    const body={facts,profile:DATA.profile};
-    if(USERLLM.key){
-      body.api_key=USERLLM.key;body.base_url=USERLLM.base;body.model=USERLLM.model;
-      if(USERLLM.headers&&Object.keys(USERLLM.headers).length)body.headers=USERLLM.headers;
-    }
     const r=await fetch("/api/say",{
       method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify(body),signal:ctl.signal
+      body:JSON.stringify({facts,profile:DATA.profile}),signal:ctl.signal
     });
     clearTimeout(t);
     if(!r.ok)return "";
