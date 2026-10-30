@@ -15,9 +15,11 @@ AI 翻译官（LLM 版）
 """
 from __future__ import annotations  # PEP 563：延迟求值注解，让 str | None / list[dict] 在 3.8+ 也能跑
 
+import ipaddress
 import json
 import os
 import re
+import socket
 import urllib.error
 import urllib.request
 from urllib.parse import urlparse
@@ -133,12 +135,31 @@ def _merge_headers(base_headers: dict, extra) -> dict:
     return base_headers
 
 
+def _is_private_ip(ip_str: str) -> bool:
+    """判断一个 IP 是否属于内网/回环/保留等不应被外部请求打到的范围。"""
+    try:
+        ip = ipaddress.ip_address(ip_str)
+    except ValueError:
+        return True  # 不是合法 IP，直接拒绝
+    # 回环 / 私网(RFC1918+CGNAT) / 链路本地 / 保留 / 组播 / 未指定 一律拒绝
+    return (ip.is_loopback or ip.is_private or ip.is_link_local
+            or ip.is_reserved or ip.is_multicast or ip.is_unspecified)
+
+
 def _safe_base(base: str) -> bool:
-    """用户自填的地址只允许公网 https，避免被当成内网探针。"""
+    """用户自填的地址只允许公网 https，避免被当成内网探针。
+
+    两层防护：
+    1. 主机名字符串前缀过滤（快速挡掉 localhost、127.x 等明显内网）
+    2. DNS 解析后逐一检查返回的 IP，防 DNS 重绑定（域名解析到内网 IP）
+
+    注意：不防 TOCTOU（解析后到真正请求之间 DNS 再次变化），比赛场景足够。
+    """
     u = urlparse(base)
     if u.scheme != "https" or not u.hostname:
         return False
     h = u.hostname.lower()
+    # 第一层：字符串前缀快速过滤
     if h == "::1" or any(h == p or h.startswith(p) for p in _PRIVATE_HOSTS):
         return False
     if h.startswith("172."):
@@ -146,6 +167,14 @@ def _safe_base(base: str) -> bool:
             if 16 <= int(h.split(".")[1]) <= 31:
                 return False
         except (IndexError, ValueError):
+            return False
+    # 第二层：DNS 解析，防 DNS 重绑定
+    try:
+        infos = socket.getaddrinfo(h, u.port or 443, type=socket.SOCK_STREAM)
+    except socket.gaierror:
+        return False  # 解析失败也拒绝，不冒险
+    for info in infos:
+        if _is_private_ip(info[4][0]):
             return False
     return True
 
