@@ -685,6 +685,7 @@ story += H2("11.1 零依赖模式（推荐评委使用）")
 story.append(P("双击 Altiora-未来的我.html 即可。文字对话、排程、冲突代价、记忆、今日方案全部在前端完成，不需要 Python、不需要联网。"))
 
 story += H2("11.2 语音模式")
+story.append(P("<b>环境要求</b>：Python 3.8 及以上。代码使用了 `str | None` / `list[dict]` 等类型注解，但通过 `from __future__ import annotations`（PEP 563 延迟求值）兼容 3.8+，无需 3.10。"))
 story.append(CODE("""pip install -r requirements.txt
 python3 scripts/download_vosk.py    # 仅首次，下载语音模型
 python server.py                     # 启动后打开 http://localhost:8000"""))
