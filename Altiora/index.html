@@ -199,24 +199,26 @@ body[data-tab="home"] .fab{display:none}
 .btn.ghost:hover{background:var(--card-hi);color:var(--t1)}
 .hint{font-size:11.5px;color:var(--t3)}
 
-/* ── 甘特图 ── */
+/* ── 竖版时间轴 ── */
 .timeline-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap}
 .daynav{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .daynav .btn{padding:6px 12px;font-size:13px}
-.axis{position:relative;height:18px;margin-bottom:6px}
-.axis i{position:absolute;transform:translateX(-50%);font-size:10.5px;color:var(--t3);font-style:normal;font-variant-numeric:tabular-nums}
-.gantt{position:relative;height:44px;background:rgba(255,255,255,.022);border-radius:8px;border:1px solid var(--line)}
-.gantt .grid{position:absolute;inset:0}
-.gantt .grid i{position:absolute;top:0;bottom:0;width:1px;background:rgba(255,255,255,.05)}
-.bar{
-  position:absolute;top:5px;height:34px;border-radius:6px;
-  display:flex;align-items:center;padding:0 8px;overflow:hidden;
-  font-size:11px;white-space:nowrap;cursor:default;transition:.15s;
-  color:rgba(255,255,255,.95);
-}
-.bar:hover{filter:brightness(1.18);z-index:5}
-.bar.cf{border:1px solid var(--red);box-shadow:0 0 16px rgba(239,68,68,.45);animation:pulse-b 2.2s infinite}
-@keyframes pulse-b{0%,100%{box-shadow:0 0 14px rgba(239,68,68,.35)}50%{box-shadow:0 0 22px rgba(239,68,68,.6)}}
+.vtl{position:relative;padding-left:0}
+.vtl-line{position:absolute;left:11px;top:4px;bottom:10px;width:2px;border-radius:2px;
+  background:linear-gradient(180deg,transparent,rgba(59,130,246,.55) 4%,rgba(139,92,246,.4) 96%,transparent)}
+.vtl-item{position:relative;padding:0 0 16px 34px;animation:fade .22s}
+.vtl-dot{position:absolute;left:4px;top:5px;width:16px;height:16px;border-radius:50%;
+  border:3px solid var(--bg);box-shadow:0 0 0 1px var(--line-hi),0 0 12px rgba(255,255,255,.12);z-index:2}
+.vtl-chunk{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 13px;transition:.15s}
+.vtl-item:hover .vtl-chunk{border-color:var(--line-hi)}
+.vtl-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.vtl-name{font-size:13px;font-weight:600;color:var(--t1)}
+.vtl-tag{font-size:10.5px;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.04);
+  border:1px solid var(--line);font-variant-numeric:tabular-nums}
+.vtl-tm{font-size:11px;color:var(--t3);margin-top:4px;font-variant-numeric:tabular-nums;letter-spacing:.3px}
+.vtl-item.cf .vtl-dot{background:var(--red);box-shadow:0 0 0 1px var(--red),0 0 16px rgba(239,68,68,.65)}
+.vtl-item.cf .vtl-chunk{border-color:rgba(239,68,68,.5);background:rgba(239,68,68,.06)}
+.vtl-item.cf .vtl-name{color:#FCA5A5}
 .legend{display:flex;gap:16px;margin-top:12px;font-size:11.5px;color:var(--t3);flex-wrap:wrap}
 .legend b{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;vertical-align:middle}
 .band{height:4px;border-radius:3px;margin-top:14px;position:relative;overflow:hidden;
@@ -337,6 +339,27 @@ pre.json .n{color:#FDBA74}
 .kv small{color:var(--t3);font-size:11px;margin-left:6px}
 .diary-h{font-size:11.5px;color:var(--t3);margin:12px 0 2px}
 .diary-line{font-size:12.5px;color:var(--t2);padding:7px 0;border-top:1px dashed var(--line);font-variant-numeric:tabular-nums}
+/* 弹窗内的小清单 */
+.note-list,.soc-list{max-height:180px;overflow:auto;display:none;margin-bottom:12px}
+.note-list.on,.soc-list.on{display:block}
+.soc-item{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin-bottom:8px}
+.soc-item .soc-tx{font-size:12.5px;color:var(--t1);line-height:1.6}
+.soc-item .soc-src{font-size:11px;color:var(--t3);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 日记日历 */
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin:2px 0 10px}
+.cal-m{font-size:13px;font-weight:600;color:var(--t1)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:12px}
+.dc{height:30px;display:grid;place-items:center;font-size:12px;border-radius:8px;color:var(--t2);
+  cursor:pointer;font-variant-numeric:tabular-nums;position:relative;background:rgba(255,255,255,.02)}
+.dc:hover{background:var(--card-hi);color:var(--t1)}
+.dc.pad{cursor:default;background:none}
+.dc.today{box-shadow:inset 0 0 0 1px var(--hue);color:var(--t1)}
+.dc.sel{background:var(--hue);color:#fff}
+.dc.mark::after{content:"";position:absolute;bottom:4px;left:50%;transform:translateX(-50%);
+  width:4px;height:4px;border-radius:50%;background:var(--green)}
+.dc.sel.mark::after{background:#fff}
+.cal-day{font-size:11.5px;color:var(--t3);margin:2px 0 8px}
+.sheet-box{max-height:min(88vh,760px);overflow:auto}
 
 @media(max-width:720px){
   .kv{grid-template-columns:110px 1fr}
@@ -623,10 +646,11 @@ body[data-skin="night"]::before{background:
   border-color:color-mix(in srgb,var(--red) 40%,var(--card));color:var(--red)}
 
 /* 时间轴 */
-.gantt{background:var(--card-hi);border:1px solid var(--line);border-radius:12px}
-.gantt .grid i{background:color-mix(in srgb,var(--line) 70%,transparent)}
-.bar{border-radius:8px;border:none;text-shadow:none;box-shadow:0 1px 3px rgba(16,24,40,.14)}
-.bar.cf{border:1px solid var(--red);box-shadow:0 0 0 3px color-mix(in srgb,var(--red) 14%,transparent)}
+.vtl-chunk{background:var(--card)}
+.vtl-dot{border-color:var(--bg)}
+.vtl-line{background:linear-gradient(180deg,transparent,color-mix(in srgb,var(--hue) 45%,transparent) 4%,color-mix(in srgb,var(--purple) 35%,transparent) 96%,transparent)}
+.vtl-item:hover .vtl-chunk{border-color:var(--line-hi)}
+.vtl-item.cf .vtl-chunk{border-color:color-mix(in srgb,var(--red) 50%,var(--line));background:color-mix(in srgb,var(--red) 6%,var(--card))}
 .legend b{border-radius:3px}
 
 /* 冲突卡片 */
@@ -831,9 +855,12 @@ button,.btn,.tab,.chip,.tag,.ai-pill,.hint,.ttl,.opt-name,.io div,.legend span,
 .goal-col i{display:block;font-style:normal;font-size:11px;color:var(--t3);margin-bottom:7px}
 .goal-col b{display:block;font-weight:600;font-size:13px;color:var(--t1);line-height:1.5;word-break:break-word}
 .dsrc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.dsrc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center}
+.dsrc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 12px 12px;text-align:center;
+  cursor:pointer;transition:.15s;position:relative}
+.dsrc:hover{border-color:var(--line-hi);background:var(--card-hi);transform:translateY(-2px)}
 .dsrc b{display:block;font-size:22px;font-weight:700;color:var(--hue);font-variant-numeric:tabular-nums}
-.dsrc span{font-size:11.5px;color:var(--t3)}
+.dsrc span{display:block;font-size:13px;font-weight:600;color:var(--t1);margin-top:3px}
+.dsrc em{display:block;font-style:normal;font-size:10.5px;color:var(--t3);margin-top:2px}
 .soc-list{margin-top:14px}
 .diary-line em{font-style:normal;color:var(--t3);font-size:11px;margin-left:8px}
 @media(max-width:560px){.goal-grid,.dsrc-grid{grid-template-columns:1fr}}
@@ -908,8 +935,10 @@ button,.btn,.tab,.chip,.tag,.ai-pill,.hint,.ttl,.opt-name,.io div,.legend span,
           <button class="btn" onclick="openScheduleSheet()">+ 导入课表</button>
         </div>
       </div>
-      <div class="axis" id="axis"></div>
-      <div class="gantt"><div class="grid" id="grid"></div><div id="bars"></div></div>
+      <div class="vtl">
+        <div class="vtl-line"></div>
+        <div id="bars"></div>
+      </div>
       <div class="empty" id="ganttEmpty" style="display:none"></div>
       <div class="legend">
         <span><b style="background:#3B82F6"></b>课程</span>
@@ -974,20 +1003,19 @@ button,.btn,.tab,.chip,.tag,.ai-pill,.hint,.ttl,.opt-name,.io div,.legend span,
     </div>
 
     <div class="card">
-      <div class="ttl">三个数据源 <small>日程 · 随手记/日记 · 公开发言</small></div>
+      <div class="ttl">我的三个入口 <small>点进去就能写，只存在这台电脑</small></div>
       <div class="dsrc-grid">
-        <div class="dsrc"><b id="dsrcEvents">0</b><span>日程</span></div>
-        <div class="dsrc"><b id="dsrcNotes">0</b><span>随手记/日记</span></div>
-        <div class="dsrc"><b id="dsrcSocial">0</b><span>公开发言</span></div>
+        <div class="dsrc" onclick="openDiary()">
+          <b id="dsrcDiary">0</b><span>日记</span><em>按日历写</em>
+        </div>
+        <div class="dsrc" onclick="openSheet()">
+          <b id="dsrcNotes">0</b><span>随手记</span><em>想到就写</em>
+        </div>
+        <div class="dsrc" onclick="openSocialSheet()">
+          <b id="dsrcSocial">0</b><span>我的生活圈</span><em>导入发言</em>
+        </div>
       </div>
-      <div class="soc-list" id="socList"></div>
-      <div id="noteList" style="margin-top:14px"></div>
-    </div>
-
-    <div class="card">
-      <div class="ttl">记忆 <small>三层，各管各的</small></div>
-      <div class="kv" id="memKv"></div>
-      <div id="diaryList"></div>
+      <div class="hint" style="margin-top:10px">日程在「时间轴」页。这三块拼起来，就是 AI 认识你的数据库。</div>
     </div>
 
     <div class="card">
@@ -1010,8 +1038,9 @@ button,.btn,.tab,.chip,.tag,.ai-pill,.hint,.ttl,.opt-name,.io div,.legend span,
 <!-- 随手记弹窗 -->
 <div class="sheet" id="sheet" onclick="if(event.target===this)closeSheet()">
   <div class="sheet-box">
-    <h3>随手记一笔</h3>
+    <h3>随手记</h3>
     <div class="sub">想到什么说什么，不用挑格式。我自己判断这是件要办的事、一条规矩，还是一句吐槽。</div>
+    <div class="note-list" id="noteListBox"></div>
     <textarea id="noteIn" placeholder="例：周五老板临时加了两小时晚班 19:00-21:00&#10;例：以后周一不接活&#10;例：今天高数又没听懂，烦"></textarea>
     <div class="chips-row">
       <span class="chip">说时间 → 记成日程</span>
@@ -1023,6 +1052,42 @@ button,.btn,.tab,.chip,.tag,.ai-pill,.hint,.ttl,.opt-name,.io div,.legend span,
       <button class="btn" onclick="saveNote()">记下</button>
       <button class="btn ghost" onclick="closeSheet()">取消</button>
       <span class="hint">快捷键：按 N 直接唤出</span>
+    </div>
+  </div>
+</div>
+
+<!-- 日记弹窗 -->
+<div class="sheet" id="diarySheet" onclick="if(event.target===this)closeDiary()">
+  <div class="sheet-box">
+    <h3>日记</h3>
+    <div class="sub">挑一天，写点今天发生的事。写给自己看，我也会读进对你的了解里。</div>
+    <div class="cal-head">
+      <button class="btn ghost" onclick="diaryMonthShift(-1)">‹</button>
+      <div class="cal-m" id="diaryMonth"></div>
+      <button class="btn ghost" onclick="diaryMonthShift(1)">›</button>
+    </div>
+    <div class="cal-grid" id="diaryCal"></div>
+    <div class="cal-day" id="diaryDayLbl"></div>
+    <textarea id="diaryIn" placeholder="这一天过得怎么样？写点什么…"></textarea>
+    <div class="result" id="diaryRes"></div>
+    <div class="sheet-act">
+      <button class="btn" onclick="saveDiary()">保存这一天的日记</button>
+      <button class="btn ghost" onclick="closeDiary()">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- 我的生活圈弹窗 -->
+<div class="sheet" id="socialSheet" onclick="if(event.target===this)closeSocialSheet()">
+  <div class="sheet-box">
+    <h3>我的生活圈</h3>
+    <div class="sub">把你发过的朋友圈 / 微博 / 说说贴进来，一行一条。我提炼成「你是个怎样的人」，只存在这台电脑。</div>
+    <textarea id="socialIn" placeholder="例：&#10;我总是忍不住熬夜刷手机&#10;今天又去跑步了，第五天&#10;分享：最近在读《认知觉醒》"></textarea>
+    <div class="result" id="socialRes"></div>
+    <div class="soc-list" id="socialListBox" style="margin-top:14px"></div>
+    <div class="sheet-act">
+      <button class="btn" onclick="saveSocial()">导入并提炼</button>
+      <button class="btn ghost" onclick="closeSocialSheet()">关闭</button>
     </div>
   </div>
 </div>
@@ -1159,6 +1224,8 @@ const DATA = {
   events:[],
   conflicts:[],
   notes:[],
+  /* 第一类数据源：日记（按日历写）。每一条 {d:日期, t:正文}，一天一篇 */
+  diary:[],
   /* 记忆分三层，各管各的：
      long  长期记忆 = 上面的 profile。用户亲口说的事实，计算器唯一的输入。
      chat  聊天记忆 = 最近 3 轮。只为接住半句话，超过就滚掉，不沉淀。
@@ -1189,7 +1256,7 @@ const DIARY_KEEP=180;   // 日记最多留半年
 try{localStorage.removeItem("altiora_state_v1");}catch(e){}
 function saveData(){
   try{localStorage.setItem(SAVE_KEY,JSON.stringify({
-    profile:DATA.profile,events:DATA.events,notes:DATA.notes,
+    profile:DATA.profile,events:DATA.events,notes:DATA.notes,diary:DATA.diary,
     week:{periods:DATA.week.periods,courses:DATA.week.courses,synced:DATA.week.synced},
     memory:{chat:DATA.memory.chat,diary:DATA.memory.diary,
             last_seen:DATA.memory.last_seen,pending:DATA.memory.pending}
@@ -1200,6 +1267,7 @@ try{
   if(s&&s.profile)Object.assign(DATA.profile,s.profile);
   if(s&&Array.isArray(s.events))DATA.events=s.events.map(e=>({...e,date:e.date||todayStr()}));
   if(s&&Array.isArray(s.notes))DATA.notes=s.notes;
+  if(s&&Array.isArray(s.diary))DATA.diary=s.diary;
   if(s&&s.week){
     if(Array.isArray(s.week.periods)&&s.week.periods.length)DATA.week.periods=s.week.periods;
     if(Array.isArray(s.week.courses))DATA.week.courses=s.week.courses;
@@ -1388,34 +1456,23 @@ function renderOrbs(joy){
   }
 }
 
-function renderAxis(){
-  const a=document.getElementById("axis"),g=document.getElementById("grid");
-  if(!a)return;
-  a.innerHTML="";g.innerHTML="";
-  for(let t=T0;t<=T1;t+=120){
-    const h=Math.floor(t/60)%24, lbl=String(h).padStart(2,"0")+":00";
-    const i=document.createElement("i");i.textContent=lbl;i.style.left=pct(t)+"%";a.appendChild(i);
-    const l=document.createElement("i");l.style.left=pct(t)+"%";g.appendChild(l);
-  }
-}
+const TYPE_CN={class:"课程",work:"兼职",meeting:"会议",study:"学习",sleep:"睡眠"};
 function renderGantt(){
   const box=document.getElementById("bars");if(!box)return;
   box.innerHTML="";
-  const list=DATA.events.filter(e=>e.date===VIEW_DATE);
+  const list=DATA.events.filter(e=>e.date===VIEW_DATE).slice().sort((a,b)=>toMin(a.start)-toMin(b.start));
   const cfIds=new Set();DATA.conflicts.forEach(c=>{cfIds.add(c.a.id);cfIds.add(c.b.id);});
-  list.forEach(e=>{
-    const s=toMin(e.start),en=toMin(e.end);
-    const d=document.createElement("div");
-    d.className="bar"+(cfIds.has(e.id)?" cf":"");
-    d.style.left=pct(s)+"%";
-    d.style.width=((en-s)/SPAN*100)+"%";
-    const alpha=e.type==="sleep"?.35:.9;
-    d.style.background=`linear-gradient(180deg,${hexA(COLORS[e.type],alpha)},${hexA(COLORS[e.type],alpha*.72)})`;
-    d.style.borderLeft=`2px solid ${COLORS[e.type]}`;
-    d.innerHTML=`<span>${e.name}</span>`;
-    d.title=`${e.name} ${e.start}-${e.end} · 优先级 ${e.priority}${e.wage?" · 时薪"+e.wage+"元":""}`;
-    box.appendChild(d);
-  });
+  box.innerHTML=list.map(e=>{
+    const cf=cfIds.has(e.id);
+    const col=COLORS[e.type]||"#3B82F6";
+    return `<div class="vtl-item${cf?" cf":""}" title="${esc(e.name)} ${e.start}-${e.end} · 优先级 ${e.priority}${e.wage?" · 时薪"+e.wage+"元":""}">
+      <div class="vtl-dot" style="background:${col}"></div>
+      <div class="vtl-chunk">
+        <div class="vtl-row"><b class="vtl-name">${esc(e.name)}</b><span class="vtl-tag">${TYPE_CN[e.type]||"日程"}</span></div>
+        <div class="vtl-tm">${e.start} — ${e.end}${e.loc?" · "+esc(e.loc):""}</div>
+      </div>
+    </div>`;
+  }).join("");
   const seg=document.getElementById("bandSeg");
   if(seg){
     const c=DATA.conflicts[0];
@@ -2071,7 +2128,13 @@ function profileBrief(p){
     lines.push("- 已知软肋："+p.known_weakness.slice(0,5).join("、"));
   }
   if(p&&Array.isArray(p.social_insights)&&p.social_insights.length){
-    lines.push("- 公开发言里关于自己的话："+p.social_insights.slice(-5).map(x=>x.text).join("、"));
+    lines.push("- 生活圈里关于自己的话："+p.social_insights.slice(-5).map(x=>x.text).join("、"));
+  }
+  if(Array.isArray(DATA.notes)&&DATA.notes.length){
+    lines.push("- 随手记："+DATA.notes.slice(0,5).map(x=>String(x.text||"").slice(0,24)).join("、"));
+  }
+  if(Array.isArray(DATA.diary)&&DATA.diary.length){
+    lines.push("- 最近的日记："+DATA.diary.slice(-3).map(x=>String(x.t||"").slice(0,24)).join("；"));
   }
   return lines.join("\n")||"（无）";
 }
@@ -3156,44 +3219,16 @@ function renderMe(){
     <div>精力最好时段</div><div>${dash(p.preferred_focus_hours)}</div>
     <div>已知软肋</div><div><div class="chips">${weak}</div></div>
     <div>今日</div><div>${DATA.events.filter(e=>e.date===todayStr()&&e.type!=="sleep").length} 件 · 冲突 ${detectConflicts(todayStr()).length} 处</div>`;
-  // 三个数据源计数
-  const ev=document.getElementById("dsrcEvents");
-  if(ev)ev.textContent=DATA.events.filter(e=>e.type!=="sleep").length;
+  // 三个入口计数（日记 / 随手记 / 我的生活圈）
+  const dd=document.getElementById("dsrcDiary");
+  if(dd)dd.textContent=DATA.diary.length;
   const nn=document.getElementById("dsrcNotes");
-  if(nn)nn.textContent=DATA.notes.length+DATA.memory.diary.length;
+  if(nn)nn.textContent=DATA.notes.length;
   const ss=document.getElementById("dsrcSocial");
   if(ss)ss.textContent=p.social_insights.length;
-  // 公开发言 → 提炼的规律
-  const sl=document.getElementById("socList");
-  if(sl){
-    const last=p.social_insights.slice(-4).reverse();
-    sl.innerHTML=last.length
-      ?`<div class="diary-h">最近提炼的规律</div>`+last.map(x=>`<div class="diary-line">${esc(x.text)} <em>${esc(cuteDate(x.d))}</em></div>`).join("")
-      :'<div class="hint" style="margin-top:8px">还没有。聊天里贴一段你发过的朋友圈/微博，我就从这里给你提炼一条规律。</div>';
-  }
   // 原始数据
   const jb=document.getElementById("jsonBox");
   if(jb)jb.innerHTML=syntax(JSON.stringify(p,null,2));
-  // 三层记忆
-  const mk=document.getElementById("memKv");
-  if(mk){
-    const facts=[p.long_term_goal,p.mid_term_goal,p.short_term_goal,p.hard_sleep_deadline,p.hard_morning_start,p.preferred_focus_hours]
-      .filter(Boolean).length+p.known_weakness.length+p.social_insights.length;
-    const chat=DATA.memory.chat.length;
-    const diary=DATA.memory.diary.length;
-    mk.innerHTML=`
-      <div>长期记忆</div><div>${facts?facts+" 条事实":"<span class=\"dash\">还没说</span>"} <small>亲口说的，进计算器</small></div>
-      <div>聊天记忆</div><div>最近 ${chat} 条 <small>只留 3 轮，超了滚掉</small></div>
-      <div>日记</div><div>${diary?diary+" 行 <small>久别回来才翻</small>":'<span class="dash">还没有</span>'}</div>`;
-  }
-  // 日记列表
-  const dl=document.getElementById("diaryList");
-  if(dl){
-    const last=DATA.memory.diary.slice(-3).reverse();
-    dl.innerHTML=last.length
-      ?`<div class="diary-h">最近的日记</div>`+last.map(x=>`<div class="diary-line">${esc(cuteDate(x.d))}：${esc(x.s)}</div>`).join("")
-      :"";
-  }
 }
 function syntax(s){
   return s.replace(/&/g,"&amp;").replace(/</g,"&lt;")
@@ -3251,7 +3286,7 @@ function go(p){
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>go(t.dataset.p));
 
 /* ════════ 随手记 ════════ */
-function openSheet(){document.getElementById("sheet").classList.add("on");
+function openSheet(){document.getElementById("sheet").classList.add("on");renderNotes();
   setTimeout(()=>document.getElementById("noteIn").focus(),40);}
 function closeSheet(){document.getElementById("sheet").classList.remove("on");
   document.getElementById("noteRes").className="result";document.getElementById("noteIn").value="";}
@@ -3286,16 +3321,108 @@ function saveNote(){
   setTimeout(closeSheet,2800);
 }
 function renderNotes(){
-  const box=document.getElementById("noteList");if(!box)return;
+  const box=document.getElementById("noteListBox");if(!box)return;
   const M={rule:["rule","规矩"],event:["event","日程"],note:["","吐槽"]};
-  if(!DATA.notes.length){box.innerHTML=`<div class="empty">还没记过。点右下角 + ，想到什么说什么。</div>`;return;}
+  if(!DATA.notes.length){box.classList.remove("on");box.innerHTML="";return;}
+  box.classList.add("on");
   box.innerHTML=DATA.notes.map((n,i)=>{
     const t=M[n.type];
     return `<div class="note-item"><span class="ty ${t[0]}">${t[1]}</span>
-      <span class="tx">${n.text}</span>
+      <span class="tx">${esc(n.text)}</span>
       <span class="del" onclick="delNote(${i})">×</span></div>`;}).join("");
 }
 function delNote(i){DATA.notes.splice(i,1);saveData();renderNotes();updStats();}
+
+/* ════════ 日记（按日历写） ════════ */
+let DIARY_MONTH=todayStr().slice(0,7), DIARY_DAY=todayStr();
+function openDiary(){
+  DIARY_DAY=todayStr();DIARY_MONTH=todayStr().slice(0,7);
+  renderDiaryCal();renderDiaryDay();
+  document.getElementById("diarySheet").classList.add("on");
+  setTimeout(()=>document.getElementById("diaryIn").focus(),40);
+}
+function closeDiary(){
+  document.getElementById("diarySheet").classList.remove("on");
+  document.getElementById("diaryRes").className="result";
+}
+function diaryMonthShift(n){
+  const y=+DIARY_MONTH.slice(0,4),m=+DIARY_MONTH.slice(5);
+  const d=new Date(y,m-1+n,1);
+  DIARY_MONTH=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
+  renderDiaryCal();
+}
+function pickDiaryDay(iso){DIARY_DAY=iso;renderDiaryCal();renderDiaryDay();}
+function renderDiaryCal(){
+  const box=document.getElementById("diaryCal");if(!box)return;
+  document.getElementById("diaryMonth").textContent=DIARY_MONTH.slice(0,4)+" 年 "+DIARY_MONTH.slice(5)+" 月";
+  const y=+DIARY_MONTH.slice(0,4),m=+DIARY_MONTH.slice(5);
+  const first=new Date(y,m-1,1).getDay();
+  const days=new Date(y,m,0).getDate();
+  const today=todayStr();
+  const set=new Set(DATA.diary.map(x=>x.d));
+  const cells=[];
+  for(let i=0;i<first;i++)cells.push('<span class="dc pad"></span>');
+  for(let d=1;d<=days;d++){
+    const iso=`${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    const cls=["dc"];
+    if(iso===DIARY_DAY)cls.push("sel");
+    if(iso===today)cls.push("today");
+    if(set.has(iso))cls.push("mark");
+    cells.push(`<span class="${cls.join(" ")}" onclick="pickDiaryDay('${iso}')">${d}</span>`);
+  }
+  box.innerHTML=cells.join("");
+}
+function renderDiaryDay(){
+  document.getElementById("diaryDayLbl").textContent=dayTag(DIARY_DAY);
+  const existing=DATA.diary.find(x=>x.d===DIARY_DAY);
+  document.getElementById("diaryIn").value=existing?existing.t:"";
+}
+function saveDiary(){
+  const el=document.getElementById("diaryIn"),t=el.value.trim();
+  if(!t)return;
+  const existing=DATA.diary.find(x=>x.d===DIARY_DAY);
+  if(existing)existing.t=t;else DATA.diary.push({d:DIARY_DAY,t:t});
+  saveData();renderDiaryCal();renderMe();
+  const res=document.getElementById("diaryRes");
+  res.className="result on";
+  res.innerHTML=`<span class="lbl">已写进日记</span>${dayTag(DIARY_DAY)}这一页记好了，AI 会读进对你的了解里。`;
+  setTimeout(closeDiary,1600);
+}
+
+/* ════════ 我的生活圈（导入公开发言） ════════ */
+function openSocialSheet(){
+  document.getElementById("socialSheet").classList.add("on");renderSocialList();
+  setTimeout(()=>document.getElementById("socialIn").focus(),40);
+}
+function closeSocialSheet(){
+  document.getElementById("socialSheet").classList.remove("on");
+  document.getElementById("socialIn").value="";
+  document.getElementById("socialRes").className="result";
+}
+function saveSocial(){
+  const raw=document.getElementById("socialIn").value.trim();
+  if(!raw)return;
+  const posts=raw.split(/\n+/).map(s=>s.trim()).filter(Boolean);
+  let added=0;
+  posts.forEach(p=>{
+    const c=detectSocial(p)||p.slice(0,80);
+    const insight=extractSocialInsight(c);
+    pushSocialInsight(insight,p);added++;
+  });
+  const res=document.getElementById("socialRes");
+  res.className="result on";
+  res.innerHTML=`<span class="lbl">已导入</span>${added} 条，我提炼成「你是个怎样的人」，写进生活圈了。`;
+  renderSocialList();
+  setTimeout(closeSocialSheet,2400);
+}
+function renderSocialList(){
+  const box=document.getElementById("socialListBox");if(!box)return;
+  const list=DATA.profile.social_insights;
+  if(!list.length){box.classList.remove("on");box.innerHTML="";return;}
+  box.classList.add("on");
+  box.innerHTML=list.slice(-6).reverse().map(x=>
+    `<div class="soc-item"><div class="soc-tx">${esc(x.text)}</div><div class="soc-src">${esc(x.src||"")}</div></div>`).join("");
+}
 
 function updStats(){
   // 侧栏和分身说的是「今天」，所以只数今天的冲突，别把明天那页的算进来
@@ -3313,7 +3440,7 @@ document.addEventListener("keydown",e=>{
   const tag=document.activeElement.tagName;
   if((e.key==="n"||e.key==="N")&&tag!=="INPUT"&&tag!=="TEXTAREA"){e.preventDefault();openSheet();}
   if(e.key==="Escape"){
-    closeSheet();closeSchedSheet();endGuide();exitFullChat();
+    closeSheet();closeSchedSheet();closeDiary();closeSocialSheet();endGuide();exitFullChat();
   }
 });
 
@@ -3508,7 +3635,7 @@ function startGuide(){
 /* ════════ 启动 ════════ */
 DATA.conflicts=detectConflicts();
 syncTodayCourses(true);   // 今天有课的，先落进今日时间轴
-renderDayBar();renderAxis();renderGantt();renderConflicts();initChat();renderOrbs();renderMe();renderNotes();updStats();renderWeek();
+renderDayBar();renderGantt();renderConflicts();initChat();renderOrbs();renderMe();renderNotes();updStats();renderWeek();
 // 今天来过就算「见过」：三天没来才翻日记
 DATA.memory.last_seen=todayStr();saveData();
 initThemeUI();
