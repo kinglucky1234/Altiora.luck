@@ -1812,6 +1812,90 @@ function detectConflicts(dateIso){
   return cs;
 }
 
+/* ════════ 今日方案 · 计算器（纯确定性，可复现） ════════ */
+/* 把档案里的「精力高峰」解析成一个可算的时间窗。
+   存的是 "HH:MM–HH:MM"（也可能是空格/中文横杠分开，或用户自填 "08:00-11:00"）；
+   「不固定 / 不确定 / 随便 / 都行 / 没」都当没填，返回 null。 */
+function focusWindowOf(f){
+  f=String(f||"").trim();
+  if(!f||/不固定|不确定|随便|都行|没有|无/.test(f))return null;
+  const m=f.match(/(\d{1,2}):(\d{2})\s*[-–—~至到]\s*(\d{1,2}):(\d{2})/);
+  if(!m)return null;
+  let s=toMin(m[1]+":"+m[2]), e=toMin(m[3]+":"+m[4]);
+  if(e<=s)return null;
+  return {s,e};
+}
+
+/* 排「今日方案」：不把档案当摆设。
+   课程/会议/睡眠是固定项，原地不动；学习/兼职是可动项。
+   可动项按「优先级小的更急 → 时长长的先占」排序，尽量塞进精力高峰那段时间，
+   碰到固定项就绕过，塞不下就保持原位。改档案里的精力高峰，这里会肉眼可见地变。 */
+function buildTodayPlan(){
+  const t=todayStr();
+  const p=DATA.profile;
+  const all=DATA.events.filter(e=>e.date===t);
+  const win=focusWindowOf(p.preferred_focus_hours);
+  const conflicts=detectConflicts(t);
+  const cfIds=new Set(); conflicts.forEach(c=>{cfIds.add(c.a.id);cfIds.add(c.b.id);});
+
+  const fixed=[], flex=[];
+  all.forEach(e=>{
+    if(e.type==="class"||e.type==="meeting"||e.type==="sleep"){fixed.push({...e,_fixed:true});}
+    else flex.push({...e,_flex:true,_moved:false});
+  });
+  flex.sort((a,b)=>(a.priority-b.priority)||((toMin(b.end)-toMin(b.start))-(toMin(a.end)-toMin(a.start))));
+
+  if(win){
+    // 窗内已被固定项占用的段，挖掉
+    const busy=fixed.map(e=>({s:toMin(e.start),e:toMin(e.end)}))
+                    .filter(b=>b.e>win.s&&b.s<win.e)
+                    .sort((a,b)=>a.s-b.s);
+    let cursor=win.s;
+    for(const f of flex){
+      const dur=toMin(f.end)-toMin(f.start);
+      let slot=null, c=cursor;
+      while(c+dur<=win.e){
+        const hit=busy.find(b=>c<b.e&&c+dur>b.s);
+        if(!hit){slot=c;break;}
+        c=hit.e;
+      }
+      if(slot!=null){
+        f.start=fmtHM(slot); f.end=fmtHM(slot+dur); f._moved=true; cursor=slot+dur;
+        busy.push({s:slot,e:slot+dur}); busy.sort((a,b)=>a.s-b.s);
+      }
+    }
+  }
+
+  const total=[...fixed,...flex].sort((a,b)=>toMin(a.start)-toMin(b.start));
+  return {date:t,win,conflicts,cfIds,fixed,flex,total};
+}
+
+/* 确定性说明：只描述这张表为什么长这样。LLM 用它做回退，保证可复现。 */
+function planCaption(plan){
+  const p=DATA.profile, bits=[];
+  const moved=plan.flex.filter(f=>f._moved);
+  if(plan.win){
+    bits.push(moved.length
+      ?`把你最要脑力的 ${moved.length} 件事（${moved.map(f=>f.name).join("、")}）排进精力高峰 ${fmtHM(plan.win.s)}–${fmtHM(plan.win.e)}`
+      :`精力高峰 ${fmtHM(plan.win.s)}–${fmtHM(plan.win.e)} 这段没找到可挪的脑力活，安排保持原位`);
+  }else{
+    bits.push("你还没填「精力高峰」，方案按原时间排，没做优化");
+  }
+  if(plan.conflicts.length){
+    const c=plan.conflicts[0];
+    bits.push(`还有 ${plan.conflicts.length} 处冲突（「${c.a.name}」与「${c.b.name}」重叠），得先在时间轴上处理`);
+  }else{
+    bits.push("今天没有冲突");
+  }
+  if(p.hard_sleep_deadline){
+    const dl=toMin(p.hard_sleep_deadline);
+    const latest=plan.total.reduce((mx,e)=>Math.max(mx,toMin(e.end)),T0);
+    bits.push(latest>dl?`有安排会顶到 ${p.hard_sleep_deadline} 之后，可能破睡眠硬约束`:`所有安排都在 ${p.hard_sleep_deadline} 前结束，睡眠底线保住了`);
+  }
+  if(p.known_weakness.length)bits.push(`按你说过的「${p.known_weakness[0]}」，高峰段排满脑力活，晚上留缓冲`);
+  return bits.join("；")+"。";
+}
+
 /* ════════ 对话：唯一消息流（主页只显示一句预览） ════════ */
 const HISTORY=[];
 let msgSeq=0;
