@@ -106,9 +106,21 @@ def index():
 
 @app.get("/{name}")
 def page(name: str):
-    if name.endswith(".html"):
-        return FileResponse(HTML, media_type="text/html; charset=utf-8")
-    return JSONResponse({"error": "not found"}, status_code=404)
+    """只暴露仓库根目录下的 .html 文件，防路径穿越；不存在返回 404。
+
+    之前任何 .html 都返回主页面，avatar-preview.html / Altiora-给老师看.html
+    在服务模式下其实是假路由。现在按文件名真实返回。
+    """
+    if not name.endswith(".html"):
+        return JSONResponse({"error": "not found"}, status_code=404)
+    base = str(BASE.resolve())
+    target = str((BASE / name).resolve())
+    # 防路径穿越：target 必须落在 BASE 内（用 commonpath，兼容 3.8）
+    if os.path.commonpath([base, target]) != base or target == base:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    if not os.path.isfile(target):
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return FileResponse(target, media_type="text/html; charset=utf-8")
 
 
 @app.get("/api/health")
