@@ -1041,7 +1041,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
           <button class="btn ghost" onclick="shiftView(-1)" title="前一天">‹</button>
           <button class="btn ghost" id="dayToday" onclick="goToday()">今天</button>
           <button class="btn ghost" onclick="shiftView(1)" title="后一天">›</button>
-          <button class="btn" onclick="openScheduleSheet()">+ 导入日程</button>
+          <button class="btn" onclick="openScheduleSheet('day')">+ 导入日程</button>
         </div>
       </div>
       <div class="vtl">
@@ -1204,8 +1204,8 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 <!-- 添加课表弹窗 -->
 <div class="sheet" id="schedSheet" onclick="if(event.target===this)closeSchedSheet()">
   <div class="sheet-box">
-    <h3>导入课表</h3>
-    <div class="sub">把教务系统的课表复制进来，一行一门课。支持「周一 08:00-09:40 高数 教A101」，也支持「周一 第1-2节 高等数学」。</div>
+    <h3 id="schedTitle">导入课表</h3>
+    <div class="sub" id="schedSub">把教务系统的课表复制进来，一行一门课。支持「周一 08:00-09:40 高数 教A101」，也支持「周一 第1-2节 高等数学」。</div>
     <textarea id="schedIn" placeholder="例：&#10;周一 08:30-10:10 高等数学 教A101&#10;周一 10:20-12:00 英语 教B202&#10;周二 第5-6节 大学物理 实验楼301"></textarea>
     <div id="schedPrev"></div>
     <div class="result" id="schedRes"></div>
@@ -3156,20 +3156,38 @@ function savePeriods(){
 }
 
 /* ════════ 导入课表 ════════ */
-let schedPreview=null;
-function openScheduleSheet(){
+let schedPreview=null, schedMode="week";
+const SCHED_TXT={
+  week:{title:"导入课表",
+    sub:"把教务系统的课表复制进来，一行一门课。支持「周一 08:00-09:40 高数 教A101」，也支持「周一 第1-2节 高等数学」。",
+    ph:"例：\n周一 08:30-10:10 高等数学 教A101\n周一 10:20-12:00 英语 教B202\n周二 第5-6节 大学物理 实验楼301",
+    parse:"解析课表", row:"课程", unit:"门课", empty:"先粘点课表进来。",
+    none:"格式参考：<b>周一 08:30-10:10 高等数学 教A101</b>，或者 <b>周一 第1-2节 高等数学</b>。"},
+  day:{title:"导入日程",
+    sub:"把日程一行一条粘进来，我帮你排进时间轴。每行「周几 + 时间 + 做什么」，例如「周一 15:00-17:00 家教」。",
+    ph:"例：\n周一 08:30-10:10 高等数学\n周一 15:00-17:00 家教\n周二 20:00-21:30 健身",
+    parse:"解析日程", row:"日程", unit:"条日程", empty:"先粘点日程进来。",
+    none:"一行都没认出来。格式参考：<b>周一 15:00-17:00 家教</b>。"}
+};
+function openScheduleSheet(mode){
+  schedMode=mode==="day"?"day":"week";
+  const T=SCHED_TXT[schedMode];
   schedPreview=null;
   document.getElementById("schedSheet").classList.add("on");
+  document.getElementById("schedTitle").textContent=T.title;
+  document.getElementById("schedSub").textContent=T.sub;
+  const inp=document.getElementById("schedIn");
+  inp.placeholder=T.ph;
   document.getElementById("schedPrev").innerHTML="";
-  document.getElementById("schedActBtn").textContent="解析课表";
-  setTimeout(()=>document.getElementById("schedIn").focus(),40);
+  document.getElementById("schedActBtn").textContent=T.parse;
+  setTimeout(()=>inp.focus(),40);
 }
 function closeSchedSheet(){
   schedPreview=null;
   document.getElementById("schedSheet").classList.remove("on");
   document.getElementById("schedRes").className="result";
   document.getElementById("schedPrev").innerHTML="";
-  document.getElementById("schedActBtn").textContent="解析课表";
+  document.getElementById("schedActBtn").textContent=SCHED_TXT[schedMode].parse;
   document.getElementById("schedIn").value="";
 }
 /* 一行课表 → {day,start,end,name,loc,teacher}。认不出返回 null */
@@ -3240,6 +3258,7 @@ function parseScheduleLine(line){
   return {day,start,end,name:name.slice(0,14),loc:loc.slice(0,16),teacher:teacher.slice(0,16)};
 }
 function saveSchedule(){
+  const T=SCHED_TXT[schedMode];
   const t=document.getElementById("schedIn").value.trim();
   const res=document.getElementById("schedRes");
   const prev=document.getElementById("schedPrev");
@@ -3247,7 +3266,7 @@ function saveSchedule(){
 
   if(!t){
     res.className="result on";
-    res.innerHTML='<span class="lbl">空的</span>先粘点课表进来。';
+    res.innerHTML='<span class="lbl">空的</span>'+T.empty;
     return;
   }
 
@@ -3261,19 +3280,19 @@ function saveSchedule(){
     });
     if(!ok.length){
       res.className="result on warn";
-      res.innerHTML='<span class="lbl">一行都没认出来</span>格式参考：<b>周一 08:30-10:10 高等数学 教A101</b>，或者 <b>周一 第1-2节 高等数学</b>。';
+      res.innerHTML='<span class="lbl">一行都没认出来</span>'+T.none;
       return;
     }
     schedPreview={ok,bad};
     prev.innerHTML=`<div class="wk-prev"><table>
-      <thead><tr><th>周几</th><th>时间</th><th>课程</th><th>地点</th><th>老师</th></tr></thead>
+      <thead><tr><th>周几</th><th>时间</th><th>${T.row}</th><th>地点</th><th>老师</th></tr></thead>
       <tbody>${ok.map(p=>`<tr><td>${WK_DAYS[p.day-1]}</td><td>${esc(p.start)}-${esc(p.end)}</td>
         <td><b>${esc(p.name)}</b></td><td>${esc(p.loc)||"—"}</td><td>${esc(p.teacher)||"—"}</td></tr>`).join("")}
       ${bad.map(b=>`<tr><td class="bad" colspan="5">第 ${b.no} 行没认出：${esc(b.text.slice(0,40))}</td></tr>`).join("")}
       </tbody></table></div>`;
     res.className="result on";
-    res.innerHTML=`<span class="lbl">识别结果</span>共 <b>${ok.length}</b> 门课${bad.length?`，<b class="bad">${bad.length}</b> 行没认出（会跳过）`:""}。确认无误就点下面的按钮载入。`;
-    act.textContent="确认载入 "+ok.length+" 门课";
+    res.innerHTML=`<span class="lbl">识别结果</span>共 <b>${ok.length}</b> ${T.unit}${bad.length?`，<b class="bad">${bad.length}</b> 行没认出（会跳过）`:""}。确认无误就点下面的按钮载入。`;
+    act.textContent="确认载入 "+ok.length+" "+T.unit;
     return;
   }
 
@@ -3295,9 +3314,9 @@ function saveSchedule(){
   const wd=todayWeekday();
   const todayN=DATA.week.courses.filter(c=>c.day===wd).length;
   res.className="result on";
-  res.innerHTML=`<span class="lbl">载入完成</span>新加 <b>${add}</b> 门课${dup?`，${dup} 门重复已跳过`:""}。
-    今天（${WK_DAYS[wd-1]}）有 <b>${todayN}</b> 门课，已自动同步到时间轴。`;
-  act.textContent="解析课表";
+  res.innerHTML=`<span class="lbl">载入完成</span>新加 <b>${add}</b> ${T.unit}${dup?`，${dup} ${T.unit}重复已跳过`:""}。
+    今天（${WK_DAYS[wd-1]}）有 <b>${todayN}</b> ${T.unit}，已自动同步到时间轴。`;
+  act.textContent=T.parse;
   setTimeout(closeSchedSheet,2200);
 }
 
