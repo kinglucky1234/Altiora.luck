@@ -27,7 +27,7 @@ from urllib.parse import urlparse
 TIMEOUT = 12
 MAX_INPUT = 600
 
-INTENTS = {"safety", "emotion", "schedule", "memory", "goal", "chat"}
+INTENTS = {"safety", "emotion", "schedule", "memory", "goal", "social", "chat"}
 EMOTIONS = {"sad", "tired", "anxious", "selfblame", "relapse", "lonely", "numb", "none"}
 
 # 万金油句式：模型一旦写出这些，服务端直接作废，让前端用自己的话兜底
@@ -46,14 +46,18 @@ SYSTEM = """你叫 Altiora，是「用户理想中更好的自己」在电脑里
 - emotion：在倾诉情绪、状态、自我否定
 - schedule：明确说出一件带开始与结束时间的事，要排进日程
 - memory：明确要求记住一条规矩或软肋（如「记住…」「以后不…」）
-- goal：说出长期目标
+- goal：说出一个目标（长期 / 中期 / 短期）
+- social：用户贴出或复述自己公开说过/发过的内容（朋友圈、微博、说说、帖子），要从中提炼一条关于他自己的规矩、软肋或习惯
 - chat：其它闲聊
 
 【抽取规则】
 - event 只在 intent=schedule 时给，且必须同时有 start 和 end（24 小时制 HH:MM）。
   用户没说结束时间，event 就填 null，不要猜。
 - memory 只在用户明确要求记住时给，text 原样保留用户的话，不要改写。
-- goal 只保留目标本身，去掉「我想」这类前缀。
+- goal 只保留目标本身，去掉「我想」这类前缀；同时给 goal_horizon：
+  long（长远/最终/十年/梦想/成为…）、mid（这学期/半年/明年/考研/求职/毕业）、short（这周/这个月/近期/明天）。
+  拿不准就 mid。
+- social 只在用户明确是「公开说过/发过」的内容时给。social 字段写一条从这段话里提炼出的、关于用户自己的规律（如「常常因为刷手机熬夜」），别凭空发挥，30 字以内。
 
 【绝对不能做】
 - 不计算时间重叠、时长、金钱、代价
@@ -65,6 +69,7 @@ SYSTEM = """你叫 Altiora，是「用户理想中更好的自己」在电脑里
 【reply 的写法（这一栏最容易被写成客服腔，逐条遵守）】
 - intent=safety：null（前端有固定安全话术）
 - intent=schedule 且 event 完整（有 start 和 end）：null。账要由计算器算完再回来说，你不能抢答。
+- intent=social：一句确认，告诉她「我把它当成你说过的话记下来了」，40 字以内。
 - 其它情况一律要写，一到两句，40 字以内。
 - 必须指涉用户刚说的具体内容：那件事的名字、那个时间、那个词。只写放之四海皆准的话等于没听懂。
 - 禁止出现这些句式（及同类）：嗯，我在听 / 你接着说 / 我在这儿 / 说出来会好一点 / 会好起来的 / 加油 / 你可以的 / 相信自己 / 慢慢来。
@@ -73,7 +78,7 @@ SYSTEM = """你叫 Altiora，是「用户理想中更好的自己」在电脑里
 - 闲聊：正常聊天，可以有一点幽默，但别硬逗。
 
 只输出 JSON，不要解释，不要 Markdown 代码块：
-{"intent":"emotion","emotion":"tired","event":null,"memory":null,"goal":null,"reply":"..."}"""
+{"intent":"emotion","emotion":"tired","event":null,"memory":null,"goal":null,"goal_horizon":null,"social":null,"reply":"..."}"""
 
 SAY_SYSTEM = """你是 Altiora，用户理想中更好的自己在电脑里的投影。下面是本地计算器算出的确定结果，你只负责把它说成一句人话。
 
@@ -341,6 +346,10 @@ def understand(text: str, profile: dict | None = None,
         subject = str(obj["event"].get("name") or "").strip()[:20] or None
     memory = _clean_memory(obj.get("memory")) if intent == "memory" else None
     goal = str(obj.get("goal") or "").strip()[:60] or None if intent == "goal" else None
+    goal_horizon = obj.get("goal_horizon") if intent == "goal" else None
+    if goal_horizon not in ("long", "mid", "short"):
+        goal_horizon = None
+    social = str(obj.get("social") or "").strip()[:40] or None if intent == "social" else None
 
     reply = obj.get("reply")
     reply = str(reply).strip()[:120] if isinstance(reply, str) else None
@@ -359,6 +368,8 @@ def understand(text: str, profile: dict | None = None,
         "subject": subject,
         "memory": memory,
         "goal": goal,
+        "goal_horizon": goal_horizon,
+        "social": social,
         "reply": reply,
         "model": model_id,
     }
