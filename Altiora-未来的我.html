@@ -2463,10 +2463,11 @@ async function directChat(cfg,messages,maxTokens){
     headers,
     body:JSON.stringify({model:cfg.model,messages,temperature:0.5,max_tokens:maxTokens||400})
   });
-  if(!r.ok){const err=new Error("http_"+r.status);err.status=r.status;throw err;}
+  if(!r.ok){const err=new Error("http_"+r.status);err.status=r.status;console.error("[LLM] HTTP",r.status);throw err;}
   const p=await r.json();
   const c=p&&p.choices&&p.choices[0]&&p.choices[0].message&&p.choices[0].message.content;
-  if(!c)throw new Error("bad_json");
+  console.log("[LLM] raw response:",c);
+  if(!c){console.error("[LLM] no content in response:",JSON.stringify(p).slice(0,300));throw new Error("bad_json");}
   return c;
 }
 /* 第一段翻译官：自然语言 → 结构化字段（不计算，不替用户选） */
@@ -2480,7 +2481,10 @@ async function directUnderstand(text){
     "用户画像（已知事实，不要重复询问，也不要复述）：\n"+
     profileBrief(DATA.profile)+"\n\n用户刚刚说："+String(text||"").slice(0,600)});
   const obj=parseJsonLoose(await directChat(USERLLM,msgs,400));
-  if(!obj||!LLM_INTENTS.includes(obj.intent))return null;
+  if(!obj||!LLM_INTENTS.includes(obj.intent)){
+    console.warn("[LLM] understand failed: obj=",obj?JSON.stringify(obj).slice(0,300):"null (bad JSON)");
+    return null;
+  }
   const intent=obj.intent;
   let emotion=obj.emotion;
   if(!LLM_EMOTIONS.includes(emotion))emotion="none";
@@ -2495,7 +2499,8 @@ async function directUnderstand(text){
   let reply=typeof obj.reply==="string"?obj.reply.trim().slice(0,120):null;
   // 硬约束：完整日程不给话术（账还没算），安全一律本地处理
   if(intent==="safety"||(intent==="schedule"&&event))reply=null;
-  if(reply&&LLM_BANNED.test(reply))reply=null;
+  if(reply&&LLM_BANNED.test(reply)){console.warn("[LLM] reply banned:",reply);reply=null;}
+  console.log("[LLM] understand ok: intent=%s reply=%s",intent,reply||"(null)");
   return {ok:true,source:"llm",intent,emotion,event,subject,memory,goal,goal_horizon,social,reply,model:USERLLM.model};
 }
 /* 第二段翻译官：只许引用给定数字，多写一个就整句作废 */
