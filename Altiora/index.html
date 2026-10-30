@@ -820,6 +820,23 @@ button,.btn,.tab,.chip,.tag,.ai-pill,.hint,.ttl,.opt-name,.io div,.legend span,
 .intro-color.on{border-color:var(--hue)}
 .intro-skip{color:var(--t3)}
 .intro-sub{color:var(--t2)}
+/* 画像页：顶部 hero、三档目标、三个数据源 */
+.me-hero{display:flex;align-items:center;gap:14px;padding:6px 2px 18px}
+.me-avatar{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;font-size:22px;font-weight:650;color:#fff;box-shadow:var(--shadow);flex:none}
+.me-hero-txt{min-width:0;flex:1}
+.me-name{font-size:15px;font-weight:650;color:var(--t1);letter-spacing:.3px}
+.me-sub{font-size:12px;color:var(--t3);margin-top:3px}
+.goal-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.goal-col{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 12px 14px;min-width:0}
+.goal-col i{display:block;font-style:normal;font-size:11px;color:var(--t3);margin-bottom:7px}
+.goal-col b{display:block;font-weight:600;font-size:13px;color:var(--t1);line-height:1.5;word-break:break-word}
+.dsrc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.dsrc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center}
+.dsrc b{display:block;font-size:22px;font-weight:700;color:var(--hue);font-variant-numeric:tabular-nums}
+.dsrc span{font-size:11.5px;color:var(--t3)}
+.soc-list{margin-top:14px}
+.diary-line em{font-style:normal;color:var(--t3);font-size:11px;margin-left:8px}
+@media(max-width:560px){.goal-grid,.dsrc-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -932,24 +949,54 @@ button,.btn,.tab,.chip,.tag,.ai-pill,.hint,.ttl,.opt-name,.io div,.legend span,
 
   <!-- ═══ 我的画像 ═══ -->
   <div class="page" id="p-me">
+    <div class="me-hero">
+      <div class="me-avatar" id="meAvatar">我</div>
+      <div class="me-hero-txt">
+        <div class="me-name" id="meName">还没告诉我你的名字</div>
+        <div class="me-sub">这是你想成为的那个自己，住在这台电脑里。</div>
+      </div>
+      <button class="btn ghost" style="margin-left:auto" onclick="openProfileSurvey()">重新填一次问卷</button>
+    </div>
+
     <div class="card">
-      <div class="ttl">我眼里的你 <small>规划引擎的唯一燃料</small></div>
+      <div class="ttl">目标 <small>长期 · 中期 · 短期，各存一个</small></div>
+      <div class="goal-grid">
+        <div class="goal-col" id="goalLong"></div>
+        <div class="goal-col" id="goalMid"></div>
+        <div class="goal-col" id="goalShort"></div>
+      </div>
+      <div class="hint" style="margin-top:10px">聊天里说「我要…」，我会按远近自动归到一档。</div>
+    </div>
+
+    <div class="card">
+      <div class="ttl">我眼里的你 <small>规划引擎的燃料</small></div>
       <div class="kv" id="kv"></div>
-      <div style="margin-top:12px"><button class="btn ghost" style="width:100%" onclick="openProfileSurvey()">重新填一次问卷</button></div>
     </div>
+
     <div class="card">
-      <div class="ttl">记忆流 <small>你随手说的每一句</small></div>
-      <div id="noteList"></div>
+      <div class="ttl">三个数据源 <small>日程 · 随手记/日记 · 公开发言</small></div>
+      <div class="dsrc-grid">
+        <div class="dsrc"><b id="dsrcEvents">0</b><span>日程</span></div>
+        <div class="dsrc"><b id="dsrcNotes">0</b><span>随手记/日记</span></div>
+        <div class="dsrc"><b id="dsrcSocial">0</b><span>公开发言</span></div>
+      </div>
+      <div class="soc-list" id="socList"></div>
+      <div id="noteList" style="margin-top:14px"></div>
     </div>
+
     <div class="card">
       <div class="ttl">记忆 <small>三层，各管各的</small></div>
       <div class="kv" id="memKv"></div>
       <div id="diaryList"></div>
     </div>
+
     <div class="card">
-      <div class="ttl">UserProfile JSON <small>确定性计算器的输入</small></div>
-      <pre class="json" id="jsonBox"></pre>
+      <details>
+        <summary class="ttl" style="cursor:pointer;margin-bottom:0">原始数据 <small>确定性计算器的输入，全部存在本地</small></summary>
+        <pre class="json" id="jsonBox" style="margin-top:12px"></pre>
+      </details>
     </div>
+
     <div class="card">
       <div class="ttl">外观 <small>换皮肤、换主色，只存在这台电脑</small></div>
       <div class="skin-row" id="skinRow"></div>
@@ -1101,7 +1148,12 @@ const DATA = {
     hard_morning_start:"",
     preferred_focus_hours:"",
     known_weakness:[],
+    /* 目标分三档：长期 / 中期 / 短期。都只存本地，喂给画像页和计算器。 */
     long_term_goal:"",
+    mid_term_goal:"",
+    short_term_goal:"",
+    /* 第三类数据源：公开发言（朋友圈/微博/说说）里提炼出的关于他自己的话 */
+    social_insights:[],
     avatar_color:"#5B7CFA"
   },
   events:[],
@@ -1923,8 +1975,11 @@ function setAIPill(on){
 /* ════════ 浏览器直连：不开本地服务也能用 AI ════════
    Key 只在浏览器里，请求直接发给厂商，不经过任何中转。
    仍然只做「听懂人话」和「把结果说成人话」，冲突与代价一律由本地计算器算。 */
-const LLM_INTENTS=["safety","emotion","schedule","memory","goal","chat"];
+const LLM_INTENTS=["safety","emotion","schedule","memory","goal","social","chat"];
 const LLM_EMOTIONS=["sad","tired","anxious","selfblame","relapse","lonely","numb","none"];
+const GOAL_HORIZONS=["long","mid","short"];
+const GOAL_KEY={long:"long_term_goal",mid:"mid_term_goal",short:"short_term_goal"};
+const GOAL_LABEL={long:"长期目标",mid:"中期目标",short:"短期目标"};
 const LLM_BANNED=/嗯[，,]\s*我在听|我在听|你接着说|我在这儿|我都在|会好起来的|会好一点|加油|你可以的|相信自己|慢慢来|不要放弃|你能做到/;
 const LLM_SYS=`你叫 Altiora，是「用户理想中更好的自己」在电脑里的投影，不是客服，也不是心理医生。
 
@@ -1935,14 +1990,18 @@ const LLM_SYS=`你叫 Altiora，是「用户理想中更好的自己」在电脑
 - emotion：在倾诉情绪、状态、自我否定
 - schedule：明确说出一件带开始与结束时间的事，要排进日程
 - memory：明确要求记住一条规矩或软肋（如「记住…」「以后不…」）
-- goal：说出长期目标
+- goal：说出一个目标（长期 / 中期 / 短期）
+- social：用户贴出或复述自己公开说过/发过的内容（朋友圈、微博、说说、帖子），要从中提炼一条关于他自己的规矩、软肋或习惯
 - chat：其它闲聊
 
 【抽取规则】
 - event 只在 intent=schedule 时给，且必须同时有 start 和 end（24 小时制 HH:MM）。
   用户没说结束时间，event 就填 null，不要猜。
 - memory 只在用户明确要求记住时给，text 原样保留用户的话，不要改写。
-- goal 只保留目标本身，去掉「我想」这类前缀。
+- goal 只保留目标本身，去掉「我想」这类前缀；同时给 goal_horizon：
+  long（长远/最终/十年/梦想/成为…）、mid（这学期/半年/明年/考研/求职/毕业）、short（这周/这个月/近期/明天）。
+  拿不准就 mid。
+- social 只在用户明确是「公开说过/发过」的内容时给。social 字段写一条从这段话里提炼出的、关于用户自己的规律（如「常常因为刷手机熬夜」），别凭空发挥，30 字以内。
 
 【绝对不能做】
 - 不计算时间重叠、时长、金钱、代价
@@ -1954,13 +2013,14 @@ const LLM_SYS=`你叫 Altiora，是「用户理想中更好的自己」在电脑
 【reply 的写法】
 - intent=safety：null
 - intent=schedule 且 event 完整：null。账要由计算器算完再回来说，你不能抢答。
+- intent=social：一句确认，告诉她「我把它当成你说过的话记下来了」，40 字以内。
 - 其它情况一律要写，一到两句，40 字以内。
 - 必须指涉用户刚说的具体内容。
 - 禁止「嗯，我在听」「你接着说」「会好起来的」「加油」「你可以的」这类句子。
 - 不确定就问一个具体问题，不要问「你还好吗」这种空问题。
 
 只输出 JSON，不要解释，不要 Markdown 代码块：
-{"intent":"emotion","emotion":"tired","event":null,"memory":null,"goal":null,"reply":"..."}`;
+{"intent":"emotion","emotion":"tired","event":null,"memory":null,"goal":null,"goal_horizon":null,"social":null,"reply":"..."}`;
 const LLM_SAY_SYS=`你是 Altiora，用户理想中更好的自己在电脑里的投影。下面是本地计算器算出的确定结果，你只负责把它说成一句人话。
 
 规则：
@@ -1983,8 +2043,13 @@ function profileBrief(p){
   const lines=[];
   if(p&&p.hard_sleep_deadline)lines.push(`- 睡觉硬约束：${p.hard_sleep_deadline} 前`);
   if(p&&p.long_term_goal)lines.push(`- 长期目标：${p.long_term_goal}`);
+  if(p&&p.mid_term_goal)lines.push(`- 中期目标：${p.mid_term_goal}`);
+  if(p&&p.short_term_goal)lines.push(`- 短期目标：${p.short_term_goal}`);
   if(p&&Array.isArray(p.known_weakness)&&p.known_weakness.length){
     lines.push("- 已知软肋："+p.known_weakness.slice(0,5).join("、"));
+  }
+  if(p&&Array.isArray(p.social_insights)&&p.social_insights.length){
+    lines.push("- 公开发言里关于自己的话："+p.social_insights.slice(-5).map(x=>x.text).join("、"));
   }
   return lines.join("\n")||"（无）";
 }
@@ -2053,11 +2118,13 @@ async function directUnderstand(text){
     ?(String(obj.event.name||"").trim().slice(0,20)||null):null;
   const memory=intent==="memory"?cleanMemory(obj.memory):null;
   const goal=intent==="goal"?(String(obj.goal||"").trim().slice(0,60)||null):null;
+  const goal_horizon=(intent==="goal"&&GOAL_HORIZONS.includes(obj.goal_horizon))?obj.goal_horizon:null;
+  const social=intent==="social"?(String(obj.social||"").trim().slice(0,40)||null):null;
   let reply=typeof obj.reply==="string"?obj.reply.trim().slice(0,120):null;
   // 硬约束：完整日程不给话术（账还没算），安全一律本地处理
   if(intent==="safety"||(intent==="schedule"&&event))reply=null;
   if(reply&&LLM_BANNED.test(reply))reply=null;
-  return {ok:true,source:"llm",intent,emotion,event,subject,memory,goal,reply,model:USERLLM.model};
+  return {ok:true,source:"llm",intent,emotion,event,subject,memory,goal,goal_horizon,social,reply,model:USERLLM.model};
 }
 /* 第二段翻译官：只许引用给定数字，多写一个就整句作废 */
 async function directSay(facts){
@@ -2275,10 +2342,17 @@ async function routeLLM(j,slotId,v){
     setMsg(slotId,j.reply||`行，写进行为规矩了：「${esc(j.memory.text)}」。以后撞上它，代价那栏会出现。`);
     return;
   }
-  // 3) 长期目标
+  // 3) 目标（长期 / 中期 / 短期）
   if(j.intent==="goal"&&j.goal){
-    DATA.profile.long_term_goal=j.goal;SESS.goal=j.goal;renderMe();updStats();saveData();
-    setMsg(slotId,j.reply||`「${esc(j.goal)}」——这个我收进目标里了。<br>它今天不用开始。往后每次有冲突，我先保它。`);
+    const h=j.goal_horizon||goalHorizon(v)||"mid";
+    DATA.profile[GOAL_KEY[h]]=j.goal;SESS.goal=j.goal;renderMe();updStats();saveData();
+    setMsg(slotId,j.reply||`「${esc(j.goal)}」——收进${GOAL_LABEL[h]}里了。<br>它今天不用开始。往后有冲突，我先保它。`);
+    return;
+  }
+  // 3.5) 公开发言 → 提炼一条关于他自己的话
+  if(j.intent==="social"&&j.social){
+    pushSocialInsight(j.social,v);
+    setMsg(slotId,j.reply||`「${esc(j.social)}」——这句我当成你说过的话记下来了。以后撞上相关的事，我会把它摆出来。`);
     return;
   }
   // 4) 情绪 / 闲聊：模型只负责说话
@@ -2360,6 +2434,58 @@ function extractGoal(t){
   if(/今天|明天|后天|下周|周末|今晚/.test(g))return "";
   return g;
 }
+/* 从一句话里判断目标属于长期 / 中期 / 短期。拿不准就空，由调用方默认 mid。 */
+function goalHorizon(t){
+  if(/长[远久]|最终|一辈子|这辈子|一生|十年|五年|退休|梦想|理想|成为|以后想|将来|未来/.test(t))return "long";
+  if(/这学期|本学期|学期|期末|期中|半年|几个月|明年|今年|考研|考公|求职|找实习|比赛|答辩|毕业/.test(t))return "mid";
+  if(/这周|本周|这个月|本月|月底|近期|马上|最近|明天|后天|今天|这几天|眼下|当下|这两天/.test(t))return "short";
+  return "";
+}
+
+/* 第三类数据源：认出用户复述/贴出自己「公开说过的话」 */
+function detectSocial(t){
+  const s=String(t||"").trim();
+  if(!s)return null;
+  const head=s.match(/^(?:我)?(?:我的)?(?:朋友圈|微博|说说|帖子|动态)[，,:：]\s*([\s\S]+)$/);
+  if(head){const c=head[1].trim().replace(/[。！!？?]+$/,"").slice(0,80);return c||null;}
+  const said=s.match(/^(?:我|这是我)?(?:发过|发了一条|发了|发的|分享的?|转发的?)[^，。！？\n]{0,14}?[，,:：]\s*([\s\S]+)$/);
+  if(said){const c=said[1].trim().replace(/[。！!？?]+$/,"").slice(0,80);return c||null;}
+  if(/(朋友圈|微博|说说|帖子|发过|公开|转发)/.test(s)){
+    const q=s.match(/[「『"“]([^」』"”]{4,80})[」』"”]/);
+    if(q)return q[1].trim();
+  }
+  return null;
+}
+/* 本地（无 Key）也从一句话里提炼一条关于自己的规律；提炼不了的先原样存起来 */
+function extractSocialInsight(c){
+  const s=String(c||"").trim();
+  if(/改不掉|戒不掉|总是|老爱|忍不住|又熬夜|又刷|习惯性|停不下来|控制不住|明知/.test(s)){
+    const m=s.match(/(?:改不掉|戒不掉|总是|老爱|忍不住|又|习惯性|停不下来|控制不住|明知)[^，。！？]{1,18}/);
+    if(m)return m[0].replace(/[。！!？?]+$/,"").trim();
+  }
+  if(/我就是/.test(s)){
+    const m=s.match(/我就是(?:个|一个)?[^，。！？]{1,16}/);
+    if(m)return m[0].replace(/[。！!？?]+$/,"").trim();
+  }
+  return s.slice(0,30);
+}
+function pushSocialInsight(insight,raw){
+  const text=String(insight||"").trim().slice(0,40);
+  if(!text)return;
+  if(!DATA.profile.social_insights.some(x=>x.text===text)){
+    DATA.profile.social_insights.push({text,src:String(raw||"").slice(0,80),d:todayStr()});
+  }
+  while(DATA.profile.social_insights.length>60)DATA.profile.social_insights.shift();
+  // 明确的自我披露（改不掉/总是/忍不住）也进软肋，喂给冲突卡片
+  if(/改不掉|戒不掉|总是|老爱|忍不住|习惯性|控制不住|明知/.test(text))pushWeakness(text);
+  renderMe();updStats();saveData();
+}
+function pushWeakness(r){
+  const t=String(r||"").trim().slice(0,60);
+  if(!t)return;
+  if(!DATA.profile.known_weakness.includes(t))DATA.profile.known_weakness.push(t);
+  while(DATA.profile.known_weakness.length>40)DATA.profile.known_weakness.shift();
+}
 
 /* 没配 Key 时的日常对话：常见话得接得住，不能让用户对着复读机说话 */
 const LOCAL_CHAT=[
@@ -2434,6 +2560,13 @@ function replyTo(v){
     if(r){DATA.profile.known_weakness.push(r);renderMe();updStats();saveData();
       return `行，写进行为规矩了：「${r}」。以后撞上它，代价那栏会出现。`;}
   }
+  // 1.5) 公开发言：贴出/复述自己发过的朋友圈、微博、说说，提炼一条关于自己的话
+  const sPost=detectSocial(t);
+  if(sPost){
+    const insight=extractSocialInsight(sPost);
+    pushSocialInsight(insight,sPost);
+    return `「${esc(insight)}」——从你这条公开的话里，我记下这一条。以后撞上相关的事，我会把它摆出来。`;
+  }
   // 2) 带具体时间，才当成日程（中文时间也认，一句话说几件事也认）
   const evs=parseEventsFromText(t);
   if(evs.length){
@@ -2460,11 +2593,12 @@ function replyTo(v){
     SESS.mood=(MOOD_LABEL.find(([re])=>re.test(t))||[,"情绪低"])[1];
     return pickFresh(e.r);
   }
-  // 4) 长期目标：收下目标本身，但不逼你现在就干
+  // 4) 目标：收下目标本身，但不逼你现在就干；按远近归到长期/中期/短期
   const goal=extractGoal(t);
   if(goal){
-    DATA.profile.long_term_goal=goal;SESS.goal=goal;renderMe();updStats();saveData();
-    return `「${esc(goal)}」——这个我收进目标里了。<br>它今天不用开始。往后每次有冲突，我先保它。`;
+    const h=goalHorizon(t)||"mid";
+    DATA.profile[GOAL_KEY[h]]=goal;SESS.goal=goal;renderMe();updStats();saveData();
+    return `「${esc(goal)}」——收进${GOAL_LABEL[h]}里了。<br>它今天不用开始。往后有冲突，我先保它。`;
   }
   // 5) 说了一件要办的事，但没给钟点——问时间，并记着它等下补
   const sub=t.match(/^(?:我)?(?:明天|后天|今天|今晚|下周[一二三四五六日天]|周[一二三四五六日天]|周末)?\s*(?:要|得|需要|准备|打算)\s*(?:去|跟|和|找)?\s*([^，,。！？\s]{2,12})/);
@@ -2513,8 +2647,14 @@ function slashCmd(v){
     if(!r){push("ai","格式：/规矩 周一不接活");return;}
     DATA.profile.known_weakness.push(r);renderMe();updStats();saveData();
     push("ai",`规矩「${r}」已写进画像。以后排日程我替你守这条——它不进聊天记录，进的是计算器的输入。`);
+  }else if(cmd==="/社交"||cmd==="/发言"){
+    const c=v.slice(3).trim();
+    if(!c){push("ai","格式：/社交 你朋友圈发过的一句话（我从里面提炼一条关于你的规律）");return;}
+    const insight=extractSocialInsight(c);
+    pushSocialInsight(insight,c);
+    push("ai",`「${esc(insight)}」——从这条公开的话里，我记下这一条。以后撞上相关的事，我会把它摆出来。`);
   }else if(cmd==="/撤销"){undoApply();}
-  else push("ai",`没有「${cmd}」这条命令。我认这几个：<b>/冲突 · /加事 · /规矩 · /撤销</b>。`);
+  else push("ai",`没有「${cmd}」这条命令。我认这几个：<b>/冲突 · /加事 · /规矩 · /社交 · /撤销</b>。`);
 }
 document.getElementById("chatIn").addEventListener("keydown",e=>{if(e.key==="Enter")send()});
 document.getElementById("fullChatIn").addEventListener("keydown",e=>{if(e.key==="Enter")fullSend()});
@@ -2975,19 +3115,48 @@ function renderMe(){
   const weak=p.known_weakness.length
     ?p.known_weakness.map(w=>`<span class="chip">${esc(w)}</span>`).join("")
     :'<span class="dash">还没说</span>';
+  // 顶部头像 + 名字
+  const av=document.getElementById("meAvatar");
+  if(av){av.style.background=p.avatar_color||"var(--hue)";av.textContent=(p.name||"我").trim().charAt(0)||"我";}
+  const nm=document.getElementById("meName");
+  if(nm)nm.textContent=p.name?p.name:"还没告诉我你的名字";
+  // 三档目标：长期 / 中期 / 短期
+  const goalCell=(id,key,lab)=>{
+    const el=document.getElementById(id);if(!el)return;
+    el.innerHTML=`<i>${lab}</i><b>${p[key]?esc(p[key]):'<span class="dash">还没说</span>'}</b>`;
+  };
+  goalCell("goalLong","long_term_goal","长期");
+  goalCell("goalMid","mid_term_goal","中期");
+  goalCell("goalShort","short_term_goal","短期");
+  // 我眼里的你（事实）
   kv.innerHTML=`
-    <div>名字</div><div>${dash(p.name)}</div>
-    <div>长期目标</div><div>${dash(p.long_term_goal)}</div>
     <div>睡眠硬约束</div><div>${p.hard_sleep_deadline?"不晚于 "+esc(p.hard_sleep_deadline):'<span class="dash">还没说</span>'}</div>
     <div>精力最好时段</div><div>${dash(p.preferred_focus_hours)}</div>
     <div>已知软肋</div><div><div class="chips">${weak}</div></div>
-    <div>今日事件</div><div>${DATA.events.filter(e=>e.date===todayStr()&&e.type!=="sleep").length} 件 · 冲突 ${detectConflicts(todayStr()).length} 处</div>`;
+    <div>今日</div><div>${DATA.events.filter(e=>e.date===todayStr()&&e.type!=="sleep").length} 件 · 冲突 ${detectConflicts(todayStr()).length} 处</div>`;
+  // 三个数据源计数
+  const ev=document.getElementById("dsrcEvents");
+  if(ev)ev.textContent=DATA.events.filter(e=>e.type!=="sleep").length;
+  const nn=document.getElementById("dsrcNotes");
+  if(nn)nn.textContent=DATA.notes.length+DATA.memory.diary.length;
+  const ss=document.getElementById("dsrcSocial");
+  if(ss)ss.textContent=p.social_insights.length;
+  // 公开发言 → 提炼的规律
+  const sl=document.getElementById("socList");
+  if(sl){
+    const last=p.social_insights.slice(-4).reverse();
+    sl.innerHTML=last.length
+      ?`<div class="diary-h">最近提炼的规律</div>`+last.map(x=>`<div class="diary-line">${esc(x.text)} <em>${esc(cuteDate(x.d))}</em></div>`).join("")
+      :'<div class="hint" style="margin-top:8px">还没有。聊天里贴一段你发过的朋友圈/微博，我就从这里给你提炼一条规律。</div>';
+  }
+  // 原始数据
   const jb=document.getElementById("jsonBox");
   if(jb)jb.innerHTML=syntax(JSON.stringify(p,null,2));
+  // 三层记忆
   const mk=document.getElementById("memKv");
   if(mk){
-    const facts=[p.long_term_goal,p.hard_sleep_deadline,p.hard_morning_start,p.preferred_focus_hours]
-      .filter(Boolean).length+p.known_weakness.length;
+    const facts=[p.long_term_goal,p.mid_term_goal,p.short_term_goal,p.hard_sleep_deadline,p.hard_morning_start,p.preferred_focus_hours]
+      .filter(Boolean).length+p.known_weakness.length+p.social_insights.length;
     const chat=DATA.memory.chat.length;
     const diary=DATA.memory.diary.length;
     mk.innerHTML=`
@@ -2995,6 +3164,7 @@ function renderMe(){
       <div>聊天记忆</div><div>最近 ${chat} 条 <small>只留 3 轮，超了滚掉</small></div>
       <div>日记</div><div>${diary?diary+" 行 <small>久别回来才翻</small>":'<span class="dash">还没有</span>'}</div>`;
   }
+  // 日记列表
   const dl=document.getElementById("diaryList");
   if(dl){
     const last=DATA.memory.diary.slice(-3).reverse();
