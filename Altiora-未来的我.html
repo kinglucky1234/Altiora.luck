@@ -1589,26 +1589,48 @@ function apply(ci){
 }
 
 /* ════════ 冲突检测 · 计算器（纯确定性） ════════ */
+/* 判断一件事名字是否连着用户某个目标：用 2 字滑窗重叠，够用、不追求精确 */
+function matchGoal(name,goal){
+  const n=String(name||""), g=String(goal||"").replace(/^(成为|我想成为|我要成为|我想|我要|我)/,"");
+  if(!n||!g)return false;
+  const grams=new Set();
+  for(let i=0;i<g.length-1;i++)grams.add(g.slice(i,i+2));
+  for(let i=0;i<n.length-1;i++)if(grams.has(n.slice(i,i+2)))return true;
+  return false;
+}
+/* 事件名撞到哪一档目标，返回 {lab,goal}；没撞到返回 null */
+function goalMatch(name){
+  const n=String(name||"");
+  const G=[["long","长期目标",DATA.profile.long_term_goal],
+           ["mid","中期目标",DATA.profile.mid_term_goal],
+           ["short","短期目标",DATA.profile.short_term_goal]];
+  for(const [k,lab,goal] of G){
+    if(goal&&matchGoal(n,goal))return {lab,goal};
+  }
+  return null;
+}
 function makeConflict(a,b,ov){
   const hi=a.priority<=b.priority?a:b, lo=a.priority<=b.priority?b:a;
   const dur=(toMin(lo.end)-toMin(lo.start))/60;
   const money=lo.wage?Math.round(lo.wage*dur):0;
+  const gHi=goalMatch(hi.name), gLo=goalMatch(lo.name);
   const opts=[];
   opts.push({k:"A",name:"去"+hi.name,
-    gains:[`保住优先级 ${hi.priority} 的事${hi.type==="meeting"?"，会议不缺席":""}`],
-    costs:[money?`损失 ${money} 元（${lo.name} ${dur} 小时 × 时薪 ${lo.wage} 元）`:`放弃「${lo.name}」`]});
+    gains:[`保住优先级 ${hi.priority} 的事${hi.type==="meeting"?"，会议不缺席":""}`,gHi?`这件事连着你的${gHi.lab}「${gHi.goal}」`:""].filter(Boolean),
+    costs:[money?`损失 ${money} 元（${lo.name} ${dur} 小时 × 时薪 ${lo.wage} 元）`:`放弃「${lo.name}」`,gLo?`会动到你的${gLo.lab}「${gLo.goal}」`:""].filter(Boolean)});
   opts.push({k:"B",name:"去"+lo.name,
-    gains:[money?`拿到 ${money} 元${lo.type==="work"?"课时费":""}`:`保住「${lo.name}」`],
-    costs:[`放弃优先级 ${hi.priority} 的事`,"事后可能后悔"]});
+    gains:[money?`拿到 ${money} 元${lo.type==="work"?"课时费":""}`:`保住「${lo.name}」`,gLo?`这件事连着你的${gLo.lab}「${gLo.goal}」`:""].filter(Boolean),
+    costs:[`放弃优先级 ${hi.priority} 的事`,"事后可能后悔",gHi?`会动到你的${gHi.lab}「${gHi.goal}」`:""].filter(Boolean)});
   const st=toMin(hi.end)+30, hh=Math.floor(st/60)%24, mm=st%60;
   const stTxt=String(hh).padStart(2,"0")+":"+String(mm).padStart(2,"0");
   opts.push({k:"C",name:`把${lo.name}顺延到 ${stTxt}`,
     gains:["两件事都不耽误"],
     costs:[`连轴转，结束将被推到 ${stTxt} 之后`,
       DATA.profile.hard_sleep_deadline?`可能破你「${DATA.profile.hard_sleep_deadline} 前睡」的硬约束`:"往后连轴转，你今天可能没有整块休息"]});
+  const goalTag=gHi||gLo;
   return {id:"cf_"+a.id+"_"+b.id,a:a,b:b,overlap_min:ov,options:opts,
-    advice:`我不替你选。三个代价都摆在这儿了${DATA.profile.known_weakness[0]?`；你自己说过「${DATA.profile.known_weakness[0]}」，扛不扛得住你比我清楚`:""}。`,
-    risk:money?`存在金钱损失（${money} 元），请结合长期目标判断`:"暂无直接金钱损失"};
+    advice:`我不替你选。三个代价都摆在这儿了${DATA.profile.known_weakness[0]?`；你自己说过「${DATA.profile.known_weakness[0]}」，扛不扛得住你比我清楚`:""}${goalTag?`；这组里还撞着你的${goalTag.lab}「${goalTag.goal}」，别只当它是普通日程`:""}。`,
+    risk:money?`存在金钱损失（${money} 元），请结合长期目标判断`:goalTag?`撞上了你的${goalTag.lab}「${goalTag.goal}」`:"暂无直接金钱损失"};
 }
 function detectConflicts(dateIso){
   const cs=[];
