@@ -61,7 +61,7 @@ def check_deps():
 def check_model():
     must = ["am/final.mdl", "conf/mfcc.conf", "graph/HCLr.fst", "graph/Gr.fst"]
     if not MODEL.is_dir():
-        fail("语音模型", f"目录不存在：{MODEL.relative_to(BASE)}")
+        fail("语音模型", f"目录不存在：{MODEL.relative_to(BASE)}。运行 python3 scripts/download_vosk.py 下载")
         return
     missing = [m for m in must if not (MODEL / m).exists()]
     if missing:

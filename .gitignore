@@ -12,3 +12,7 @@ node_modules/
 .uploads/
 .trae-html-share-packages/
 *.bundle
+
+# Vosk 离线语音模型（约 66 MB）：不进 git，用 scripts/download_vosk.py 下载
+Altiora/backend/model/*
+!Altiora/backend/model/README.md

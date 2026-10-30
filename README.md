@@ -105,6 +105,14 @@ python-multipart   # 接收前端上传的录音
 vosk               # 离线中文语音识别
 ```
 
+> **语音模型不进 git**（约 66 MB，进 git 克隆会很慢）。只有想用语音识别时才需要下载：
+> ```bash
+> cd ..   # 回到仓库根目录
+> python3 scripts/download_vosk.py
+> ```
+> 脚本会自动下载 `vosk-model-small-cn-0.22` 到 `Altiora/backend/model/`。
+> 不用语音的话可跳过这一步——双击 HTML 文字与 AI 功能完整。
+
 ### 5-6 分钟：启动（只有想用语音时才需要）
 
 ```bash
@@ -214,7 +222,7 @@ Altiora.luck/
 | `ModuleNotFoundError: fastapi` | 依赖没装到当前解释器 | `python -m pip install -r requirements.txt` |
 | 端口被占用 (`Address already in use`) | 8000 已被其它程序占用 | `set PORT=8001` 后重启，或 Windows `netstat -ano | findstr :8000` |
 | 页面能开，点麦克风没反应 | 浏览器不允许麦克风 / 非 localhost | 用 Chrome 打开 `http://localhost:8000`，并在地址栏允许麦克风 |
-| 语音一直返回空文本 | 模型目录缺失 | 确认 `Altiora/backend/model/vosk-model-small-cn-0.22/` 存在（约 66 MB） |
+| 语音一直返回空文本 | 模型目录缺失 | 运行 `python3 scripts/download_vosk.py` 下载模型（约 66 MB） |
 | 识别很慢（>5 秒） | 首次加载模型 | 第一次识别会加载模型，之后每次约 1-3 秒 |
 
 ## 7. 评审材料索引
