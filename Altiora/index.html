@@ -2750,6 +2750,18 @@ async function handleUser(v){
 
   sessBegin();
   memPush("u",v);
+
+  // 「记住…」是确定性命令：本地写进缺点，不交给模型判意图，避免判错漏记
+  const memCmd=v.trim().match(/^(记住|记一下|帮我记住|规矩)[\s，,。.:：]*(.+)$/);
+  if(memCmd){
+    const r=stripPunct(memCmd[2]);
+    if(r){
+      DATA.profile.known_weakness.push(r);renderMe();updStats();saveData();
+      setTimeout(()=>push("ai",`行，写进行为规矩了：「${esc(r)}」。以后撞上它，代价那栏会出现。`),180);
+      return;
+    }
+  }
+
   const tp=topicOf(v);if(tp&&SESS.topics[SESS.topics.length-1]!==tp)SESS.topics.push(tp);
 
   // 半句接龙：上一句我问了「几点到几点」，这句只给时间也接得上
