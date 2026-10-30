@@ -2694,6 +2694,9 @@ function tryFillPending(t){
   const p=DATA.memory.pending;
   if(!p)return "";
   if(Date.now()-p.ts>30*60000){DATA.memory.pending=null;saveData();return "";}
+  // 用户这句话里带了日期词（今天/明天/周X…），说明是在说一件新事，
+  // 不是补上次 pending 的时间——交给 LLM 正常解析，别拿旧日期乱填。
+  if(/今天|今早|今晚|明天|明早|明晚|后天|大后天|周[一二三四五六日天]|星期/.test(t))return "";
   const r=parseTimeRange(t);
   if(!r)return "";
   const date=p.date||todayStr();
