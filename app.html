@@ -3797,7 +3797,7 @@ function renderDiaryList(){
     const last=auto[auto.length-1];
     const frag=last.s?last.s.split(/[，,；;]/)[0].replace(/[。.]$/,"").slice(0,18):"";
     parts.push(`<div class="dc-sec">分身自动记的（隔 3 天以上回来会翻）</div>`+
-      auto.slice(-5).reverse().map(x=>`<div class="diary-card auto">
+      auto.slice().reverse().map(x=>`<div class="diary-card auto">
         <div class="dc-date">${dayTag(x.d)}</div>
         <div class="dc-text">${esc(x.s)}</div>
       </div>`).join("")+
@@ -3973,7 +3973,7 @@ function introCommit(){
   if(introPicked.multi.size){
     const presets=INTRO_STEPS[0].opts;
     const custom=p.known_weakness.filter(w=>presets.indexOf(w)<0);
-    p.known_weakness=[...introPicked.multi,...custom];
+    p.known_weakness=Array.from(new Set([...introPicked.multi,...custom]));
   }
   if(introPicked.single&&introPicked.single!=="不固定")p.hard_sleep_deadline=introPicked.single;
   if(introPicked.goal)p.long_term_goal=introPicked.goal;
