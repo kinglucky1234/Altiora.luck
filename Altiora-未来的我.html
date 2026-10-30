@@ -594,6 +594,7 @@ pre.json .n{color:#FDBA74}
     <div class="card">
       <div class="ttl">我眼里的你 <small>规划引擎的唯一燃料</small></div>
       <div class="kv" id="kv"></div>
+      <div style="margin-top:12px"><button class="btn ghost" style="width:100%" onclick="openProfileSurvey()">重新填一次问卷</button></div>
     </div>
     <div class="card">
       <div class="ttl">记忆流 <small>你随手说的每一句</small></div>
@@ -2810,7 +2811,11 @@ function introRender(){
 }
 function introCommit(){
   const p=DATA.profile;
-  if(introPicked.multi.size)p.known_weakness=[...introPicked.multi];
+  if(introPicked.multi.size){
+    const presets=INTRO_STEPS[0].opts;
+    const custom=p.known_weakness.filter(w=>presets.indexOf(w)<0);
+    p.known_weakness=[...introPicked.multi,...custom];
+  }
   if(introPicked.single&&introPicked.single!=="不固定")p.hard_sleep_deadline=introPicked.single;
   if(introPicked.pick)p.long_term_goal=introPicked.pick;
   if(introPicked.name)p.name=introPicked.name;
@@ -2838,6 +2843,19 @@ function introSkip(){introCommit();introFinish();}
 function startIntro(){
   introIdx=0;introOn=true;
   introPicked.multi=new Set();introPicked.single="";introPicked.pick="";introPicked.name="";introPicked.color="";
+  document.getElementById("introMask").classList.add("on");
+  document.getElementById("introBox").classList.add("on");
+  introRender();
+}
+// 从「我的画像」重新打开问卷：预填当前答案，可改可补，不丢已填内容
+function openProfileSurvey(){
+  const p=DATA.profile;
+  introPicked.multi=new Set(Array.isArray(p.known_weakness)?p.known_weakness:[]);
+  introPicked.single=p.hard_sleep_deadline||"";
+  introPicked.pick=p.long_term_goal||"";
+  introPicked.name=p.name||"";
+  introPicked.color=p.avatar_color||"";
+  introIdx=0;introOn=true;
   document.getElementById("introMask").classList.add("on");
   document.getElementById("introBox").classList.add("on");
   introRender();
