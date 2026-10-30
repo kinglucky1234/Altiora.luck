@@ -216,6 +216,10 @@ body[data-tab="home"] .fab{display:none}
 .vtl-tag{font-size:10.5px;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.04);
   border:1px solid var(--line);font-variant-numeric:tabular-nums}
 .vtl-tm{font-size:11px;color:var(--t3);margin-top:4px;font-variant-numeric:tabular-nums;letter-spacing:.3px}
+.vtl-del{position:absolute;right:4px;top:8px;color:var(--t3);cursor:pointer;font-size:16px;line-height:1;
+  padding:2px 6px;border-radius:5px;opacity:0;transition:opacity .15s,color .15s,background .15s}
+.vtl-item:hover .vtl-del{opacity:1}
+.vtl-del:hover{color:var(--red);background:rgba(239,68,68,.1)}
 .vtl-item.cf .vtl-dot{background:var(--red);box-shadow:0 0 0 1px var(--red),0 0 16px rgba(239,68,68,.65)}
 .vtl-item.cf .vtl-chunk{border-color:rgba(239,68,68,.5);background:rgba(239,68,68,.06)}
 .vtl-item.cf .vtl-name{color:#FCA5A5}
@@ -1595,15 +1599,17 @@ function renderGantt(){
   box.innerHTML="";
   const list=DATA.events.filter(e=>e.date===VIEW_DATE).slice().sort((a,b)=>toMin(a.start)-toMin(b.start));
   const cfIds=new Set();DATA.conflicts.forEach(c=>{cfIds.add(c.a.id);cfIds.add(c.b.id);});
-  box.innerHTML=list.map(e=>{
+  box.innerHTML=list.map((e,i)=>{
     const cf=cfIds.has(e.id);
     const col=COLORS[e.type]||"#3B82F6";
+    const idx=DATA.events.indexOf(e);
     return `<div class="vtl-item${cf?" cf":""}" title="${esc(e.name)} ${e.start}-${e.end} · 优先级 ${e.priority}${e.wage?" · 时薪"+e.wage+"元":""}">
       <div class="vtl-dot" style="background:${col}"></div>
       <div class="vtl-chunk">
         <div class="vtl-row"><b class="vtl-name">${esc(e.name)}</b><span class="vtl-tag">${TYPE_CN[e.type]||"日程"}</span></div>
         <div class="vtl-tm">${e.start} — ${e.end}${e.loc?" · "+esc(e.loc):""}</div>
       </div>
+      <span class="vtl-del" onclick="delEvent(${idx})" title="删掉这条">×</span>
     </div>`;
   }).join("");
   const seg=document.getElementById("bandSeg");
@@ -3704,6 +3710,14 @@ function renderNotes(){
       <span class="del" onclick="delNote(${i})">×</span></div>`;}).join("");
 }
 function delNote(i){DATA.notes.splice(i,1);saveData();renderNotes();updStats();}
+function delEvent(i){
+  if(i<0||i>=DATA.events.length)return;
+  const ev=DATA.events[i];
+  DATA.events.splice(i,1);
+  DATA.conflicts=detectConflicts();
+  saveData();refreshDay();updStats();
+  toast(`已删掉「${ev.name} ${ev.start}-${ev.end}」`);
+}
 
 /* ════════ 日记（按日历写） ════════ */
 let DIARY_MONTH=todayStr().slice(0,7), DIARY_DAY=todayStr();
