@@ -221,7 +221,7 @@ def main():
     elif n_warn:
         print(f"基本可用：{n_warn} 项警告，不影响启动。")
     else:
-        print("全部通过。可以双击 启动.bat 或运行 python3 server.py。")
+        print("全部通过。可以运行 python3 server.py 用语音，或直接双击 HTML 用文字。")
     print("\n提醒：语音识别只测了链路（静音 WAV），真实说话效果要你自己对着麦克风说。")
     return 1 if n_fail else 0
 

@@ -1341,7 +1341,7 @@ const SAFETY_RE=/不想活|活不下去|活着没意思|想消失|自杀|结束�
 const SAFETY_TXT="这句话我不轻飘飘地接。我在这儿，你也需要有一个真人在场——室友、家人、学校的心理老师，哪个最近找哪个；打 <b>12356</b>（全国心理援助热线）也可以，24 小时有人。<br>我不劝你，也不跟你讲道理。你现在只要做一件事：让一个人的声音真的出现在你身边。";
 
 /* ════════ 大模型：用户自带 Key（BYOK） ════════
-   Key 只存这台电脑的浏览器（localStorage），每个请求临时发给本地服务；
+   Key 只存这台电脑的浏览器（localStorage），请求由浏览器直连厂商；
    服务端不保存、不记录，也不会进仓库。 */
 const LLM_STORE="altiora_llm_v1";
 const LLM_PRESETS={
@@ -1509,7 +1509,7 @@ async function checkAI(){
 function webSpeechCtor(){return window.SpeechRecognition||window.webkitSpeechRecognition||null;}
 function setMicEnabled(on){
   const b=document.getElementById("micBtn");if(!b)return;
-  const usable=on||!!webSpeechCtor();   // 本地服务没开，浏览器自带识别也能顶
+  const usable=on||(location.protocol!=="file:"&&!!webSpeechCtor());   // 本地服务没开时，浏览器自带识别也能顶；file:// 下浏览器不给麦克风
   b.disabled=!usable;
   b.style.opacity=usable?"1":"0.35";
   b.style.cursor=usable?"pointer":"not-allowed";
@@ -2149,6 +2149,10 @@ async function startVoice(btn,inp,cb){
   // 再点一次 = 提前结束，不用等静音判断
   if(micOn){ if(webStop){webStop();} else stopRecording(btn,inp,cb); return; }
   if(micStarting)return;   // 权限弹窗还没点完时，别开第二条录音
+  if(location.protocol==="file:"){
+    toast("双击打开时浏览器不给麦克风，直接打字就行。");
+    return;
+  }
   if(!MIC_SERVER){
     if(webSpeechCtor()){startWebSpeech(btn,inp,cb);return;}
     toast("当前浏览器不支持语音输入，直接打字就行。");
