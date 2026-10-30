@@ -84,7 +84,7 @@ LLM 的边界被写死在代码里（`Altiora/backend/llm.py`）：
 | Python | **3.8 及以上**（`python --version` 可验证） |
 | 浏览器 | Chrome / Edge（语音输入依赖 Web Audio + MediaRecorder） |
 | 磁盘 | 约 150 MB |
-| 网络 | 仅首次装依赖需要；**跑起来后完全离线** |
+| 网络 | 仅首次装依赖需要；**本地规则模式完全离线**，AI 在线模式需联网直连厂商 API |
 
 > Windows 安装 Python 时务必勾选 **Add Python to PATH**。
 
@@ -166,7 +166,7 @@ cp .env.example .env
 3. Key 只存在他自己的浏览器里（localStorage）；请求由浏览器直连厂商，不经过任何中转，服务端不落盘、不写日志、不进仓库
 4. 换电脑、换浏览器、点「清除」，Key 就没了
 
-服务端还加了一道限制：用户自填的 Base URL 只接受公网 `https://`，禁止 `localhost`、`127.x`、`10.x`、`192.168.x`、`172.16-31.x` 等内网地址，避免被拿去探测内网。
+服务端还加了一道限制：用户自填的 Base URL 只接受公网 `https://`，禁止 `localhost`、`127.x`、`10.x`、`192.168.x`、`172.16-31.x` 等内网地址，**并在 DNS 解析后校验返回 IP 是否落在内网范围（防 DNS 重绑定）**，避免被拿去探测内网。
 
 自己一个人用时，也可以走 `.env`：
 
