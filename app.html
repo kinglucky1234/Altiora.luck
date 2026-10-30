@@ -3786,6 +3786,17 @@ function introRender(){
       b.onclick=()=>{if(introPicked.multi.has(o)){introPicked.multi.delete(o);}else if(introPicked.multi.size<3){introPicked.multi.add(o);}introRender();};
       body.appendChild(b);
     });
+    // 软肋：预设之外可以自己写一个（最多选 3 个的限制仍然生效）
+    const inp=document.createElement("input");
+    inp.className="intro-text"; inp.placeholder="或者自己写一个…";
+    const multiCustom=[...introPicked.multi].find(x=>s.opts.indexOf(x)<0)||"";
+    inp.value=multiCustom;
+    inp.oninput=()=>{
+      const t=inp.value.trim();
+      [...introPicked.multi].forEach(x=>{if(s.opts.indexOf(x)<0)introPicked.multi.delete(x);});
+      if(t&&introPicked.multi.size<3)introPicked.multi.add(t);
+    };
+    body.appendChild(inp);
   }else if(s.type==="single"){
     s.opts.forEach(o=>{
       const b=document.createElement("button");
@@ -3794,6 +3805,18 @@ function introRender(){
       b.onclick=()=>{introPicked.single=o;introRender();};
       body.appendChild(b);
     });
+    // 睡眠：预设之外可以自己填具体时间，自动归一成 HH:MM
+    const inp=document.createElement("input");
+    inp.className="intro-text"; inp.placeholder="或者自己写（HH:MM）";
+    const curSingle=introPicked.single&&s.opts.indexOf(introPicked.single)<0?introPicked.single:"";
+    inp.value=curSingle;
+    inp.oninput=()=>{
+      const raw=inp.value.trim();
+      const m=raw.match(/(\d{1,2})\s*[:：点.]?\s*(\d{2})/);
+      if(m){const hh=+m[1],mm=+m[2];if(hh>=0&&hh<24&&mm>=0&&mm<60){introPicked.single=String(hh).padStart(2,"0")+":"+String(mm).padStart(2,"0");return;}}
+      introPicked.single=raw;
+    };
+    body.appendChild(inp);
   }else if(s.type==="pick"){
     const field=s.field||"goal";
     const val=introPicked[field];
