@@ -122,7 +122,6 @@ story.append(Spacer(1, 30*mm))
 story.append(Paragraph("全国高校 Vibe Coding 开发挑战赛 · B 组", styles["cover_sub"]))
 story.append(Paragraph("赛道 8：个人效能与赛博具身智能仿真", styles["cover_sub"]))
 story.append(Spacer(1, 15*mm))
-story.append(Paragraph("提交日期：2026 年 12 月", styles["body_sm"]))
 story.append(PageBreak())
 
 # ════════════════════════════════════════
