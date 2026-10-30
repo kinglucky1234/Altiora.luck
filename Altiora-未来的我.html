@@ -339,6 +339,18 @@ pre.json .n{color:#FDBA74}
 .kv small{color:var(--t3);font-size:11px;margin-left:6px}
 .diary-h{font-size:11.5px;color:var(--t3);margin:12px 0 2px}
 .diary-line{font-size:12.5px;color:var(--t2);padding:7px 0;border-top:1px dashed var(--line);font-variant-numeric:tabular-nums}
+/* 日记卡片：像日记本里的一页，不是输入框 */
+.diary-list{max-height:240px;overflow:auto;margin-top:14px;padding-top:10px;border-top:1px solid var(--line)}
+.diary-card{
+  background:linear-gradient(135deg,rgba(255,255,255,.04),rgba(255,255,255,.015));
+  border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px;
+  cursor:pointer;transition:border-color .15s,transform .1s;position:relative;
+}
+.diary-card:hover{border-color:var(--hue-line);transform:translateY(-1px)}
+.diary-card .dc-date{font-size:11px;color:var(--t3);margin-bottom:6px;font-variant-numeric:tabular-nums;letter-spacing:.3px}
+.diary-card .dc-text{font-size:13px;color:var(--t1);line-height:1.65;white-space:pre-wrap;word-break:break-word}
+.diary-card .dc-del{position:absolute;top:8px;right:10px;color:var(--t3);cursor:pointer;font-size:14px;line-height:1;padding:2px 5px;border-radius:4px}
+.diary-card .dc-del:hover{color:var(--red);background:rgba(239,68,68,.1)}
 /* 弹窗内的小清单 */
 .note-list,.soc-list{max-height:180px;overflow:auto;display:none;margin-bottom:12px}
 .note-list.on,.soc-list.on{display:block}
@@ -1190,6 +1202,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
     <div class="cal-day" id="diaryDayLbl"></div>
     <textarea id="diaryIn" placeholder="这一天过得怎么样？写点什么…"></textarea>
     <div class="result" id="diaryRes"></div>
+    <div class="diary-list" id="diaryListBox"></div>
     <div class="sheet-act">
       <button class="btn" onclick="saveDiary()">保存这一天的日记</button>
       <button class="btn ghost" onclick="closeDiary()">关闭</button>
@@ -3687,7 +3700,7 @@ function delNote(i){DATA.notes.splice(i,1);saveData();renderNotes();updStats();}
 let DIARY_MONTH=todayStr().slice(0,7), DIARY_DAY=todayStr();
 function openDiary(){
   DIARY_DAY=todayStr();DIARY_MONTH=todayStr().slice(0,7);
-  renderDiaryCal();renderDiaryDay();
+  renderDiaryCal();renderDiaryDay();renderDiaryList();
   document.getElementById("diarySheet").classList.add("on");
   setTimeout(()=>document.getElementById("diaryIn").focus(),40);
 }
@@ -3727,16 +3740,30 @@ function renderDiaryDay(){
   const existing=DATA.diary.find(x=>x.d===DIARY_DAY);
   document.getElementById("diaryIn").value=existing?existing.t:"";
 }
+/* 已保存的日记以小卡片列出，不是输入框样式 */
+function renderDiaryList(){
+  const box=document.getElementById("diaryListBox");if(!box)return;
+  if(!DATA.diary.length){box.innerHTML="";return;}
+  const sorted=[].concat(DATA.diary).sort((a,b)=>b.d.localeCompare(a.d));
+  box.innerHTML=sorted.map((x,i)=>{
+    const idx=DATA.diary.indexOf(x);
+    return `<div class="diary-card" onclick="pickDiaryDay('${x.d}')">
+      <div class="dc-date">${dayTag(x.d)}</div>
+      <div class="dc-text">${esc(x.t)}</div>
+      <span class="dc-del" onclick="event.stopPropagation();delDiary(${idx})">×</span>
+    </div>`;
+  }).join("");
+}
+function delDiary(i){DATA.diary.splice(i,1);saveData();renderDiaryCal();renderDiaryList();renderMe();updStats();}
 function saveDiary(){
   const el=document.getElementById("diaryIn"),t=el.value.trim();
   if(!t)return;
   const existing=DATA.diary.find(x=>x.d===DIARY_DAY);
   if(existing)existing.t=t;else DATA.diary.push({d:DIARY_DAY,t:t});
-  saveData();renderDiaryCal();renderMe();
+  saveData();renderDiaryCal();renderDiaryList();renderMe();updStats();
   const res=document.getElementById("diaryRes");
   res.className="result on";
   res.innerHTML=`<span class="lbl">已写进日记</span>${dayTag(DIARY_DAY)}这一页记好了，AI 会读进对你的了解里。`;
-  setTimeout(closeDiary,1600);
 }
 
 /* ════════ 我的生活圈（导入公开发言） ════════ */
