@@ -3578,8 +3578,10 @@ const INTRO_STEPS=[
    type:"multi",opts:["熬夜刷手机","拖延","起床困难","乱花钱","暴饮暴食","容易暴躁","焦虑内耗","学不进去","戒不掉游戏","其他"]},
   {key:"sleep",title:"你每晚最晚几点必须睡？",sub:"过了这个点就算熬夜，有冲突时我会拿它算代价。",
    type:"single",opts:["22:30","23:00","23:30","00:00","不固定"]},
+  {key:"focus",title:"你一天里精力最顶的是哪个时段？",sub:"我排「今日方案」时，把最要脑力的事放到这段。",
+   type:"pick",field:"focus",opts:["08:00–11:00","09:00–12:00","14:00–17:00","19:00–22:00","不固定"]},
   {key:"goal",title:"你现在最想做成的一件事？",sub:"不用很大，一件就够。有冲突时我优先保它。",
-   type:"pick",opts:["考研上岸","拿奖学金","减肥","找到实习","学会一门技能"]},
+   type:"pick",field:"goal",opts:["考研上岸","拿奖学金","减肥","找到实习","学会一门技能"]},
   {key:"name",title:"我该怎么称呼你？",sub:"可以不填。",
    type:"text"},
   {key:"color",title:"给你的分身挑个颜色。",sub:"这是它在你心里的样子。",
@@ -3587,7 +3589,7 @@ const INTRO_STEPS=[
 ];
 let introIdx=0;
 let introOn=false;
-const introPicked={multi:new Set(),single:"",pick:"",name:"",color:""};
+const introPicked={multi:new Set(),single:"",goal:"",focus:"",name:"",color:""};
 
 function introRender(){
   const s=INTRO_STEPS[introIdx];
@@ -3612,17 +3614,19 @@ function introRender(){
       body.appendChild(b);
     });
   }else if(s.type==="pick"){
+    const field=s.field||"goal";
+    const val=introPicked[field];
     s.opts.forEach(o=>{
       const b=document.createElement("button");
-      b.className="intro-chip"+(introPicked.pick===o?" on":"");
+      b.className="intro-chip"+(val===o?" on":"");
       b.textContent=o;
-      b.onclick=()=>{introPicked.pick=o;introRender();};
+      b.onclick=()=>{introPicked[field]=o;introRender();};
       body.appendChild(b);
     });
     const inp=document.createElement("input");
     inp.className="intro-text";inp.placeholder="或者自己写一个…";
-    inp.value=introPicked.pick&&s.opts.indexOf(introPicked.pick)<0?introPicked.pick:"";
-    inp.oninput=()=>{introPicked.pick=inp.value.trim();};
+    inp.value=val&&s.opts.indexOf(val)<0?val:"";
+    inp.oninput=()=>{introPicked[field]=inp.value.trim();};
     body.appendChild(inp);
   }else if(s.type==="text"){
     const inp=document.createElement("input");
@@ -3649,7 +3653,8 @@ function introCommit(){
     p.known_weakness=[...introPicked.multi,...custom];
   }
   if(introPicked.single&&introPicked.single!=="不固定")p.hard_sleep_deadline=introPicked.single;
-  if(introPicked.pick)p.long_term_goal=introPicked.pick;
+  if(introPicked.goal)p.long_term_goal=introPicked.goal;
+  if(introPicked.focus&&introPicked.focus!=="不固定")p.preferred_focus_hours=introPicked.focus;
   if(introPicked.name)p.name=introPicked.name;
   if(introPicked.color)p.avatar_color=introPicked.color;
   saveData();renderMe();renderOrbs();updStats();
@@ -3674,7 +3679,7 @@ function introFinish(){
 function introSkip(){introCommit();introFinish();}
 function startIntro(){
   introIdx=0;introOn=true;
-  introPicked.multi=new Set();introPicked.single="";introPicked.pick="";introPicked.name="";introPicked.color="";
+  introPicked.multi=new Set();introPicked.single="";introPicked.goal="";introPicked.focus="";introPicked.name="";introPicked.color="";
   document.getElementById("introMask").classList.add("on");
   document.getElementById("introBox").classList.add("on");
   introRender();
@@ -3684,7 +3689,8 @@ function openProfileSurvey(){
   const p=DATA.profile;
   introPicked.multi=new Set(Array.isArray(p.known_weakness)?p.known_weakness:[]);
   introPicked.single=p.hard_sleep_deadline||"";
-  introPicked.pick=p.long_term_goal||"";
+  introPicked.goal=p.long_term_goal||"";
+  introPicked.focus=p.preferred_focus_hours||"";
   introPicked.name=p.name||"";
   introPicked.color=p.avatar_color||"";
   introIdx=0;introOn=true;
