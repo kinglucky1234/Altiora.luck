@@ -7,6 +7,7 @@ Altiora 本地服务
 然后浏览器打开 http://localhost:8000
 """
 import json
+import logging
 import os
 import shutil
 import subprocess
@@ -19,6 +20,13 @@ from pathlib import Path
 from fastapi import Body, FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
+
+# LLM 调试日志：直接打到控制台，方便看大模型调用是否成功
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%H:%M:%S",
+)
 
 BASE = Path(__file__).resolve().parent
 
@@ -230,4 +238,4 @@ async def asr(audio: UploadFile = File(...)):
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=PORT, log_level="warning")
+    uvicorn.run(app, host="0.0.0.0", port=PORT, log_level="info")

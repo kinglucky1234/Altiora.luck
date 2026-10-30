@@ -17,12 +17,16 @@ from __future__ import annotations  # PEP 563：延迟求值注解，让 str | N
 
 import ipaddress
 import json
+import logging
 import os
 import re
 import socket
 import urllib.error
 import urllib.request
 from urllib.parse import urlparse
+
+logger = logging.getLogger("altiora.llm")
+logger.setLevel(logging.DEBUG)
 
 TIMEOUT = 12
 MAX_INPUT = 600
@@ -264,9 +268,12 @@ def _chat(messages: list[dict], api_key: str, base: str, model: str,
         method="POST",
         headers=headers,
     )
+    logger.debug("LLM request → model=%s base=%s msgs=%d", model, base, len(messages))
     with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
         payload = json.loads(resp.read().decode("utf-8"))
-    return payload["choices"][0]["message"]["content"]
+    content = payload["choices"][0]["message"]["content"]
+    logger.debug("LLM response ← %s", content[:300])
+    return content
 
 
 def _profile_brief(profile: dict) -> str:
@@ -297,9 +304,12 @@ def understand(text: str, profile: dict | None = None,
         return {"ok": False, "source": "rule", "reason": "empty"}
 
     api_key, base_url, model_id = _resolve(key, base, model)
+    logger.info("understand() text=%r has_key=%s model=%s", text[:80], bool(api_key), model_id)
     if not api_key:
+        logger.warning("understand() → no_api_key, will fall back to local rules")
         return {"ok": False, "source": "rule", "reason": "no_api_key"}
     if key and not _safe_base(base_url):
+        logger.warning("understand() → unsafe_base=%s", base_url)
         return {"ok": False, "source": "rule", "reason": "unsafe_base"}
 
     user = (
@@ -321,18 +331,23 @@ def understand(text: str, profile: dict | None = None,
         msgs.append({"role": "user", "content": user})
         content = _chat(msgs, api_key, base_url, model_id, headers)
     except urllib.error.HTTPError as e:
+        logger.warning("understand() → http_%s body=%s", e.code, e.read()[:200])
         return {"ok": False, "source": "rule", "reason": f"http_{e.code}"}
-    except (urllib.error.URLError, TimeoutError, OSError):
+    except (urllib.error.URLError, TimeoutError, OSError) as e:
+        logger.warning("understand() → network error: %s", e)
         return {"ok": False, "source": "rule", "reason": "network"}
-    except Exception:
+    except Exception as e:
+        logger.exception("understand() → unknown error")
         return {"ok": False, "source": "rule", "reason": "unknown"}
 
     obj = _parse_json(content)
     if not obj:
+        logger.warning("understand() → bad_json, raw=%r", content[:300])
         return {"ok": False, "source": "rule", "reason": "bad_json"}
 
     intent = obj.get("intent")
     if intent not in INTENTS:
+        logger.warning("understand() → bad_intent=%r, raw=%r", intent, content[:200])
         return {"ok": False, "source": "rule", "reason": "bad_intent"}
 
     emotion = obj.get("emotion")
@@ -357,8 +372,10 @@ def understand(text: str, profile: dict | None = None,
     if intent in ("safety",) or (intent == "schedule" and event):
         reply = None
     if reply and _BANNED.search(reply):
+        logger.warning("understand() → reply banned by _BANNED: %r", reply[:80])
         reply = None
 
+    logger.info("understand() ✓ intent=%s emotion=%s reply=%r", intent, emotion, (reply or "")[:80])
     return {
         "ok": True,
         "source": "llm",
