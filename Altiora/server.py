@@ -115,7 +115,7 @@ def page(name: str):
         return JSONResponse({"error": "not found"}, status_code=404)
     base = str(BASE.resolve())
     target = str((BASE / name).resolve())
-    # 防路径穿越：target 必须落在 BASE 内（用 commonpath，兼容 3.8）
+    # 防路径穿越：target 必须落在 BASE 内（用 commonpath，兼容 3.10）
     if os.path.commonpath([base, target]) != base or target == base:
         return JSONResponse({"error": "not found"}, status_code=404)
     if not os.path.isfile(target):

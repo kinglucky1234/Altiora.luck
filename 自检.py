@@ -41,10 +41,10 @@ def fail(name, detail=""):
 
 def check_python():
     v = sys.version_info
-    if v >= (3, 8):
+    if v >= (3, 10):
         ok("Python 版本", f"{v.major}.{v.minor}.{v.micro}")
     else:
-        fail("Python 版本", f"{v.major}.{v.minor}，需要 3.8 以上")
+        fail("Python 版本", f"{v.major}.{v.minor}，需要 3.10 以上")
 
 
 def check_deps():

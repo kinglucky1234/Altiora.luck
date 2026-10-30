@@ -13,7 +13,7 @@ AI 翻译官（LLM 版）
 
 没配 Key 或调用失败时返回 ok=False，前端自动退回本地规则 —— 离线也能完整跑。
 """
-from __future__ import annotations  # PEP 563：延迟求值注解，让 str | None / list[dict] 在 3.8+ 也能跑
+from __future__ import annotations  # PEP 563：延迟求值注解，让 str | None / list[dict] 在 3.10+ 也能跑
 
 import ipaddress
 import json
