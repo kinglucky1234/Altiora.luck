@@ -1489,6 +1489,7 @@ function llmErr(r){
   return map[r]||("失败："+(r||"未知原因")+"。");
 }
 
+let MIC_SERVER=false;   // 本地语音服务是否在线（Vosk 离线识别）
 async function checkAI(){
   /* 有 Key：AI 直接在线；不管有没有 Key，都要问一句本地服务，决定麦克风能不能开 */
   if(USERLLM.key)setAIPill(true);
@@ -1497,18 +1498,22 @@ async function checkAI(){
     const j=await (await fetch("/api/health",{signal:ctl.signal})).json();
     clearTimeout(t);
     if(!USERLLM.key)setAIPill(!!j.llm);
-    setMicEnabled(!!j.asr);
+    MIC_SERVER=!!j.asr;
+    setMicEnabled(MIC_SERVER);
   }catch(e){
     if(!USERLLM.key)setAIPill(false);
+    MIC_SERVER=false;
     setMicEnabled(false);
   }
 }
+function webSpeechCtor(){return window.SpeechRecognition||window.webkitSpeechRecognition||null;}
 function setMicEnabled(on){
   const b=document.getElementById("micBtn");if(!b)return;
-  b.disabled=!on;
-  b.style.opacity=on?"1":"0.35";
-  b.style.cursor=on?"pointer":"not-allowed";
-  b.title=on?"语音输入":"语音不可用，请用文字输入（双击 启动.bat 启动后可用语音）";
+  const usable=on||!!webSpeechCtor();   // 本地服务没开，浏览器自带识别也能顶
+  b.disabled=!usable;
+  b.style.opacity=usable?"1":"0.35";
+  b.style.cursor=usable?"pointer":"not-allowed";
+  b.title=usable?"语音输入":"语音不可用，请用文字输入";
 }
 function setAIPill(on){
   const el=document.getElementById("aiPill");if(!el)return;
@@ -2119,7 +2124,7 @@ document.getElementById("chatIn").addEventListener("keydown",e=>{if(e.key==="Ent
 document.getElementById("fullChatIn").addEventListener("keydown",e=>{if(e.key==="Enter")fullSend()});
 
 /* ════════ 语音输入：本地录音 → 本地识别（不碰云端，也不依赖 ffmpeg） ════════ */
-let micOn=false, micStarting=false, micBtnEl=null, micInputEl=null;
+let micOn=false, micStarting=false, micBtnEl=null, micInputEl=null, webStop=null;
 let recProc=null, recStream=null, audioCtx=null;
 let pcmParts=[], pcmLen=0, recRate=48000, recStart=0, recHeard=false, recLastSound=0;
 
@@ -2142,10 +2147,11 @@ function blip(freq,dur){
 }
 async function startVoice(btn,inp,cb){
   // 再点一次 = 提前结束，不用等静音判断
-  if(micOn){stopRecording(btn,inp,cb);return;}
+  if(micOn){ if(webStop){webStop();} else stopRecording(btn,inp,cb); return; }
   if(micStarting)return;   // 权限弹窗还没点完时，别开第二条录音
-  if(location.protocol==="file:"){
-    toast("你现在是双击打开的网页，语音用不了。去双击项目里的「启动.bat」，它会自己开网页。");
+  if(!MIC_SERVER){
+    if(webSpeechCtor()){startWebSpeech(btn,inp,cb);return;}
+    toast("当前浏览器不支持语音输入，直接打字就行。");
     return;
   }
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
@@ -2156,6 +2162,43 @@ async function startVoice(btn,inp,cb){
   micBtnEl=btn;micInputEl=inp;
   micStarting=true;
   try{await startRecord(btn,inp,cb);}finally{micStarting=false;}
+}
+/* 没开本地服务时，用浏览器自带的语音识别：不用 Python，也不用装模型 */
+function startWebSpeech(btn,inp,cb){
+  let r;
+  try{r=new (webSpeechCtor())();}catch(e){toast("这个浏览器不支持语音输入，直接打字就行。");return;}
+  let got=false;
+  micBtnEl=btn;micInputEl=inp;micOn=true;
+  btn.classList.add("on");btn.title="在听…说完会自动停";
+  inp.setAttribute("placeholder","在听…说完会自动停");
+  blip(880,.07);
+  r.lang="zh-CN";r.continuous=false;r.interimResults=false;r.maxAlternatives=1;
+  const end=()=>{
+    micOn=false;webStop=null;
+    btn.classList.remove("on");btn.title="语音输入";
+    inp.removeAttribute("placeholder");
+  };
+  r.onresult=e=>{
+    got=true;let t="";
+    try{t=e.results[0][0].transcript||"";}catch(err){}
+    t=t.trim();
+    if(t)cb(t); else toast("没听清，再说一次。");
+  };
+  r.onerror=e=>{
+    const err=(e&&e.error)||"";
+    end();
+    if(err==="not-allowed"||err==="service-not-allowed")
+      toast("浏览器没给麦克风权限。点地址栏左边的锁→允许麦克风；不行就直接打字。");
+    else if(err==="no-speech")toast("没听到声音，再说一次。");
+    else if(err==="network")toast("语音识别要联网，网络不通就直接打字。");
+    else toast("语音识别不可用，直接打字就行。");
+  };
+  r.onend=()=>{
+    if(!got&&micOn)toast("没听到声音，再说一次。");
+    if(micOn)end();
+  };
+  webStop=()=>{try{r.stop();}catch(e){}};
+  try{r.start();}catch(e){end();toast("语音打不开，直接打字就行。");}
 }
 /* 点一次开始；听到你说话后，静音 1.2 秒自动结束 */
 async function startRecord(btn,inp,cb){
@@ -2261,7 +2304,7 @@ async function stopRecording(btn,inp,cb){
     else toast("没听清，再说一次。");
   }catch(e){
     inp.removeAttribute("placeholder");
-    toast("服务没连上：先双击项目里的「启动.bat」，它会自己打开 http://localhost:8000。");
+    toast("语音服务掉线了，直接打字就行。");
   }
 }
 function toggleMic(){
