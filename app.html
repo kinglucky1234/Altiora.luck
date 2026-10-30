@@ -979,7 +979,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 
 <div class="gaze">
   <div class="gaze-in">
-    <div class="logo">Altiora<span>未来的你</span></div>
+    <div class="logo">Altiora<span>记录自我，向着更高处成长</span></div>
     <div class="gaze-msg" id="gazeMsg"><span class="dot"></span><span id="gazeTxt">今天还是一张白纸，你说一句我就开始记</span></div>
     <div class="ai-pill" id="aiPill" onclick="openLLM()" title="点这里填你自己的 API Key">本地规则</div>
     <button class="tts-btn" id="ttsBtn" onclick="toggleTTS()" title="朗读回复"></button>
@@ -1097,7 +1097,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
     </div>
 
     <div class="card">
-      <div class="ttl">目标 <small>长期 · 中期 · 短期，各存一个</small></div>
+      <div class="ttl">目标 <small>长期 · 中期 · 短期，各记一个</small></div>
       <div class="goal-grid">
         <div class="goal-col" id="goalLong"></div>
         <div class="goal-col" id="goalMid"></div>
@@ -1107,7 +1107,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
     </div>
 
     <div class="card">
-      <div class="ttl">我眼里的你 <small>规划引擎的燃料</small></div>
+      <div class="ttl">我眼里的你 <small>关于你的真实记录</small></div>
       <div class="kv" id="kv"></div>
     </div>
 
@@ -1124,7 +1124,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
           <b id="dsrcSocial">0</b><span>我的生活圈</span><em>导入发言</em>
         </div>
       </div>
-      <div class="hint" style="margin-top:10px">日程在「时间轴」页。这三块拼起来，就是 AI 认识你的数据库。</div>
+      <div class="hint" style="margin-top:10px">日程在「时间轴」页。这三块拼起来，就是 AI 一点点认识的你。</div>
     </div>
 
     <div class="card" style="display:none">
@@ -3343,10 +3343,10 @@ function renderMe(){
   goalCell("goalShort","short_term_goal","短期");
   // 我眼里的你（事实）
   kv.innerHTML=`
-    <div>睡眠硬约束</div><div>${p.hard_sleep_deadline?"不晚于 "+esc(p.hard_sleep_deadline):'<span class="dash">还没说</span>'}</div>
-    <div>精力最好时段</div><div>${dash(p.preferred_focus_hours)}</div>
-    <div>已知软肋</div><div><div class="chips">${weak}</div></div>
-    <div>今日</div><div>${DATA.events.filter(e=>e.date===todayStr()&&e.type!=="sleep").length} 件 · 冲突 ${detectConflicts(todayStr()).length} 处</div>`;
+    <div>睡眠底线</div><div>${p.hard_sleep_deadline?"不晚于 "+esc(p.hard_sleep_deadline):'<span class="dash">还没说</span>'}</div>
+    <div>精力高峰</div><div>${dash(p.preferred_focus_hours)}</div>
+    <div>内心的软肋</div><div><div class="chips">${weak}</div></div>
+    <div>今日记录</div><div>${DATA.events.filter(e=>e.date===todayStr()&&e.type!=="sleep").length} 件 · 冲突 ${detectConflicts(todayStr()).length} 处</div>`;
   // 三个入口计数（日记 / 随手记 / 我的生活圈）
   const dd=document.getElementById("dsrcDiary");
   if(dd)dd.textContent=DATA.diary.length;
