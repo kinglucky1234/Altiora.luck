@@ -865,6 +865,115 @@ button,.btn,.tab,.chip,.tag,.ai-pill,.hint,.ttl,.opt-name,.io div,.legend span,
 .diary-line em{font-style:normal;color:var(--t3);font-size:11px;margin-left:8px}
 @media(max-width:560px){.goal-grid,.dsrc-grid{grid-template-columns:1fr}}
 </style>
+<style id="ui-polish">
+/* ════════ UI 精修：视觉统一 / 动效过渡 / 移动端响应 ════════ */
+
+/* ── 视觉统一：焦点环 · 滚动条 · 排版 ── */
+:root{--ring:color-mix(in srgb,var(--hue) 42%,transparent)}
+html{scroll-behavior:smooth}
+body{text-rendering:optimizeLegibility}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,summary:focus-visible{
+  outline:none;box-shadow:0 0 0 3px var(--ring);
+}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:var(--line-hi);border-radius:999px;border:2px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background:var(--t3)}
+::-webkit-scrollbar-track{background:transparent}
+*{scrollbar-width:thin;scrollbar-color:var(--line-hi) transparent}
+
+/* ── 交互节奏统一：跟手 + 微微上浮 ── */
+.card,.dsrc,.opt,.sw,.goal-col,.note-item,.soc-item{
+  transition:transform .18s ease,border-color .18s ease,background .18s ease,box-shadow .2s ease;
+}
+.card:hover{transform:translateY(-1px)}
+.goal-col:hover{border-color:var(--line-hi)}
+.btn,.icon-btn,.tab,.fab,.tts-btn,.ai-pill,.guide-next{
+  transition:transform .15s ease,background .15s ease,border-color .15s ease,color .15s ease,box-shadow .15s ease,filter .15s ease;
+}
+.btn:active,.icon-btn:active,.tab:active,.fab:active{transform:translateY(1px)}
+
+/* ── 弹窗 / 抽屉入场：上滑 + 轻弹性 ── */
+@keyframes sheetIn{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes maskIn{from{opacity:0}to{opacity:1}}
+.sheet.on,.llm-mask.on,.intro-mask.on{animation:maskIn .18s ease}
+.sheet.on .sheet-box{animation:sheetIn .28s cubic-bezier(.2,.8,.2,1)}
+.llm-mask.on .llm-card{animation:sheetIn .28s cubic-bezier(.2,.8,.2,1)}
+.intro-box.on{animation:sheetIn .3s cubic-bezier(.2,.8,.2,1)}
+
+/* ── 页面切换带一点位移 ── */
+.page.on{animation:pageIn .32s cubic-bezier(.2,.8,.2,1)}
+@keyframes pageIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* ── 时间轴条目错落入场 ── */
+.vtl-item{animation:itemIn .34s ease both}
+@keyframes itemIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:none}}
+.vtl-item:nth-child(1){animation-delay:.02s}
+.vtl-item:nth-child(2){animation-delay:.06s}
+.vtl-item:nth-child(3){animation-delay:.10s}
+.vtl-item:nth-child(4){animation-delay:.14s}
+.vtl-item:nth-child(5){animation-delay:.18s}
+.vtl-item:nth-child(6){animation-delay:.22s}
+.vtl-item:nth-child(7){animation-delay:.26s}
+.vtl-item:nth-child(8){animation-delay:.30s}
+
+/* ── 呼吸球光晕同步呼吸 ── */
+.hero-avatar{will-change:transform}
+@keyframes breathe{0%,100%{transform:scale(1);opacity:.95;filter:brightness(1)}50%{transform:scale(1.05);opacity:1;filter:brightness(1.045)}}
+
+/* ── 输入聚焦反馈统一 ── */
+.wx-bar input,.fullchat-input input,.sheet-box textarea,.intro-text,
+.llm-card input,.llm-card select,.llm-card textarea,.period-row input{
+  transition:border-color .15s ease,background .15s ease,box-shadow .15s ease;
+}
+
+/* ════════ 移动端响应式 ════════ */
+@media(max-width:640px){
+  .wrap{padding:0 14px 56px}
+  .gaze-in{padding:10px 14px}
+  .logo{font-size:15px}
+  .tabs-wrap{padding:16px 0 4px}
+  .tabs{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{padding:8px 15px;font-size:12.5px}
+  #p-home.on{min-height:calc(100vh - 150px);min-height:calc(100dvh - 150px)}
+  .hero-avatar{width:140px;height:140px}
+  .hero-name{margin-top:22px}
+  .msg{max-width:88%}
+  .wx-bar{gap:7px}
+  .wx-bar input{padding:11px 14px;font-size:13px}
+  .icon-btn{width:40px;height:40px;border-radius:11px}
+  .card{padding:15px}
+  .me-hero{flex-wrap:wrap;gap:12px}
+  .me-hero .btn{margin-left:auto}
+  .timeline-head{gap:8px}
+  .daynav{width:100%}
+  .io{padding-left:0}
+  .cf-head .ic{width:18px;height:18px;font-size:11px}
+  .cf-sub{padding-left:0;margin-top:8px}
+  /* 弹窗改成底部抽屉 */
+  .sheet{padding:0;place-items:end stretch}
+  .sheet-box{width:100%;max-width:100%;border-radius:18px 18px 0 0;
+    padding:20px 18px calc(20px + env(safe-area-inset-bottom));max-height:88vh;max-height:88dvh}
+  .sheet-box h3{font-size:14.5px}
+  .cal-grid .dc{height:32px}
+  .fullchat-body{padding:16px 16px 20px}
+  .fullchat-input{padding:12px 14px calc(14px + env(safe-area-inset-bottom))}
+  .fullchat-input input{font-size:13px}
+}
+@media(max-width:400px){
+  .hero-avatar{width:124px;height:124px}
+  .wx-bar input{font-size:12.5px}
+  .tab{padding:8px 12px}
+  .gaze-msg{font-size:11px}
+  .card{padding:13px}
+  .sheet-box,.llm-card{padding:16px 14px calc(16px + env(safe-area-inset-bottom))}
+}
+
+/* 无障碍：尊重系统「减少动态」偏好 */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
+}
+</style>
 </head>
 <body>
 
