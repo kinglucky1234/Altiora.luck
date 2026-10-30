@@ -107,7 +107,7 @@ LLM 的边界被写死在代码里（`Altiora/backend/llm.py`）：
 | 项目 | 要求 |
 |---|---|
 | 操作系统 | Windows 10/11、macOS 12+、Linux |
-| Python | **3.8 及以上**（`python --version` 可验证） |
+| Python | **3.8 及以上（推荐 3.10+）**（`python --version` 可验证；3.8 通过 `from __future__ import annotations` 兼容 `str \| None` 注解） |
 | 浏览器 | Chrome / Edge（语音输入依赖 Web Audio + MediaRecorder） |
 | 磁盘 | 约 150 MB |
 | 网络 | 仅首次装依赖需要；**本地规则模式完全离线**，AI 在线模式需联网直连厂商 API |
