@@ -2,7 +2,7 @@ name: Deploy Pages
 
 on:
   push:
-    branches: [main, polish-20261030]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
