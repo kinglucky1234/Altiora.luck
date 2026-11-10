@@ -61,7 +61,8 @@ def check_deps():
 def check_model():
     must = ["am/final.mdl", "conf/mfcc.conf", "graph/HCLr.fst", "graph/Gr.fst"]
     if not MODEL.is_dir():
-        fail("语音模型", f"目录不存在：{MODEL.relative_to(BASE)}。运行 python3 scripts/download_vosk.py 下载")
+        # 语音是可选能力：文字对话与 AI 在线都不依赖它，缺了只影响录音识别
+        warn("语音模型", f"未下载（可选）：{MODEL.relative_to(BASE)}。要用语音再运行 python3 scripts/download_vosk.py")
         return
     missing = [m for m in must if not (MODEL / m).exists()]
     if missing:

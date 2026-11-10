@@ -116,7 +116,7 @@ story.append(Paragraph("应用截图包括：首页分身球、冲突代价卡�
 
 # (6)
 story.append(Paragraph("（6）项目之前是否发表过或获奖", styles["h1"]))
-story.append(Paragraph("本项目为首次参加传智杯 B 组·赛道 8 个人效能与赛博具身智能仿真，未在其他场合发表或获奖。", styles["body"]))
+story.append(Paragraph("本项目为首次参加传智杯 Vibe Coding 挑战赛 B 组·赛道 8 个人效能与数字孪生具身仿真，未在其他场合发表或获奖。", styles["body"]))
 
 # (7)
 story.append(Paragraph("（7）若项目是在其他项目基础上优化，请说明优化部分", styles["h1"]))
