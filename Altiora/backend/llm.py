@@ -15,6 +15,7 @@ AI 翻译官（LLM 版）
 """
 from __future__ import annotations  # PEP 563：延迟求值注解，让 str | None / list[dict] 在 3.10+ 也能跑
 
+import datetime
 import ipaddress
 import json
 import logging
@@ -48,15 +49,20 @@ SYSTEM = """你叫 Altiora，是「用户理想中更好的自己」在电脑里
 【判断 intent，只能选一个】
 - safety：出现不想活、自伤、结束生命的意味
 - emotion：在倾诉情绪、状态、自我否定
-- schedule：明确说出一件带开始与结束时间的事，要排进日程
+- schedule：明确说出一件或多件带开始与结束时间的事，要排进日程
 - memory：明确要求记住一条规矩或软肋（如「记住…」「以后不…」）
 - goal：说出一个目标（长期 / 中期 / 短期）
 - social：用户贴出或复述自己公开说过/发过的内容（朋友圈、微博、说说、帖子），要从中提炼一条关于他自己的规矩、软肋或习惯
 - chat：其它闲聊
 
 【抽取规则】
-- event 只在 intent=schedule 时给，且必须同时有 start 和 end（24 小时制 HH:MM）。
-  用户没说结束时间，event 就填 null，不要猜。
+- 用户可能用中文数字（三点）、相对说法（下午/明晚/下周三）、口语时长（复习两小时），
+  这些都由你负责理解并归一化成 24 小时制 HH:MM，别指望本地规则去猜。
+- schedule 的时间给在 events 数组里，每项必须有 name、start、end，最多 4 件。
+  用户一句话说几件事，就拆几条；说了几件事但只有部分有完整时间，只把时间完整的放进去。
+  一件都凑不齐 start/end，events 给空数组 []，并把那件事的名字写进 subject，不要猜时间。
+- events 每项可以给 date（YYYY-MM-DD），只在用户说了具体哪天（如下周三、下个月 3 号、10 月 8 日）时给；
+  说今天/明天这种相对日期也可以换算成具体日期再给。拿不准就不给 date，由本地按今天推算。
 - memory 只在用户明确要求记住时给，text 原样保留用户的话，不要改写。
 - goal 只保留目标本身，去掉「我想」这类前缀；同时给 goal_horizon：
   long（长远/最终/十年/梦想/成为…）、mid（这学期/半年/明年/考研/求职/毕业）、short（这周/这个月/近期/明天）。
@@ -72,7 +78,7 @@ SYSTEM = """你叫 Altiora，是「用户理想中更好的自己」在电脑里
 
 【reply 的写法（这一栏最容易被写成客服腔，逐条遵守）】
 - intent=safety：null（前端有固定安全话术）
-- intent=schedule 且 event 完整（有 start 和 end）：null。账要由计算器算完再回来说，你不能抢答。
+- intent=schedule 且 events 里至少有一件完整（有 start 和 end）：null。账要由计算器算完再回来说，你不能抢答。
 - intent=social：一句确认，告诉她「我把它当成你说过的话记下来了」，40 字以内。
 - 其它情况一律要写，一到两句，40 字以内。
 - 必须指涉用户刚说的具体内容：那件事的名字、那个时间、那个词。只写放之四海皆准的话等于没听懂。
@@ -82,7 +88,7 @@ SYSTEM = """你叫 Altiora，是「用户理想中更好的自己」在电脑里
 - 闲聊：正常聊天，可以有一点幽默，但别硬逗。
 
 只输出 JSON，不要解释，不要 Markdown 代码块：
-{"intent":"emotion","emotion":"tired","event":null,"memory":null,"goal":null,"goal_horizon":null,"social":null,"reply":"..."}"""
+{"intent":"schedule","events":[{"name":"家教","start":"11:00","end":"13:00","date":null}],"subject":null,"emotion":"none","memory":null,"goal":null,"goal_horizon":null,"social":null,"reply":null}"""
 
 SAY_SYSTEM = """你是 Altiora，用户理想中更好的自己在电脑里的投影。下面是本地计算器算出的确定结果，你只负责把它说成一句人话。
 
@@ -204,6 +210,22 @@ def _to_minutes(hm: str) -> int:
     return int(h) * 60 + int(m)
 
 
+def _norm_date(v) -> str | None:
+    """只做护栏：格式必须是 YYYY-MM-DD，且在今天起的未来一年内。
+    不合格就丢掉，前端会回落到本地按今天推算，绝不让模型编出一个不存在的日子。"""
+    if not isinstance(v, str):
+        return None
+    s = v.strip()
+    try:
+        d = datetime.date.fromisoformat(s)
+    except ValueError:
+        return None
+    today = datetime.date.today()
+    if d < today or d > today + datetime.timedelta(days=365):
+        return None
+    return s
+
+
 def _clean_event(raw) -> dict | None:
     if not isinstance(raw, dict):
         return None
@@ -215,12 +237,16 @@ def _clean_event(raw) -> dict | None:
     # 只校验区间合法，不做任何时长/代价推导
     if _to_minutes(end) <= _to_minutes(start):
         return None
-    return {
+    out = {
         "name": name,
         "start": start,
         "end": end,
         "loc": str(raw.get("loc") or "").strip()[:20],
     }
+    date = _norm_date(raw.get("date"))
+    if date:
+        out["date"] = date
+    return out
 
 
 def _clean_memory(raw) -> dict | None:
@@ -313,6 +339,8 @@ def understand(text: str, profile: dict | None = None,
         return {"ok": False, "source": "rule", "reason": "unsafe_base"}
 
     user = (
+        f"今天是 {datetime.date.today().isoformat()}"
+        f"（周{'一二三四五六日'[datetime.date.today().weekday()]}）。\n"
         "用户画像（已知事实，不要重复询问，也不要复述）：\n"
         f"{_profile_brief(profile or {})}\n\n"
         f"用户刚刚说：{text[:MAX_INPUT]}"
@@ -354,11 +382,25 @@ def understand(text: str, profile: dict | None = None,
     if emotion not in EMOTIONS:
         emotion = "none"
 
-    event = _clean_event(obj.get("event")) if intent == "schedule" else None
+    # 一句话多件事：以 events 数组为准；只有第一件的旧格式 event 也兼容
+    events: list[dict] = []
+    if intent == "schedule":
+        raw_events = obj.get("events")
+        if isinstance(raw_events, list):
+            events = [e for e in (_clean_event(x) for x in raw_events[:4]) if e]
+        if not events:
+            legacy = _clean_event(obj.get("event"))
+            if legacy:
+                events = [legacy]
+    event = events[0] if events else None
     # 时间不全时仍保留主题，前端会追问时间，而不是替用户编一个
     subject = None
-    if intent == "schedule" and isinstance(obj.get("event"), dict):
-        subject = str(obj["event"].get("name") or "").strip()[:20] or None
+    if intent == "schedule":
+        raw_subject = None
+        if isinstance(obj.get("event"), dict):
+            raw_subject = obj["event"].get("name")
+        raw_subject = raw_subject or obj.get("subject")
+        subject = str(raw_subject or "").strip()[:20] or None
     memory = _clean_memory(obj.get("memory")) if intent == "memory" else None
     goal = str(obj.get("goal") or "").strip()[:60] or None if intent == "goal" else None
     goal_horizon = obj.get("goal_horizon") if intent == "goal" else None
@@ -369,19 +411,21 @@ def understand(text: str, profile: dict | None = None,
     reply = obj.get("reply")
     reply = str(reply).strip()[:120] if isinstance(reply, str) else None
     # 服务端硬约束：完整日程不给话术（账还没算），安全一律本地处理
-    if intent in ("safety",) or (intent == "schedule" and event):
+    if intent in ("safety",) or (intent == "schedule" and events):
         reply = None
     if reply and _BANNED.search(reply):
         logger.warning("understand() → reply banned by _BANNED: %r", reply[:80])
         reply = None
 
-    logger.info("understand() ✓ intent=%s emotion=%s reply=%r", intent, emotion, (reply or "")[:80])
+    logger.info("understand() ✓ intent=%s emotion=%s events=%d reply=%r",
+                intent, emotion, len(events), (reply or "")[:80])
     return {
         "ok": True,
         "source": "llm",
         "intent": intent,
         "emotion": emotion,
         "event": event,
+        "events": events,
         "subject": subject,
         "memory": memory,
         "goal": goal,

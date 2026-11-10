@@ -2391,6 +2391,8 @@ function setAIPill(on){
    仍然只做「听懂人话」和「把结果说成人话」，冲突与代价一律由本地计算器算。 */
 const LLM_INTENTS=["safety","emotion","schedule","memory","goal","social","chat"];
 const LLM_EMOTIONS=["sad","tired","anxious","selfblame","relapse","lonely","numb","none"];
+// 模型判出的情绪直接写进日记，不再靠关键词表反推
+const EMOTION_CN={sad:"很难过",tired:"很累",anxious:"很焦虑",selfblame:"在自责",relapse:"想重开",lonely:"很孤单",numb:"没动力"};
 const GOAL_HORIZONS=["long","mid","short"];
 const GOAL_KEY={long:"long_term_goal",mid:"mid_term_goal",short:"short_term_goal"};
 const GOAL_LABEL={long:"长期目标",mid:"中期目标",short:"短期目标"};
@@ -2414,6 +2416,8 @@ const LLM_SYS=`你叫 Altiora，是「用户理想中更好的自己」在电脑
 - schedule 的时间给在 events 数组里，每项必须有 name、start、end，最多 4 件。
   用户一句话说几件事，就拆几条；说了几件事但只有部分有完整时间，只把时间完整的放进去。
   一件都凑不齐 start/end，events 给空数组 []，并把那件事的名字写进 subject，不要猜时间。
+- events 每项可以给 date（YYYY-MM-DD），只在用户说了具体哪天（如下周三、下个月 3 号、10 月 8 日）时给；
+  说今天/明天这种相对日期也可以换算成具体日期再给。拿不准就不给 date，由本地按今天推算。
 - memory 只在用户明确要求记住时给，text 原样保留用户的话，不要改写。
 - goal 只保留目标本身，去掉「我想」这类前缀；同时给 goal_horizon：
   long（长远/最终/十年/梦想/成为…）、mid（这学期/半年/明年/考研/求职/毕业）、short（这周/这个月/近期/明天）。
@@ -2496,7 +2500,25 @@ function cleanEvent(raw){
   const s=normTime(raw.start),e=normTime(raw.end);
   if(!name||!s||!e)return null;
   if(minutesOf(e)<=minutesOf(s))return null;
-  return {name,start:s,end:e,loc:String(raw.loc||"").trim().slice(0,20)};
+  const out={name,start:s,end:e,loc:String(raw.loc||"").trim().slice(0,20)};
+  const d=normDate(raw.date);
+  if(d)out.date=d;
+  return out;
+}
+/* 模型偶尔会自己算日期，这里只做护栏：格式必须 YYYY-MM-DD、必须是今天起的未来一年内。
+   不合格就丢掉，回落到本地 resolveDate，绝不让模型编出一个不存在的日子。 */
+function normDate(v){
+  if(typeof v!=="string")return null;
+  const m=v.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(!m)return null;
+  const y=+m[1],mo=+m[2],d=+m[3];
+  const dt=new Date(y,mo-1,d);
+  if(dt.getFullYear()!==y||dt.getMonth()!==mo-1||dt.getDate()!==d)return null;
+  const today=todayStr();
+  const limit=new Date();limit.setDate(limit.getDate()+365);
+  const limitIso=`${limit.getFullYear()}-${pad2(limit.getMonth()+1)}-${pad2(limit.getDate())}`;
+  if(v<today||v>limitIso)return null;
+  return v;
 }
 function cleanMemory(raw){
   if(!raw||typeof raw!=="object")return null;
@@ -2529,6 +2551,7 @@ async function directUnderstand(text){
     if(t)msgs.push({role:m.r==="u"?"user":"assistant",content:t});
   });
   msgs.push({role:"user",content:
+    "今天是 "+todayStr()+"（周"+"日一二三四五六"[new Date().getDay()]+"）。\n"+
     "用户画像（已知事实，不要重复询问，也不要复述）：\n"+
     profileBrief(DATA.profile)+"\n\n用户刚刚说："+String(text||"").slice(0,600)});
   const obj=parseJsonLoose(await directChat(USERLLM,msgs,400));
@@ -2794,6 +2817,8 @@ async function handleUser(v){
   await routeLLM(j,slot.id,v);
 }
 async function routeLLM(j,slotId,v){
+  // 情绪由模型判，直接落到本次会话的日记里；本地关键词表只做离线兜底
+  if(j.emotion&&EMOTION_CN[j.emotion])SESS.mood=EMOTION_CN[j.emotion];
   // 1) 日程：理解交给大模型（可一次多件），撞了几处由本地计算器算，再让大模型说成人话
   if(j.intent==="schedule"){
     let evs=(Array.isArray(j.events)&&j.events.length)?j.events.slice(0,4):(j.event?[j.event]:[]);
