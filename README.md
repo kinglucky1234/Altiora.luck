@@ -226,7 +226,7 @@ Altiora.luck/
 ├── 自检.py                          # 复现自检
 ├── requirements.txt
 ├── .env.example                    # 环境变量模板
-├── Altiora-技术文档.pdf              # 技术文档（19 页，≤30 页）
+├── Altiora-技术文档.pdf              # 技术文档（≤30 页，本地生成：python3 scripts/gen_tech_doc.py；随作品提交，不进 Git）
 ├── AI协同对话历史.md                # Prompt 链文字版（6 迭代 + 5 次 Bug 修复）
 ├── scripts/
 │   └── download_vosk.py            # 下载 Vosk 中文离线模型（约 66 MB）
@@ -267,7 +267,7 @@ Altiora.luck/
 | 环境变量模板 | `.env.example` | ✅ |
 | 可复现性自检（依赖/模型/控件/接口） | `python3 自检.py` | ✅ |
 | 演示视频（5-8 分钟，含 ≥2 分钟 AI 协同复现） | 待补 | ⏳ |
-| 技术文档 PDF（≤30 页） | `Altiora-技术文档.pdf`（19 页） | ✅ |
+| 技术文档 PDF（≤30 页） | 本地运行 `python3 scripts/gen_tech_doc.py` 生成，随作品提交（不进 Git） | ✅ |
 
 ## 8. 设计原则（为什么这样做）
 

@@ -17,5 +17,7 @@ node_modules/
 Altiora/backend/model/*
 !Altiora/backend/model/README.md
 
-# 演示视频体积大，不进 git（随作品单独提交）；技术文档 PDF 可复现生成，随仓库提交
+# 交付物不走 Git：技术文档 PDF、演示视频单独提交
+Altiora-技术文档.pdf
+Altiora-*.pdf
 Altiora-演示视频脚本.md
