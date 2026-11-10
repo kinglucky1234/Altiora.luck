@@ -341,17 +341,20 @@ story += H3("4.7.3 directSay 的报文构造")
 story.append(P("情绪与结果表达阶段，user 报文包含 intent + 结构化 facts。模型根据 intent 选择语气（emotion 共情、schedule 中性陈述），facts 中的数字是唯一允许出现的数字。"))
 
 story += H2("4.8 完整 SYSTEM Prompt（节选）")
-story.append(P("以下为前端 LLM_SYS 的核心节选，展示意图分类与字段抽取规则。完整版本见 Altiora-未来的我.html 的 LLM_SYS 常量。"))
+story.append(P("以下为前端 LLM_SYS 的核心节选（V4 版本），展示意图分类、字段抽取与多意图约定。完整版本见 Altiora-未来的我.html 的 LLM_SYS 常量，后端 llm.py 的 SYSTEM 与之一致。"))
 story.append(CODE("""你是 Altiora，一个只做「自然语言 → 结构化字段」翻译的助手。
 
 【意图分类】只能输出以下 7 种 intent 之一：
-  safety   — 自伤/极端情绪，触发安全话术
-  emotion  — 情绪宣泄，只共情不给建议
-  schedule — 日程安排，抽取 event
-  memory   — 要记住某事，抽取 memory
-  goal     — 长期目标，抽取 goal
-  social   — 社交场合建议，抽取 social
-  chat     — 闲聊
+  safety / emotion / schedule / memory / goal / social / chat
+
+【抽取规则】
+- 中文数字（三点）、相对日期（下周三）、口语时长（复习两小时）
+  都由你归一化成 24 小时制 HH:MM，本地规则不参与在线路径。
+- schedule 的时间给在 events 数组里，每项含 name/start/end，最多 4 件；
+  可附 date（YYYY-MM-DD），拿不准就不给。
+- 一句话里可能同时有好几层意思：情绪、目标、软肋可以一起给。
+  weakness 只在用户描述「反复发生的自身规律」时给，20 字以内，
+  只说一次的心情不算。不许下心理诊断。
 
 【绝对不能做】
 - 不计算时间重叠、时长、金钱、代价
@@ -360,11 +363,14 @@ story.append(CODE("""你是 Altiora，一个只做「自然语言 → 结构化�
 - 不说鸡汤、不喊口号
 
 【reply 规则】
-- intent=schedule 且 event 完整 → reply 必须为 null
+- intent=schedule 且 events 至少一件完整 → reply 必须为 null（账由计算器算完再说）
 - intent=safety → reply 必须为 null
-- 其他 intent 可写一句简短人话
+- 其他 intent 可写一句简短人话，不超过 40 字
 
-输出 JSON：{"intent":..., "event":..., "memory":..., "goal":..., "social":..., "reply":...}"""))
+输出 JSON：
+{"intent":"...","events":[...],"emotion":"...","weakness":null,
+ "goal":null,"goal_horizon":null,"reply":null}"""))
+story.append(P("注意 V4 的两处变化：schedule 由单件 event 改为 events 数组（一句话多件事）；goal 与 weakness 不再受主意图限制——用户说「我想考研，可一焦虑就刷手机」时，情绪、目标、软肋会同时抽取，而不是只保留一个 intent。"))
 
 # ════════════════════════════════════════
 # 5. 核心功能与确定性逻辑
@@ -436,8 +442,8 @@ story.append(TBL(mem_tbl, [30*mm, 50*mm, 30*mm, 50*mm]))
 story.append(CAP("表 5-2 记忆三层设计"))
 story.append(P("三层各管各的，用「保留时长」划边界，避免记多了像监视、记少了每句从零开始。日记按「目标 → 排了什么 → 那会儿的状态」拼摘要，不存原话。"))
 
-story += H2("5.4 目标抽取（extractGoal 七步规则）")
-story.append(P("这是意图控制在「字段抽取」层面的体现。用户说「你好啊，我想当科学家」，存进去的应该是「成为科学家」而不是原话。七步规则："))
+story += H2("5.4 目标抽取：在线交给模型，离线保留七步兜底")
+story.append(P("在在线路径（有 Key / server.py）下，目标由模型直接从原话抽取，前端不再跑正则；七步规则只保留给无 Key、断网或模型返回坏 JSON 的离线路径。用户说「你好啊，我想当科学家」，存进去的应该是「成为科学家」而不是原话。七步规则如下："))
 story.append(B("① 剥寒暄（去掉问候、语气词）"))
 story.append(B("② 锚点词截断（我想/我要/我希望/我的目标是/我以后想 等）"))
 story.append(B("③ 去时间/连接词（明天、以后、而且）"))
@@ -445,7 +451,21 @@ story.append(B("④ 动词归一（当/做 → 成为）"))
 story.append(B("⑤ 去语气词（啊、呢、吧）"))
 story.append(B("⑥ 长度护栏（过长则截断）"))
 story.append(B("⑦ 情绪/当天事挡在门外（我想哭、我明天想去图书馆 → 不存）"))
-story.append(P("修复前曾出现「我以后想成为科学家」解析失败的 Bug——M 正则缺「我以后想」，而 goalHorizon 判定长期的关键词里却有「以后想」，两头不一致。修复后两者关键词完全对齐。"))
+story.append(P("修复前曾出现「我以后想成为科学家」解析失败的 Bug——M 正则缺「我以后想」，而 goalHorizon 判定长期的关键词里却有「以后想」，两头不一致。修复后两者关键词完全对齐。这次修复也暴露了规则模板的局限：靠穷举关键词永远有漏网句式，因此从 V4 起，在线路径不再依赖这套正则。"))
+
+story += H2("5.5 多意图抽取与三道护栏")
+story.append(P("用户说话很少只有一个意思。最常见的一句是：「我最近想考研，可一焦虑就刷手机，今天又刷到两点，好烦。」V1–V3 只能命中一个意图（情绪），目标和软肋都会丢。V4 把协议改成「主意图 + 附加层」，三个字段可以同时产出。"))
+mi_tbl = [
+    ["字段", "谁产出", "护栏（本地）"],
+    ["intent / emotion", "模型判定", "LLM_INTENTS / LLM_EMOTIONS 白名单，越界置 none"],
+    ["goal + goal_horizon", "任意意图下均可给", "GOAL_HORIZONS 白名单，长度 ≤ 60，去前缀"],
+    ["weakness", "从自我描述中提炼", "cleanWeakness 限长 24、WEAK_BANNED 禁建议/鸡汤、去重且上限 40"],
+    ["events", "模型抽取", "cleanEvent 校验名非空、HH:MM、结束晚于开始"],
+]
+story.append(TBL(mi_tbl, [38*mm, 50*mm, 92*mm]))
+story.append(CAP("表 5-3 多意图字段与本地护栏"))
+story.append(P("护栏的作用不是限制理解，而是把「理解」和「评判」分开：模型可以判断「一焦虑就刷手机」是一条规律，但不能把它写成建议或诊断。命中「建议 / 应该 / 加油 / 相信自己」的软肋一律丢弃。"))
+story.append(P("前端会把本次抽取结果折叠成一张「模型理解」卡片附在回复下方，用户点开即可核对意图、情绪、目标、软肋与事件，理解错了能立刻看见——这是可解释性，也是答辩时最直观的证据。"))
 
 # ════════════════════════════════════════
 # 6. AI 协同与演进链路（重点）

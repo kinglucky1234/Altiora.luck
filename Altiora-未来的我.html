@@ -525,6 +525,14 @@ pre.json .n{color:#FDBA74}
 .period-row input{padding:8px 10px;border-radius:8px;border:1px solid var(--line);
   background:rgba(255,255,255,.03);color:var(--t1);font-size:12.5px;font-family:inherit;outline:none}
 .period-row input:focus{border-color:rgba(59,130,246,.5)}
+.ucard{margin-top:8px;font-size:12px;border:1px dashed rgba(128,128,128,.4);border-radius:8px;padding:6px 9px;background:rgba(128,128,128,.06)}
+.ucard summary{cursor:pointer;color:#8b8b8b;font-weight:600;list-style:none;outline:none}
+.ucard summary::-webkit-details-marker{display:none}
+.ucard summary:before{content:"▸ "}
+.ucard[open] summary:before{content:"▾ "}
+.uc-body{margin-top:5px;line-height:1.75;color:var(--t2)}
+.uc-k{display:inline-block;min-width:38px;color:#9a9a9a;margin-right:4px}
+.uc-v{font-weight:600}
 </style>
 <style id="skin-engine">
 /* ══════════ 可切换主题：3 套皮肤 × 主色 ══════════ */
@@ -2830,6 +2838,31 @@ async function handleUser(v){
   if(!j){setMsg(slot.id,replyTo(v));return;}
   await routeLLM(j,slot.id,v);
 }
+/* 把模型这次抽到的字段摊开给用户看：理解得对不对，一眼可查 */
+const INTENT_CN={schedule:"排程",emotion:"情绪",goal:"目标",memory:"规矩",social:"公开发言",safety:"安全",chat:"闲聊"};
+const HORIZON_CN={long:"长期",mid:"中期",short:"短期"};
+function understandCard(j){
+  const rows=[];
+  rows.push(`<span class="uc-k">意图</span><span class="uc-v">${INTENT_CN[j.intent]||j.intent}</span>`);
+  if(j.emotion&&j.emotion!=="none"&&EMOTION_CN[j.emotion])
+    rows.push(`<span class="uc-k">情绪</span><span class="uc-v">${EMOTION_CN[j.emotion]}</span>`);
+  if(j.goal)
+    rows.push(`<span class="uc-k">目标</span><span class="uc-v">${esc(j.goal)}</span>（${HORIZON_CN[j.goal_horizon]||"中期"}）`);
+  if(j.weakness)
+    rows.push(`<span class="uc-k">软肋</span><span class="uc-v">${esc(j.weakness)}</span>`);
+  if(j.memory&&j.memory.text)
+    rows.push(`<span class="uc-k">规矩</span><span class="uc-v">${esc(j.memory.text)}</span>`);
+  const evs=(Array.isArray(j.events)&&j.events.length)?j.events:(j.event?[j.event]:[]);
+  if(evs.length)
+    rows.push(`<span class="uc-k">事件</span><span class="uc-v">${evs.map(e=>`${esc(e.name)} ${e.start}-${e.end}${e.date?"（"+esc(e.date)+"）":""}`).join("、")}</span>`);
+  if(j.subject&&!evs.length)
+    rows.push(`<span class="uc-k">待补</span><span class="uc-v">${esc(j.subject)}（缺开始/结束时间）</span>`);
+  if(rows.length<2)return "";
+  return `<details class="ucard"><summary>模型理解（${rows.length-1} 项）</summary><div class="uc-body">${rows.join("<br>")}</div></details>`;
+}
+function setMsgU(slotId,html,j){
+  setMsg(slotId,html+understandCard(j));
+}
 async function routeLLM(j,slotId,v){
   // 情绪由模型判，直接落到本次会话的日记里；本地关键词表只做离线兜底
   if(j.emotion&&EMOTION_CN[j.emotion])SESS.mood=EMOTION_CN[j.emotion];
@@ -2871,7 +2904,7 @@ async function routeLLM(j,slotId,v){
       }
       if(targetDate&&targetDate!==VIEW_DATE){VIEW_DATE=targetDate;refreshDay();}
       if(!added.length){
-        setMsg(slotId,`时间轴里已经有${dups.map(n=>`「${esc(n)}」`).join("、")}了，我没重复加。`);
+        setMsgU(slotId,`时间轴里已经有${dups.map(n=>`「${esc(n)}」`).join("、")}了，我没重复加。`,j);
         return;
       }
       const line=await askSay(added.length===1?{
@@ -2884,38 +2917,38 @@ async function routeLLM(j,slotId,v){
         首个冲突:conflictInfo
       });
       const brief=added.map(e=>`「${esc(e.name)} ${e.start}-${e.end}」`).join("、");
-      setMsg(slotId,line||(totalDelta>0
+      setMsgU(slotId,line||(totalDelta>0
         ?`${brief}加进时间轴了，撞出 <b>${totalDelta}</b> 处冲突。代价在时间轴页。`
-        :`${brief}加进去了，没冲突。`));
+        :`${brief}加进去了，没冲突。`),j);
       return;
     }
     // 听懂了，但用户没说结束时间 —— 不编，问一句；记住它，等下补时间
     const sub=j.subject?`「${esc(j.subject)}」`:"这件事";
     if(j.subject){DATA.memory.pending={name:j.subject.slice(0,10),date:resolveDate(v),ts:Date.now()};saveData();}
-    setMsg(slotId,j.reply||`${sub}我听懂了。但要进时间轴还差个开始和结束时间——几点到几点？`);
+    setMsgU(slotId,j.reply||`${sub}我听懂了。但要进时间轴还差个开始和结束时间——几点到几点？`,j);
     return;
   }
   // 2) 明确要求记住的规矩
   if(j.intent==="memory"&&j.memory){
     DATA.profile.known_weakness.push(j.memory.text);renderMe();updStats();saveData();
-    setMsg(slotId,j.reply||`行，写进行为规矩了：「${esc(j.memory.text)}」。以后撞上它，代价那栏会出现。`);
+    setMsgU(slotId,j.reply||`行，写进行为规矩了：「${esc(j.memory.text)}」。以后撞上它，代价那栏会出现。`,j);
     return;
   }
   // 3) 目标（长期 / 中期 / 短期）
   if(j.intent==="goal"&&j.goal){
     const h=j.goal_horizon||goalHorizon(v)||"mid";
     DATA.profile[GOAL_KEY[h]]=j.goal;SESS.goal=j.goal;renderMe();updStats();saveData();sessFlush();
-    setMsg(slotId,j.reply||`「${esc(j.goal)}」——收进${GOAL_LABEL[h]}里了。<br>它今天不用开始。往后有冲突，我先保它。`);
+    setMsgU(slotId,j.reply||`「${esc(j.goal)}」——收进${GOAL_LABEL[h]}里了。<br>它今天不用开始。往后有冲突，我先保它。`,j);
     return;
   }
   // 3.5) 公开发言 → 提炼一条关于他自己的话
   if(j.intent==="social"&&j.social){
     pushSocialInsight(j.social,v);
-    setMsg(slotId,j.reply||`「${esc(j.social)}」——这句我当成你说过的话记下来了。以后撞上相关的事，我会把它摆出来。`);
+    setMsgU(slotId,j.reply||`「${esc(j.social)}」——这句我当成你说过的话记下来了。以后撞上相关的事，我会把它摆出来。`,j);
     return;
   }
   // 4) 情绪 / 闲聊：模型只负责说话
-  if(j.reply){setMsg(slotId,esc(j.reply)+(auxNotes.length?`<br><small>${auxNotes.join("；")}</small>`:""));return;}
+  if(j.reply){setMsgU(slotId,esc(j.reply)+(auxNotes.length?`<br><small>${auxNotes.join("；")}</small>`:""),j);return;}
   // 5) 模型没给话，退回本地兜底
   setMsg(slotId,replyTo(v));
 }
