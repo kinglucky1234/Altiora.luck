@@ -223,6 +223,15 @@ body[data-tab="home"] .fab{display:none}
 .vtl-item.cf .vtl-dot{background:var(--red);box-shadow:0 0 0 1px var(--red),0 0 16px rgba(239,68,68,.65)}
 .vtl-item.cf .vtl-chunk{border-color:rgba(239,68,68,.5);background:rgba(239,68,68,.06)}
 .vtl-item.cf .vtl-name{color:#FCA5A5}
+.vtl-done{position:absolute;right:26px;top:8px;width:18px;height:18px;border-radius:50%;
+  border:1px solid var(--line-hi);color:transparent;font-size:11px;line-height:16px;text-align:center;
+  cursor:pointer;opacity:0;transition:opacity .15s,background .15s,color .15s,border-color .15s}
+.vtl-item:hover .vtl-done{opacity:1}
+.vtl-done.on{opacity:1;background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.6);color:#34D399}
+.vtl-item.done .vtl-chunk{opacity:.5}
+.vtl-item.done .vtl-name{text-decoration:line-through}
+.cd-line{font-size:12px;color:var(--t3);margin:-4px 0 12px;letter-spacing:.2px}
+.cd-line b{color:var(--t1);font-variant-numeric:tabular-nums}
 .legend{display:flex;gap:16px;margin-top:12px;font-size:11.5px;color:var(--t3);flex-wrap:wrap}
 .legend b{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;vertical-align:middle}
 .band{height:4px;border-radius:3px;margin-top:14px;position:relative;overflow:hidden;
@@ -1086,6 +1095,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
           <button class="btn" onclick="openPlan()">生成今日方案</button>
         </div>
       </div>
+      <div id="countdown" class="cd-line"></div>
       <div class="vtl">
         <div class="vtl-line"></div>
         <div id="bars"></div>
@@ -1103,6 +1113,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
       <div class="band-lbl"><span>光带 · 今日节奏</span><span id="bandTxt">红色区段 = 冲突发生处</span></div>
     </div>
 
+    <div id="reconWrap"></div>
     <div id="cfWrap"></div>
     <div id="planWrap"></div>
   </div>
@@ -1145,6 +1156,12 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
         <div class="goal-col" id="goalLong"></div>
         <div class="goal-col" id="goalMid"></div>
         <div class="goal-col" id="goalShort"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:12px;font-size:12px;color:var(--t3);flex-wrap:wrap">
+        <span>最近一个截止日期</span>
+        <input type="date" id="goalDeadline" onchange="setGoalDeadline(this.value)"
+          style="font:inherit;padding:4px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--t1)">
+        <span id="goalDeadlineHint"></span>
       </div>
       </div>
 
@@ -1219,6 +1236,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
     <div class="cal-day" id="diaryDayLbl"></div>
     <textarea id="diaryIn" placeholder="这一天过得怎么样？写点什么…"></textarea>
     <div class="result" id="diaryRes"></div>
+    <div id="weekReview" style="margin:14px 0 4px"></div>
     <div class="diary-list" id="diaryListBox"></div>
     <div class="sheet-act">
       <button class="btn" onclick="saveDiary()">保存这一天的日记</button>
@@ -1367,6 +1385,8 @@ const DATA = {
     long_term_goal:"",
     mid_term_goal:"",
     short_term_goal:"",
+    /* 最近一个截止日期：陪跑的方向感，倒计时和缺口都靠它 */
+    goal_deadline:"",
     /* 第三类数据源：公开发言（朋友圈/微博/说说）里提炼出的关于他自己的话 */
     social_insights:[],
     avatar_color:"#5B7CFA"
@@ -1616,12 +1636,13 @@ function renderGantt(){
     const cf=cfIds.has(e.id);
     const col=COLORS[e.type]||"#3B82F6";
     const idx=DATA.events.indexOf(e);
-    return `<div class="vtl-item${cf?" cf":""}" title="${esc(e.name)} ${e.start}-${e.end} · 优先级 ${e.priority}${e.wage?" · 时薪"+e.wage+"元":""}">
+    return `<div class="vtl-item${cf?" cf":""}${e.done?" done":""}" title="${esc(e.name)} ${e.start}-${e.end} · 优先级 ${e.priority}${e.wage?" · 时薪"+e.wage+"元":""}">
       <div class="vtl-dot" style="background:${col}"></div>
       <div class="vtl-chunk">
         <div class="vtl-row"><b class="vtl-name">${esc(e.name)}</b><span class="vtl-tag">${TYPE_CN[e.type]||"日程"}</span></div>
         <div class="vtl-tm">${e.start} — ${e.end}${e.loc?" · "+esc(e.loc):""}</div>
       </div>
+      <span class="vtl-done${e.done?" on":""}" onclick="event.stopPropagation();toggleEventDone(${idx})" title="${e.done?"点一下取消完成":"点一下标记完成"}">${e.done?"✓":""}</span>
       <span class="vtl-del" onclick="delEvent(${idx})" title="删掉这条">×</span>
     </div>`;
   }).join("");
@@ -1658,7 +1679,79 @@ function goToday(){VIEW_DATE=todayStr();refreshDay();}
 function refreshDay(){
   DATA.conflicts=detectConflicts();
   saveData();
-  renderDayBar();renderGantt();renderConflicts();renderOrbs();renderMe();updStats();
+  renderDayBar();renderGantt();renderRecon();renderCountdown();renderConflicts();renderOrbs();renderMe();updStats();
+}
+
+/* ════════ 陪跑：截止日期 / 完成 / 对账 / 周回顾 ════════ */
+function goalTitle(){
+  const p=DATA.profile;
+  return (p.mid_term_goal||p.long_term_goal||p.short_term_goal||"").trim();
+}
+function daysUntil(iso){
+  if(!iso)return null;
+  const a=new Date(todayStr()+"T00:00:00"), b=new Date(iso+"T00:00:00");
+  return Math.round((b-a)/86400000);
+}
+function setGoalDeadline(v){
+  DATA.profile.goal_deadline=v||"";
+  saveData();renderCountdown();renderMe();updStats();
+}
+function renderCountdown(){
+  const el=document.getElementById("countdown");if(!el)return;
+  const iso=DATA.profile.goal_deadline;
+  if(VIEW_DATE!==todayStr()){el.innerHTML="";return;}
+  if(!iso){
+    el.innerHTML="还没有截止日期。去「我的画像」填一个，我就知道要陪你走到哪天。";
+    return;
+  }
+  const n=daysUntil(iso), t=goalTitle(), who=t?`<b>${esc(t)}</b>`:"那个日子";
+  el.innerHTML=n>0?`距 ${who} 还有 <b>${n}</b> 天`
+    :n===0?`今天就是 ${who}`
+    :`${who} 已经过去 <b>${-n}</b> 天`;
+}
+function toggleEventDone(i){
+  const e=DATA.events[i];if(!e)return;
+  e.done=!e.done;saveData();
+  renderGantt();renderRecon();renderMe();updStats();
+}
+function todayPlans(){
+  return DATA.events.filter(e=>e.date===todayStr()&&e.type!=="sleep");
+}
+function renderRecon(){
+  const w=document.getElementById("reconWrap");if(!w)return;
+  if(VIEW_DATE!==todayStr()){w.innerHTML="";return;}
+  const list=todayPlans();
+  if(!list.length){w.innerHTML="";return;}
+  const done=list.filter(e=>e.done), undone=list.filter(e=>!e.done);
+  const rows=undone.map(e=>`<div style="display:flex;align-items:center;gap:8px;margin-top:7px">
+      <span style="flex:1;color:var(--t2);font-size:12.5px">${esc(e.name)} · ${e.start}-${e.end}</span>
+      <button class="btn ghost" style="padding:2px 10px;font-size:11.5px" onclick="moveEventTo(${DATA.events.indexOf(e)},1)">顺延到明天</button>
+    </div>`).join("");
+  w.innerHTML=`<div class="card">
+    <div class="ttl">今天的对账 <small>只记事实，不评对错</small></div>
+    <div style="font-size:12.5px;color:var(--t2);line-height:1.7">
+      今天你给自己排了 <b>${list.length}</b> 件，完成 <b>${done.length}</b> 件${undone.length?"，还剩 "+undone.length+" 件":""}。
+      ${undone.length?"<div style='color:var(--t3);margin-top:4px'>没做的放哪，你说了算。不说原因也行。</div>":""}
+    </div>${rows}</div>`;
+}
+function moveEventTo(i,dn){
+  const e=DATA.events[i];if(!e)return;
+  e.date=addDays(e.date,dn);e.done=false;
+  saveData();refreshDay();
+}
+function renderWeekReview(){
+  const box=document.getElementById("weekReview");if(!box)return;
+  const since=addDays(todayStr(),-6);
+  const done=DATA.events.filter(e=>e.done&&e.type!=="sleep"&&e.date>=since&&e.date<=todayStr());
+  const diaries=DATA.diary.filter(x=>x.d>=since&&x.d<=todayStr());
+  const names={};done.forEach(e=>{names[e.name]=(names[e.name]||0)+1;});
+  const chips=Object.keys(names).map(k=>`<span class="chip">${esc(k)}${names[k]>1?" ×"+names[k]:""}</span>`).join("");
+  box.innerHTML=`<div class="card" style="background:rgba(16,185,129,.04);border-color:rgba(16,185,129,.2)">
+    <div class="ttl" style="margin-bottom:8px">这 7 天，你保住了什么 <small>只列做到的</small></div>
+    ${done.length?`<div class="chips">${chips}</div>
+      <div style="font-size:12px;color:var(--t3);margin-top:8px">共完成 ${done.length} 件，写了 ${diaries.length} 篇日记。</div>`
+      :`<div style="font-size:12.5px;color:var(--t3)">这 7 天还没有标记完成的事。想记的时候，在时间轴上点一下圆圈就行。</div>`}
+  </div>`;
 }
 
 /* ════════ 渲染：冲突卡片 ════════ */
@@ -3740,6 +3833,13 @@ function renderMe(){
   goalCell("goalLong","long_term_goal","长期");
   goalCell("goalMid","mid_term_goal","中期");
   goalCell("goalShort","short_term_goal","短期");
+  const gd=document.getElementById("goalDeadline");
+  if(gd)gd.value=p.goal_deadline||"";
+  const gh=document.getElementById("goalDeadlineHint");
+  if(gh){
+    const n=daysUntil(p.goal_deadline);
+    gh.textContent=n===null?"":(n>0?`还有 ${n} 天`:n===0?"就是今天":`已过 ${-n} 天`);
+  }
   // 我眼里的你（事实）
   kv.innerHTML=`
     <div>睡眠底线</div><div>${p.hard_sleep_deadline?"不晚于 "+esc(p.hard_sleep_deadline):'<span class="dash">还没说</span>'}</div>
@@ -3872,7 +3972,7 @@ function delEvent(i){
 let DIARY_MONTH=todayStr().slice(0,7), DIARY_DAY=todayStr();
 function openDiary(){
   DIARY_DAY=todayStr();DIARY_MONTH=todayStr().slice(0,7);
-  renderDiaryCal();renderDiaryDay();renderDiaryList();
+  renderDiaryCal();renderDiaryDay();renderDiaryList();renderWeekReview();
   document.getElementById("diarySheet").classList.add("on");
   setTimeout(()=>document.getElementById("diaryIn").focus(),40);
 }
@@ -4234,7 +4334,7 @@ function startGuide(){
 /* ════════ 启动 ════════ */
 DATA.conflicts=detectConflicts();
 syncTodayCourses(true);   // 今天有课的，先落进今日时间轴
-renderDayBar();renderGantt();renderConflicts();initChat();renderOrbs();renderMe();renderNotes();updStats();renderWeek();
+renderDayBar();renderGantt();renderRecon();renderCountdown();renderConflicts();initChat();renderOrbs();renderMe();renderNotes();updStats();renderWeek();
 // 今天来过就算「见过」：三天没来才翻日记
 DATA.memory.last_seen=todayStr();saveData();
 initThemeUI();
