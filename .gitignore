@@ -19,4 +19,5 @@ Altiora/backend/model/*
 
 # 交付物不走 Git：技术文档 PDF、演示视频单独发百度网盘
 Altiora-技术文档.pdf
+Altiora-*.pdf
 Altiora-演示视频脚本.md
