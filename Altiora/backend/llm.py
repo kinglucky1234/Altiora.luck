@@ -68,6 +68,11 @@ SYSTEM = """你叫 Altiora，是「用户理想中更好的自己」在电脑里
   long（长远/最终/十年/梦想/成为…）、mid（这学期/半年/明年/考研/求职/毕业）、short（这周/这个月/近期/明天）。
   拿不准就 mid。
 - social 只在用户明确是「公开说过/发过」的内容时给。social 字段写一条从这段话里提炼出的、关于用户自己的规律（如「常常因为刷手机熬夜」），别凭空发挥，30 字以内。
+- 一句话里可能同时有好几层意思：情绪、目标、软肋可以一起给，不要只挑一个。
+  weakness 填用户描述的、反复出现的、关于他自己的规律（如「一焦虑就刷手机」「总爱拖延」），20 字以内，用第三人称陈述；
+  只说一次的心情（如「今天好累」）不算，给 null。不许下心理诊断，不许评价好坏。
+- 即使用户在倾诉情绪（intent=emotion），只要话里出现明确目标，也要同时填 goal 与 goal_horizon；
+  只要话里出现反复发生的自身规律，也要同时填 weakness。
 
 【绝对不能做】
 - 不计算时间重叠、时长、金钱、代价
@@ -88,7 +93,7 @@ SYSTEM = """你叫 Altiora，是「用户理想中更好的自己」在电脑里
 - 闲聊：正常聊天，可以有一点幽默，但别硬逗。
 
 只输出 JSON，不要解释，不要 Markdown 代码块：
-{"intent":"schedule","events":[{"name":"家教","start":"11:00","end":"13:00","date":null}],"subject":null,"emotion":"none","memory":null,"goal":null,"goal_horizon":null,"social":null,"reply":null}"""
+{"intent":"schedule","events":[{"name":"家教","start":"11:00","end":"13:00","date":null}],"subject":null,"emotion":"none","memory":null,"goal":null,"goal_horizon":null,"weakness":null,"social":null,"reply":null}"""
 
 SAY_SYSTEM = """你是 Altiora，用户理想中更好的自己在电脑里的投影。下面是本地计算器算出的确定结果，你只负责把它说成一句人话。
 
@@ -259,6 +264,18 @@ def _clean_memory(raw) -> dict | None:
     return {"kind": kind if kind in ("rule", "weakness") else "rule", "text": text}
 
 
+def _clean_weakness(raw) -> str | None:
+    """软肋三不认：太短、像建议、像口号。模型爱说的是道理，这里挡掉。"""
+    if not isinstance(raw, str):
+        return None
+    text = raw.strip().strip("，,、；;：:。！!？?\"'「」『』“”‘’ ")[:24]
+    if len(text) < 2:
+        return None
+    if _BANNED.search(text) or re.search(r"(建议|应该|加油|相信自己|你可以的)", text):
+        return None
+    return text
+
+
 def _parse_json(content: str) -> dict | None:
     content = content.strip()
     if content.startswith("```"):
@@ -402,10 +419,12 @@ def understand(text: str, profile: dict | None = None,
         raw_subject = raw_subject or obj.get("subject")
         subject = str(raw_subject or "").strip()[:20] or None
     memory = _clean_memory(obj.get("memory")) if intent == "memory" else None
-    goal = str(obj.get("goal") or "").strip()[:60] or None if intent == "goal" else None
-    goal_horizon = obj.get("goal_horizon") if intent == "goal" else None
+    # 目标不再只认 goal 意图：倾诉里顺带提一句「我想考研」也算数
+    goal = str(obj.get("goal") or "").strip()[:60] or None
+    goal_horizon = obj.get("goal_horizon")
     if goal_horizon not in ("long", "mid", "short"):
         goal_horizon = None
+    weakness = _clean_weakness(obj.get("weakness"))
     social = str(obj.get("social") or "").strip()[:40] or None if intent == "social" else None
 
     reply = obj.get("reply")
@@ -430,6 +449,7 @@ def understand(text: str, profile: dict | None = None,
         "memory": memory,
         "goal": goal,
         "goal_horizon": goal_horizon,
+        "weakness": weakness,
         "social": social,
         "reply": reply,
         "model": model_id,
