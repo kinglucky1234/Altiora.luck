@@ -83,7 +83,7 @@ SYSTEM = """你叫 Altiora，是「用户理想中更好的自己」在电脑里
 
 【reply 的写法（这一栏最容易被写成客服腔，逐条遵守）】
 - intent=safety：null（前端有固定安全话术）
-- intent=schedule 且 events 里至少有一件完整（有 start 和 end）：null。账要由计算器算完再回来说，你不能抢答。
+- intent=schedule 且 events 里至少有一件完整（有 start 和 end）：允许写一句不带数字的接话，40 字以内（比如"家教撞了上午的会"）。账要由计算器算完回来说，你不能抢答数字，不能写"损失 X 元""重叠 X 分钟"这类。
 - intent=social：一句确认，告诉她「我把它当成你说过的话记下来了」，40 字以内。
 - 其它情况一律要写，一到两句，40 字以内。
 - 必须指涉用户刚说的具体内容：那件事的名字、那个时间、那个词。只写放之四海皆准的话等于没听懂。
@@ -429,9 +429,13 @@ def understand(text: str, profile: dict | None = None,
 
     reply = obj.get("reply")
     reply = str(reply).strip()[:120] if isinstance(reply, str) else None
-    # 服务端硬约束：完整日程不给话术（账还没算），安全一律本地处理
-    if intent in ("safety",) or (intent == "schedule" and events):
+    # 服务端硬约束：safety 一律本地处理（reply 置空）；schedule 且有完整事件时，reply 允许一句不带数字的接话（数字账由计算器算）
+    if intent in ("safety",):
         reply = None
+    if intent == "schedule" and events and reply:
+        if _NUM.search(reply):
+            logger.warning("understand() → schedule reply contains number, drop: %r", reply[:80])
+            reply = None
     if reply and _BANNED.search(reply):
         logger.warning("understand() → reply banned by _BANNED: %r", reply[:80])
         reply = None
