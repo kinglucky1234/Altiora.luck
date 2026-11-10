@@ -1400,7 +1400,7 @@ const DATA = {
      long  长期记忆 = 上面的 profile。用户亲口说的事实，计算器唯一的输入。
      chat  聊天记忆 = 最近 3 轮。只为接住半句话，超过就滚掉，不沉淀。
      diary 日记     = 每次聊完一行「日期：摘要」。平时不出现，只在久别回来时翻。 */
-  memory:{chat:[],diary:[],last_seen:"",pending:null},
+  memory:{chat:[],diary:[],last_seen:"",pending:null,emotion_history:[]},
   /* 周课表：periods 是节次时间表（可在界面上改），courses 是一周课程 */
   week:{
     periods:[
@@ -1429,7 +1429,8 @@ function saveData(){
     profile:DATA.profile,events:DATA.events,notes:DATA.notes,diary:DATA.diary,
     week:{periods:DATA.week.periods,courses:DATA.week.courses,synced:DATA.week.synced},
     memory:{chat:DATA.memory.chat,diary:DATA.memory.diary,
-            last_seen:DATA.memory.last_seen,pending:DATA.memory.pending}
+            last_seen:DATA.memory.last_seen,pending:DATA.memory.pending,
+            emotion_history:DATA.memory.emotion_history}
   }));}catch(e){}
 }
 try{
@@ -1449,6 +1450,7 @@ try{
     if(Array.isArray(m.diary))DATA.memory.diary=m.diary.slice(-DIARY_KEEP);
     if(typeof m.last_seen==="string")DATA.memory.last_seen=m.last_seen;
     if(m.pending&&m.pending.name)DATA.memory.pending=m.pending;
+    if(Array.isArray(m.emotion_history))DATA.memory.emotion_history=m.emotion_history.slice(-60);
   }
 }catch(e){}
 
@@ -1530,17 +1532,38 @@ function diaryWrite(summary){
   saveData();
   renderMe();
 }
-/* 久别回来：翻最近一条日记，接一句「后来怎么样了」 */
+/* 情绪历史：大模型返回 intensity 时记录，每天衰减 10%（至少留 1） */
+function emotionRecord(tag,intensity){
+  if(!tag||tag==="none"||!intensity)return;
+  DATA.memory.emotion_history.push({ts:Date.now(),tag,intensity:Math.max(1,Math.min(10,parseInt(intensity)||1))});
+  while(DATA.memory.emotion_history.length>60)DATA.memory.emotion_history.shift();
+  saveData();
+}
+/* 取最近一次情绪衰减后的强度。衰减=每天强度×0.9^(天数差) */
+function emotionNow(){
+  const arr=DATA.memory.emotion_history;
+  if(!arr||!arr.length)return null;
+  const last=arr[arr.length-1];
+  const days=(Date.now()-last.ts)/86400000;
+  const decayed=Math.max(1,Math.round(last.intensity*Math.pow(0.9,days)));
+  return {tag:last.tag,intensity:decayed,days:days};
+}
+/* 久别回来：翻最近一条日记 + 情绪状态，决定怎么问 */
 function diaryRecall(){
   const last=DATA.memory.last_seen;
   if(!last)return "";
   const gap=daysBetween(last,todayStr());
   if(gap<3)return "";
   const e=[].concat(DATA.memory.diary).reverse().find(x=>x.d<=last);
-  if(!e||!e.s)return "";
-  const frag=e.s.split(/[，,；;]/)[0].replace(/[。.]$/,"").slice(0,18);
-  if(!frag)return "";
-  return `上次（${cuteDate(e.d)}）你说${esc(frag)}，后来怎么样了？`;
+  const recall=e&&e.s?`上次（${cuteDate(e.d)}）你说${esc(e.s.split(/[，,；;]/)[0].replace(/[。.]$/,"").slice(0,18))}，后来怎么样了？`:"";
+  // 情绪还在的话补一句软关心
+  const emo=emotionNow();
+  if(emo&&emo.intensity>=5&&emo.days<=7){
+    const hints={"sad":"这几天还是不太好？","anxious":"事情还悬着？","selfblame":"那件事过去了吗？","lonely":"有没有找人说说话？","tired":"这阵子还累？","numb":"还好吗？","relapse":"又滑了一下？"};
+    const hint=hints[emo.tag]||"这几天怎么样？";
+    return (recall?recall+" ":"")+hint;
+  }
+  return recall;
 }
 
 /* 本次会话：聊完攒成一行日记 */
@@ -2958,7 +2981,10 @@ function setMsgU(slotId,html,j){
 }
 async function routeLLM(j,slotId,v){
   // 情绪由模型判，直接落到本次会话的日记里；本地关键词表只做离线兜底
-  if(j.emotion&&EMOTION_CN[j.emotion])SESS.mood=EMOTION_CN[j.emotion];
+  if(j.emotion){
+    if(EMOTION_CN[j.emotion])SESS.mood=EMOTION_CN[j.emotion];
+    if(j.emotion_intensity)emotionRecord(j.emotion,j.emotion_intensity);
+  }
   // 0) 多意图：同一句话里顺带说的目标、软肋也收下。规则模板一次只能命中一类意图，这里不会漏
   const auxNotes=[];let auxChanged=false;
   if(j.goal&&j.intent!=="goal"){

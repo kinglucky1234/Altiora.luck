@@ -33,7 +33,8 @@ TIMEOUT = 12
 MAX_INPUT = 600
 
 INTENTS = {"safety", "emotion", "schedule", "memory", "goal", "social", "chat"}
-EMOTIONS = {"sad", "tired", "anxious", "selfblame", "relapse", "lonely", "numb", "none"}
+EMOTION_TAGS = {"sad", "tired", "anxious", "selfblame", "relapse", "lonely", "numb", "none"}
+EMOTIONS = EMOTION_TAGS  # 兼容旧引用
 
 # 万金油句式：模型一旦写出这些，服务端直接作废，让前端用自己的话兜底
 _BANNED = re.compile(
@@ -56,6 +57,10 @@ SYSTEM = """你叫 Altiora，是「用户理想中更好的自己」在电脑里
 - chat：其它闲聊
 
 【抽取规则】
+- emotion 字段是一个对象：{"tag": "标签", "intensity": 1-10 的整数}。
+  tag 从这 8 个里选：sad / tired / anxious / selfblame / relapse / lonely / numb / none。
+  intensity 是这个情绪的强烈程度，1 最淡、10 最烈。
+  例子：「我快撑不住了」→ intensity 9；「今天没睡好」→ intensity 3；none 永远 intensity 0。
 - 用户可能用中文数字（三点）、相对说法（下午/明晚/下周三）、口语时长（复习两小时），
   这些都由你负责理解并归一化成 24 小时制 HH:MM，别指望本地规则去猜。
 - schedule 的时间给在 events 数组里，每项必须有 name、start、end，最多 4 件。
@@ -93,7 +98,7 @@ SYSTEM = """你叫 Altiora，是「用户理想中更好的自己」在电脑里
 - 闲聊：正常聊天，可以有一点幽默，但别硬逗。
 
 只输出 JSON，不要解释，不要 Markdown 代码块：
-{"intent":"schedule","events":[{"name":"家教","start":"11:00","end":"13:00","date":null}],"subject":null,"emotion":"none","memory":null,"goal":null,"goal_horizon":null,"weakness":null,"social":null,"reply":null}"""
+{"intent":"schedule","events":[{"name":"家教","start":"11:00","end":"13:00","date":null}],"subject":null,"emotion":{"tag":"none","intensity":0},"memory":null,"goal":null,"goal_horizon":null,"weakness":null,"social":null,"reply":null}"""
 
 SAY_SYSTEM = """你是 Altiora，用户理想中更好的自己在电脑里的投影。下面是本地计算器算出的确定结果，你只负责把它说成一句人话。
 
@@ -395,9 +400,23 @@ def understand(text: str, profile: dict | None = None,
         logger.warning("understand() → bad_intent=%r, raw=%r", intent, content[:200])
         return {"ok": False, "source": "rule", "reason": "bad_intent"}
 
-    emotion = obj.get("emotion")
-    if emotion not in EMOTIONS:
-        emotion = "none"
+    # emotion 新格式：{"tag": "...", "intensity": N}；兼容旧格式纯字符串
+    raw_emotion = obj.get("emotion")
+    emotion = "none"
+    emotion_intensity = 0
+    if isinstance(raw_emotion, dict):
+        tag = raw_emotion.get("tag", "none")
+        if tag in EMOTION_TAGS:
+            emotion = tag
+        try:
+            emotion_intensity = int(raw_emotion.get("intensity", 0))
+            emotion_intensity = max(0, min(10, emotion_intensity))
+        except (TypeError, ValueError):
+            emotion_intensity = 0
+        if emotion == "none":
+            emotion_intensity = 0
+    elif isinstance(raw_emotion, str) and raw_emotion in EMOTION_TAGS:
+        emotion = raw_emotion
 
     # 一句话多件事：以 events 数组为准；只有第一件的旧格式 event 也兼容
     events: list[dict] = []
@@ -447,6 +466,7 @@ def understand(text: str, profile: dict | None = None,
         "source": "llm",
         "intent": intent,
         "emotion": emotion,
+        "emotion_intensity": emotion_intensity,
         "event": event,
         "events": events,
         "subject": subject,
