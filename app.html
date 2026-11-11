@@ -1039,7 +1039,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 <div class="gaze">
   <div class="gaze-in">
     <div class="logo">Altiora<span>记录自我，向着更高处成长</span></div>
-    <div class="gaze-msg" id="gazeMsg"><span class="dot"></span><span id="gazeTxt">今天还是一张白纸，你说一句我就开始记</span></div>
+    <div class="gaze-msg" id="gazeMsg" style="display:none"><span class="dot"></span><span id="gazeTxt"></span></div>
     <div class="ai-pill" id="aiPill" onclick="openLLM()" title="点这里填你自己的 API Key">模型</div>
     <button class="tts-btn" id="ttsBtn" onclick="toggleTTS()" title="朗读回复"></button>
     <div class="avatar-mini" id="gazeAvatar"></div>
@@ -1685,7 +1685,7 @@ function renderGantt(){
   if(em){
     em.style.display=list.length?"none":"block";
     if(!list.length)em.textContent=(VIEW_DATE===todayStr()
-      ?"今天还是一张白纸。贴一份课表，或者直接说一句「三点到五点去家教」。"
+      ?"今天还没安排。贴一份课表，或者说一句「三点到五点去家教」。"
       :"这一天还是空的。说一句「明天三点到五点开会」，我就排进来。");
   }
 }
@@ -2285,7 +2285,7 @@ function toggleFullMic(){
   startVoice(document.getElementById("fullMicBtn"),document.getElementById("fullChatIn"),handleUser);
 }
 const HELLO=[
-  ["sys","今天 · 一张白纸"],
+  ["sys","今天 · 还没安排"],
   ["ai","现在我对你几乎一无所知——这样才对。你知道的我，都得是你亲口说的。"],
   ["ai","给个时间我排日程，说句实话我记画像，难受就直接说。"]
 ];
@@ -4147,9 +4147,10 @@ function updStats(){
   // 侧栏和分身说的是「今天」，所以只数今天的冲突，别把明天那页的算进来
   const c=detectConflicts(todayStr()).length,el=document.getElementById("sCf");
   if(el){el.textContent=c;el.className=c?"v red":"v green";}
-  document.getElementById("gazeTxt").textContent=c?`我盯着呢，今天有 ${c} 处冲突等你定`
-    :(DATA.events.filter(e=>e.date===todayStr()).length?"我盯着呢，今天没冲突":"今天还是一张白纸，你说一句我就开始记");
-  document.getElementById("gazeMsg").className=c?"gaze-msg warn":"gaze-msg";
+  const todayN=DATA.events.filter(e=>e.date===todayStr()).length,gm=document.getElementById("gazeMsg");
+  if(!c&&!todayN){gm.style.display="none";}
+  else{gm.style.display="";document.getElementById("gazeTxt").textContent=c?`我盯着呢，今天有 ${c} 处冲突等你定`:"我盯着呢，今天没冲突";}
+  gm.className=c?"gaze-msg warn":"gaze-msg";
   const n=document.getElementById("fabN");
   if(DATA.notes.length){n.style.display="grid";n.textContent=DATA.notes.length;}else n.style.display="none";
 }
