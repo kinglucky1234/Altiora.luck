@@ -1291,6 +1291,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
       <div class="chips-row" style="margin:0">
         <button class="btn ghost" onclick="exportData()">导出存档（JSON）</button>
         <button class="btn ghost" onclick="document.getElementById('importFile').click()">从存档导入</button>
+        <button class="btn ghost" onclick="restoreBackup()">恢复今天的自动备份</button>
         <input type="file" id="importFile" accept=".json,application/json" style="display:none" onchange="importData(this)">
       </div>
       <div class="chips-row" style="margin:10px 0 0;font-size:12px;color:var(--t3)">
@@ -1495,19 +1496,37 @@ const DATA = {
 
 /* 持久化：画像、日程、三层记忆。刷新不丢 */
 const SAVE_KEY="altiora_state_v2";
+const BAK_KEY="altiora_state_v2_bak";
 const CHAT_KEEP=6;      // 聊天记忆 6 条 = 3 轮，超了滚掉
 const DIARY_KEEP=180;   // 日记最多留半年
 // 旧版本的内置示例数据不再沿用，清掉，第一次打开就是一张白纸
 try{localStorage.removeItem("altiora_state_v1");}catch(e){}
 function saveData(){
-  try{localStorage.setItem(SAVE_KEY,JSON.stringify({
+  const state={
     profile:DATA.profile,events:DATA.events,notes:DATA.notes,diary:DATA.diary,days:DATA.days,
     care:DATA.care,
     week:{periods:DATA.week.periods,courses:DATA.week.courses,synced:DATA.week.synced},
     memory:{chat:DATA.memory.chat,diary:DATA.memory.diary,
             last_seen:DATA.memory.last_seen,pending:DATA.memory.pending,
             emotion_history:DATA.memory.emotion_history}
-  }));}catch(e){}
+  };
+  try{localStorage.setItem(SAVE_KEY,JSON.stringify(state));}catch(e){}
+  /* 每天留一份带内容的自动备份：闪退 / 误清缓存后还能捞回来 */
+  try{
+    const has=(state.events.length||state.diary.length||state.notes.length||
+      Object.keys(state.profile||{}).some(k=>{
+        const v=state.profile[k];return Array.isArray(v)?v.length:!!v;
+      }));
+    let bak=null;try{bak=JSON.parse(localStorage.getItem(BAK_KEY)||"null");}catch(e){}
+    if(has&&(!bak||bak.date!==todayStr()))localStorage.setItem(BAK_KEY,JSON.stringify({date:todayStr(),state}));
+  }catch(e){}
+}
+function restoreBackup(){
+  let o=null;try{o=JSON.parse(localStorage.getItem(BAK_KEY)||"null");}catch(e){}
+  if(!o||!o.state){toast("没有找到自动备份，先继续用现在的数据");return;}
+  if(!confirm(`用 ${o.date} 的自动备份覆盖当前数据？`))return;
+  try{localStorage.setItem(SAVE_KEY,JSON.stringify(o.state));}catch(e){}
+  location.reload();
 }
 try{
   const s=JSON.parse(localStorage.getItem(SAVE_KEY)||"null");
@@ -3076,7 +3095,7 @@ async function handleUser(v){
     if(gn){
       const need=(DATA.profile.goal_min||{})[(hit?hit[0]:pool[0][0])]||60;
       const slot=push("ai","<span class='typing'>正在按你的空档排计划…</span>");
-      const items=await buildPlan(gn,need,planScope(v));
+      const items=await buildPlan(gn,need,planScope(v),preferStartMin(v));
       if(!items.length){
         setMsg(slot.id,`接下来这几天没有够 ${fmtDur(need)} 的空当给「${esc(gn)}」。要么把时长调小一点，要么先把某件事挪走——你说了算。`);
         return;
@@ -4208,7 +4227,13 @@ function goalFromText(text){
 }
 /* 目标名里不该带日期和「考」：把「12月19号考」这类尾巴切掉 */
 function cleanGoalName(s){
-  return String(s||"").replace(/\d{1,2}\s*月\s*\d{1,2}\s*[日号]\s*考?/g,"").replace(/[，,。！？!?\s]/g,"").replace(/^过/,"").trim();
+  const t=String(s||"").replace(/\d{1,2}\s*月\s*\d{1,2}\s*[日号]\s*考?/g,"")
+    .replace(/[，,。！？!?\s]/g,"")
+    .replace(/^(能|可以|想|要|打算|帮我|给我)/,"")
+    .replace(/^过/,"").replace(/开始$/,"").trim();
+  /* 只剩「学」「点开始」这种碎片，说明这句没带目标名，宁可问一句也别记错 */
+  if(t.length<2||/(点|开始|结束|每天|每周|小时|分钟)/.test(t))return "";
+  return t.slice(0,12);
 }
 /* 每天/每周 + 时长，但没说钟点：这是目标的节奏，不是一条日程，本地直接算并提议时段 */
 function paceIntent(text){
@@ -4290,13 +4315,13 @@ function busyOn(date){
     .forEach(c=>list.push({s:toMin(c.start),e:toMin(c.end)}));
   return list.sort((a,b)=>a.s-b.s);
 }
-function freeSlotOn(date,need){
+function freeSlotOn(date,need,from){
   const raw=Math.max(0,Math.min(60,DATA.profile.buffer_min||10));
   const tryGap=(s,e)=>{
     const buf=s>480?raw:0;
     return (e-s)>=need+buf?{start:fmtHM(s+buf),end:fmtHM(s+buf+need)}:null;
   };
-  let cur=480;
+  let cur=from?Math.max(360,from):480;
   for(const b of busyOn(date)){
     const r=tryGap(cur,b.s);if(r)return r;
     cur=Math.max(cur,b.e);
@@ -4329,7 +4354,16 @@ async function planTopics(goal,n){
   }
   return planTopicsLocal(goal);
 }
-async function buildPlan(goal,need,scope){
+/* 「7点开始」：用户说了想从几点开始排，就从几点往后找空当 */
+function preferStartMin(text){
+  const m=String(text||"").match(/(早上|上午|中午|下午|晚上|夜里)?\s*(\d{1,2})\s*[点:：]\s*(?:开始|起|到)?/);
+  if(!m)return 0;
+  let h=parseInt(m[2],10);
+  if(/(下午|晚上|夜里)/.test(m[1]||"")&&h<12)h+=12;
+  if(/中午/.test(m[1]||"")&&h<11)h+=12;
+  return (h>=0&&h<=23)?h*60:0;
+}
+async function buildPlan(goal,need,scope,from){
   const t=todayStr(),dates=[];
   if(scope==="week"){for(let i=0;i<7;i++)dates.push(addDays(t,i));}
   else if(scope==="exam"&&DATA.profile.goal_deadline){
@@ -4339,7 +4373,7 @@ async function buildPlan(goal,need,scope){
   const topics=await planTopics(goal,dates.length);
   const items=[];
   dates.forEach((d,i)=>{
-    const s=freeSlotOn(d,need);
+    const s=freeSlotOn(d,need,from);
     if(!s)return;
     const topic=topics[i%topics.length];
     /* 事件名要短：取「+」前面那一段，避免排进时间轴后被截断成半句 */
