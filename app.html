@@ -1189,11 +1189,10 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
           <span style="width:58px"></span>
         </div>
         <div class="chips-row" id="noteTyRow" style="margin:0 0 10px">
-          <span class="chip" data-ty="event" onclick="pickNoteTy('event')">记日程</span>
           <span class="chip" data-ty="rule" onclick="pickNoteTy('rule')">记规矩</span>
           <span class="chip g" data-ty="note" onclick="pickNoteTy('note')">其他</span>
         </div>
-        <textarea id="noteIn" placeholder="例：周五晚班 19:00-21:00" oninput="autoNoteTy()"></textarea>
+        <textarea id="noteIn" placeholder="例：今天高数又没听懂，烦" oninput="autoNoteTy()"></textarea>
         <div class="result" id="noteRes"></div>
         <div class="sheet-act">
           <button class="btn" onclick="saveNote()">记下</button>
@@ -1730,15 +1729,9 @@ function setGoalDeadline(v){
 function renderCountdown(){
   const el=document.getElementById("countdown");if(!el)return;
   const iso=DATA.profile.goal_deadline;
-  if(VIEW_DATE!==todayStr()){el.innerHTML="";return;}
-  if(!iso){
-    el.innerHTML="还没有截止日期。去「我的画像」填一个，我就知道要陪你走到哪天。";
-    return;
-  }
-  const n=daysUntil(iso), t=goalTitle(), who=t?`<b>${esc(t)}</b>`:"那个日子";
-  el.innerHTML=n>0?`距 ${who} 还有 <b>${n}</b> 天`
-    :n===0?`今天就是 ${who}`
-    :`${who} 已经过去 <b>${-n}</b> 天`;
+  /* 倒计时主页已有一行，这里只在没填截止日期时引导，不重复显示 */
+  if(VIEW_DATE!==todayStr()||iso){el.innerHTML="";return;}
+  el.innerHTML="还没有截止日期。去「我的画像」填一个，我就知道要陪你走到哪天。";
 }
 function toggleEventDone(i){
   const e=DATA.events[i];if(!e)return;
@@ -3982,7 +3975,6 @@ function showSnack(id){
 function openSheet(){go("diary");showSnack("snNotes");}
 function classify(t){
   if(/以后|不要|不许|再也不|必须|记住|别再/.test(t))return"rule";
-  if(/\d{1,2}[:：]\d{2}/.test(t))return"event";
   return"note";
 }
 /* 类型由用户说了算：输入时自动预选，点一下就改 */
@@ -3999,14 +3991,7 @@ function saveNote(){
   saveData();   // 随手记也要落盘，刷新后还在
   renderNotes();
   res.className="result on";
-  if(ty==="event"){
-    const r=addEventFromText(t);
-    const when=r.ev.date===todayStr()?"今天":dayTag(r.ev.date);
-    if(r.ev.date&&r.ev.date!==VIEW_DATE){VIEW_DATE=r.ev.date;refreshDay();}
-    if(r.delta>0){res.className="result on warn";
-      res.innerHTML=`<span class="lbl">记为日程，并且撞了</span>「${r.ev.name} ${r.s}-${r.e}」已进${when}。<b>新产生 ${r.delta} 处冲突</b>——去时间轴页，代价我算好了，你看完再定。`;
-    }else res.innerHTML=`<span class="lbl">记为日程</span>「${r.ev.name} ${r.s}-${r.e}」已进${when}，没冲突。`;
-  }else if(ty==="rule"){
+  if(ty==="rule"){
     const r=stripPunct(t.replace(/^(以后|记住|必须|别再)/,""));
     DATA.profile.known_weakness.push(r);renderMe();updStats();saveData();
     res.className="result on warn";
