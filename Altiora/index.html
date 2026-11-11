@@ -325,6 +325,10 @@ pre.json .n{color:#FDBA74}
 }
 .sheet-box textarea:focus{border-color:rgba(59,130,246,.5);background:rgba(59,130,246,.05)}
 #noteTyRow .chip{cursor:pointer}
+.goal-freq{display:flex;gap:6px;align-items:center;margin-top:6px;font-size:10px;color:var(--dim)}
+.goal-freq .gf{border:1px solid var(--line);background:none;color:var(--dim);border-radius:999px;padding:3px 10px;font-size:10px;cursor:pointer}
+.goal-freq .gf.on{border-color:var(--hue);color:var(--ink);background:rgba(106,168,255,.12)}
+.msg.care{box-shadow:0 0 0 1px rgba(126,231,163,.25)}
 .cal-grid .dc.tlm{display:flex;flex-direction:column;align-items:center;gap:1px;cursor:pointer}
 .cal-grid .dc.tlm i{font-style:normal;font-size:9px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;display:block}
 .cal-grid.tlm-big .dc{min-height:48px;padding:6px 2px;font-size:14px}
@@ -4050,6 +4054,65 @@ function saveSchedule(){
 }
 
 /* ════════ 画像页 ════════ */
+/* ── 分身主动关心：翻情绪记录和打勾记录，低落或重复目标断档才开口 ── */
+const LOW_TAGS={"sad":1,"tired":1,"anxious":1,"selfblame":1,"relapse":1,"lonely":1,"numb":1};
+const LOW_LINE={"sad":"我看你这几天一直不太高。","anxious":"我看你这几天一直悬着心。","tired":"我看你这几天一直很累。","selfblame":"我看你这几天一直在怪自己。","lonely":"我看你这几天一直一个人扛着。","numb":"我看你这几天提不起劲。","relapse":"我看你这几天又滑了一下。"};
+function setGoalFreq(key,v){
+  DATA.profile.goal_freq=DATA.profile.goal_freq||{};
+  DATA.profile.goal_freq[key]=v;saveData();renderMe();
+  toast(v==="daily"?"好，这事我天天帮你盯着。":"好，这件做完就算。");
+}
+/* 今天 8:00-22:00 之间 >=90 分钟的空当，给主动关心的话术用 */
+function todayFreeGap(){
+  const t=todayStr();
+  const list=DATA.events.filter(e=>e.date===t&&e.type!=="sleep").slice().sort((a,b)=>toMin(a.start)-toMin(b.start));
+  let cur=480;const gaps=[];
+  for(const e of list){
+    const s=toMin(e.start),en=toMin(e.end);
+    if(s-cur>=90)gaps.push([cur,s]);
+    cur=Math.max(cur,en);
+  }
+  if(1320-cur>=90)gaps.push([cur,1320]);
+  return gaps[0]||null;
+}
+function fmtGap(g){return `${fmtMin(g[0])} 到 ${fmtMin(g[1])}`;}
+function proactiveCare(){
+  const t=todayStr();
+  DATA.care=DATA.care||{};
+  if(DATA.care.date===t)return;           // 一天最多一句，不刷屏
+  let emoKey=null;
+  // 1. 情绪复盘：近 3 天低落类情绪 >=2 次，按最多的那种情绪说话（没配 Key 没数据就不开口，不瞎猜）
+  const cutoff=Date.now()-3*86400000;
+  const lows=(DATA.memory.emotion_history||[]).filter(h=>h.ts>=cutoff&&LOW_TAGS[h.tag]);
+  if(lows.length>=2){
+    const cnt={};lows.forEach(h=>cnt[h.tag]=(cnt[h.tag]||0)+1);
+    emoKey=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a])[0];
+  }
+  // 2. 完成复盘：重复目标昨天或今天排了但没画上勾，或者干脆没排
+  const fr=DATA.profile.goal_freq||{};
+  const names={long_term_goal:DATA.profile.long_term_goal,mid_term_goal:DATA.profile.mid_term_goal,short_term_goal:DATA.profile.short_term_goal};
+  let stall=null;
+  for(const k of ["short_term_goal","mid_term_goal","long_term_goal"]){
+    if(fr[k]!=="daily"||!names[k])continue;
+    const gname=names[k];
+    const hit=[addDays(t,-1),t].some(d=>DATA.events.some(e=>e.date===d&&e.done&&matchGoalByName(gname,e.name)));
+    if(!hit){stall=gname;break;}
+  }
+  if(!emoKey&&!stall)return;
+  const gap=todayFreeGap();
+  let msg="";
+  if(emoKey){
+    msg=LOW_LINE[emoKey]||"我看你这几天状态不太好。";
+    msg+=stall?`「${stall.slice(0,12)}」也几天没画上勾了。`:"";
+    msg+=gap?`今天 ${fmtGap(gap)} 空着——出去走走？二十分钟也行。`:"今天排得满，要不要把哪件往后挪挪？你说了算。";
+  }else{
+    msg=`「${stall.slice(0,12)}」这两天没画上勾。是没时间，还是不想做？`;
+    msg+=gap?`没时间我帮你挪——今天 ${fmtGap(gap)} 正好空着，给它半小时？要就说一声，不催。`:"不想做咱们把它改小点，你说了算。";
+  }
+  DATA.care.date=t;saveData();
+  const rec=push("ai",esc(msg));
+  const el=document.getElementById(rec.id);if(el)el.classList.add("care");
+}
 function renderMe(){
   const p=DATA.profile;
   const kv=document.getElementById("kv");if(!kv)return;
@@ -4086,6 +4149,7 @@ function renderMe(){
   goalCell("goalLong","long_term_goal","长期");
   goalCell("goalMid","mid_term_goal","中期");
   goalCell("goalShort","short_term_goal","短期");
+  proactiveCare();
   const gd=document.getElementById("goalDeadline");
   if(gd)gd.value=p.goal_deadline||"";
   const gh=document.getElementById("goalDeadlineHint");
