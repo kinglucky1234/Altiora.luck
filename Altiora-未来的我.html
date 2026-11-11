@@ -325,6 +325,8 @@ pre.json .n{color:#FDBA74}
 }
 .sheet-box textarea:focus{border-color:rgba(59,130,246,.5);background:rgba(59,130,246,.05)}
 #noteTyRow .chip{cursor:pointer}
+.cal-grid .dc.tlm{display:flex;flex-direction:column;align-items:center;gap:1px;cursor:pointer}
+.cal-grid .dc.tlm i{font-style:normal;font-size:9px;color:var(--t3)}
 #noteTyRow .chip.sel{background:rgba(59,130,246,.18);border-color:rgba(59,130,246,.55);color:#93C5FD}
 #p-diary textarea{width:100%;min-height:120px;padding:12px 14px;border-radius:10px;border:1px solid var(--line);
   background:rgba(255,255,255,.03);color:var(--t1);font-size:13px;font-family:inherit;
@@ -1098,8 +1100,14 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
     </div>
   </div>
 
-  <!-- ═══ 时间轴 ═══ -->
+  <!-- ═══ 时间轴：日 / 周 / 月 三种视图 ═══ -->
   <div class="page" id="p-timeline">
+    <div class="chips-row" id="tlvSwitch" style="justify-content:center;margin:0 0 10px">
+      <span class="chip sel" data-v="day" onclick="setTLView('day')">日</span>
+      <span class="chip" data-v="week" onclick="setTLView('week')">周</span>
+      <span class="chip" data-v="month" onclick="setTLView('month')">月</span>
+    </div>
+    <div id="tlvDay">
     <div class="card">
       <div class="timeline-head">
         <div class="ttl" style="margin:0" id="dayTitle">今日时间轴 <small>06:00 — 次日 02:00</small></div>
@@ -1132,8 +1140,10 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
     <div id="reconWrap"></div>
     <div id="cfWrap"></div>
     <div id="planWrap"></div>
+    </div>
 
-    <!-- 本周课表：并入时间轴页，导入后每天的课自动进时间轴 -->
+    <div id="tlvWeek" style="display:none">
+    <!-- 本周课表：周视图，导入后每天的课自动进日视图 -->
     <div class="card">
       <div class="wk-tools">
         <div class="ttl" style="margin:0">本周课表 <small id="wkRange"></small></div>
@@ -1147,9 +1157,20 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
         课表还是空的。<br>点右上角「+ 导入课表」，把教务系统里的课表粘进来。
       </div>
       <div class="band-lbl" style="margin-top:14px">
-        <span>今天的课会自动进上面的时间轴，参与冲突和代价计算</span>
+        <span>今天的课会自动进日视图的时间轴，参与冲突和代价计算</span>
         <span id="wkTodayTxt"></span>
       </div>
+    </div>
+    </div>
+
+    <div class="card" id="tlvMonth" style="display:none">
+      <div class="sn-head">
+        <button class="btn ghost" onclick="tlMonthShift(-1)">‹</button>
+        <div class="cal-m" id="tlMonthLbl"></div>
+        <button class="btn ghost" onclick="tlMonthShift(1)">›</button>
+      </div>
+      <div class="cal-grid" id="tlMonthCal"></div>
+      <div class="band-lbl" style="margin-top:10px"><span>点一天，跳到那天的日视图</span><span></span></div>
     </div>
   </div>
 
@@ -3593,6 +3614,51 @@ function periodSpan(start,end){
     if(toMin(p.start)<e&&toMin(p.end)>s){if(a<0)a=i;b=i;}
   });
   return a<0?null:{a,b};
+}
+/* ═══ 时间轴：日 / 周 / 月 视图切换 ═══ */
+let TL_VIEW="day",TL_MONTH=todayStr().slice(0,7);
+function setTLView(v){
+  TL_VIEW=v;
+  document.querySelectorAll("#tlvSwitch .chip").forEach(c=>c.classList.toggle("sel",c.dataset.v===v));
+  document.getElementById("tlvDay").style.display=v==="day"?"":"none";
+  document.getElementById("tlvWeek").style.display=v==="week"?"":"none";
+  document.getElementById("tlvMonth").style.display=v==="month"?"":"none";
+  if(v==="week")renderWeek();
+  if(v==="month")renderTLMonth();
+}
+function tlMonthShift(n){
+  const y=+TL_MONTH.slice(0,4),m=+TL_MONTH.slice(5);
+  const d=new Date(y,m-1+n,1);
+  TL_MONTH=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
+  renderTLMonth();
+}
+function renderTLMonth(){
+  const box=document.getElementById("tlMonthCal");if(!box)return;
+  document.getElementById("tlMonthLbl").textContent=TL_MONTH.slice(0,4)+" 年 "+TL_MONTH.slice(5)+" 月";
+  const y=+TL_MONTH.slice(0,4),m=+TL_MONTH.slice(5);
+  const first=new Date(y,m-1,1).getDay(),days=new Date(y,m,0).getDate(),today=todayStr();
+  /* 每天的事 = 具体日程（带日期的 events）+ 当天课程（课表按星期） */
+  const evCount={};
+  DATA.events.forEach(e=>{const d=e.date||today;if(!evCount[d])evCount[d]=0;evCount[d]++;});
+  const cells=["日","一","二","三","四","五","六"].map(w=>`<span class="dc pad" style="font-weight:600">${w}</span>`);
+  for(let i=0;i<first;i++)cells.push('<span class="dc pad"></span>');
+  for(let d=1;d<=days;d++){
+    const iso=`${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    const wd=(new Date(y,m-1,d).getDay()+6)%7+1; /* 周一=1 … 周日=7，跟课表 c.day 一致 */
+    const nC=DATA.week.courses.filter(c=>c.day===wd).length;
+    const nE=evCount[iso]||0;
+    const marks=[];
+    if(nC)marks.push(nC+" 节课");
+    if(nE)marks.push(nE+" 件事");
+    const cls=["dc","tlm"];
+    if(iso===today)cls.push("today");
+    if(marks.length)cls.push("mark");
+    cells.push(`<span class="${cls.join(" ")}" onclick="tlPickDay('${iso}')"><b>${d}</b>${marks.length?`<i>${marks.join("·")}</i>`:""}</span>`);
+  }
+  box.innerHTML=cells.join("");
+}
+function tlPickDay(iso){
+  VIEW_DATE=iso;refreshDay();setTLView("day");
 }
 function renderWeek(){
   const grid=document.getElementById("wkGrid");if(!grid)return;
