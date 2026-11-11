@@ -327,6 +327,8 @@ pre.json .n{color:#FDBA74}
 #noteTyRow .chip{cursor:pointer}
 .cal-grid .dc.tlm{display:flex;flex-direction:column;align-items:center;gap:1px;cursor:pointer}
 .cal-grid .dc.tlm i{font-style:normal;font-size:9px;color:var(--t3)}
+.cal-grid .dc.tlm.goal b{color:var(--red)}
+.cal-grid .dc.tlm.goal{box-shadow:inset 0 0 0 1px var(--red)}
 #noteTyRow .chip.sel{background:rgba(59,130,246,.18);border-color:rgba(59,130,246,.55);color:#93C5FD}
 #p-diary textarea{width:100%;min-height:120px;padding:12px 14px;border-radius:10px;border:1px solid var(--line);
   background:rgba(255,255,255,.03);color:var(--t1);font-size:13px;font-family:inherit;
@@ -1170,6 +1172,13 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
         <button class="btn ghost" onclick="tlMonthShift(1)">›</button>
       </div>
       <div class="cal-grid" id="tlMonthCal"></div>
+      <div class="chips-row" style="margin:12px 0 0">
+        <input type="date" id="dayDate" style="font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--t1)">
+        <input id="dayTxt" placeholder="什么日子？生日、纪念、备忘…" style="flex:1;min-width:120px;font:inherit;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--t1)">
+        <label style="font-size:12px;color:var(--t3);display:flex;align-items:center;gap:4px;white-space:nowrap"><input type="checkbox" id="dayYearly">每年</label>
+        <button class="btn" onclick="saveDay()">记下</button>
+      </div>
+      <div id="dayList"></div>
       <div class="band-lbl" style="margin-top:10px"><span>点一天，跳到那天的日视图</span><span></span></div>
     </div>
   </div>
@@ -1421,6 +1430,8 @@ const DATA = {
   notes:[],
   /* 第一类数据源：日记（按日历写）。每一条 {d:日期, t:正文}，一天一篇 */
   diary:[],
+  /* 重要日子与备忘：{d:日期, text:名字, yearly:是否每年重复（生日）}，月视图上当日历标 */
+  days:[],
   /* 记忆分三层，各管各的：
      long  长期记忆 = 上面的 profile。用户亲口说的事实，计算器唯一的输入。
      chat  聊天记忆 = 最近 3 轮。只为接住半句话，超过就滚掉，不沉淀。
@@ -1451,7 +1462,7 @@ const DIARY_KEEP=180;   // 日记最多留半年
 try{localStorage.removeItem("altiora_state_v1");}catch(e){}
 function saveData(){
   try{localStorage.setItem(SAVE_KEY,JSON.stringify({
-    profile:DATA.profile,events:DATA.events,notes:DATA.notes,diary:DATA.diary,
+    profile:DATA.profile,events:DATA.events,notes:DATA.notes,diary:DATA.diary,days:DATA.days,
     week:{periods:DATA.week.periods,courses:DATA.week.courses,synced:DATA.week.synced},
     memory:{chat:DATA.memory.chat,diary:DATA.memory.diary,
             last_seen:DATA.memory.last_seen,pending:DATA.memory.pending,
@@ -1463,6 +1474,7 @@ try{
   if(s&&s.profile)Object.assign(DATA.profile,s.profile);
   if(s&&Array.isArray(s.events))DATA.events=s.events.filter(e=>e&&e.start&&e.end).map(e=>({...e,date:e.date||todayStr()}));
   if(s&&Array.isArray(s.notes))DATA.notes=s.notes;
+  if(s&&Array.isArray(s.days))DATA.days=s.days;
   if(s&&Array.isArray(s.diary))DATA.diary=s.diary;
   if(s&&s.week){
     if(Array.isArray(s.week.periods)&&s.week.periods.length)DATA.week.periods=s.week.periods;
@@ -3624,7 +3636,7 @@ function setTLView(v){
   document.getElementById("tlvWeek").style.display=v==="week"?"":"none";
   document.getElementById("tlvMonth").style.display=v==="month"?"":"none";
   if(v==="week")renderWeek();
-  if(v==="month")renderTLMonth();
+  if(v==="month"){renderTLMonth();renderDayList();}
 }
 function tlMonthShift(n){
   const y=+TL_MONTH.slice(0,4),m=+TL_MONTH.slice(5);
@@ -3647,18 +3659,45 @@ function renderTLMonth(){
     const wd=(new Date(y,m-1,d).getDay()+6)%7+1; /* 周一=1 … 周日=7，跟课表 c.day 一致 */
     const nC=DATA.week.courses.filter(c=>c.day===wd).length;
     const nE=evCount[iso]||0;
+    const isGoal=DATA.profile.goal_deadline===iso;
+    const dayMarks=DATA.days.filter(x=>x.yearly?x.d.slice(5)===iso.slice(5):x.d===iso);
     const marks=[];
+    if(isGoal)marks.push("目标日");
+    dayMarks.forEach(x=>marks.push(x.text.slice(0,6)));
     if(nC)marks.push(nC+" 节课");
     if(nE)marks.push(nE+" 件事");
     const cls=["dc","tlm"];
     if(iso===today)cls.push("today");
     if(marks.length)cls.push("mark");
+    if(isGoal)cls.push("goal");
     cells.push(`<span class="${cls.join(" ")}" onclick="tlPickDay('${iso}')"><b>${d}</b>${marks.length?`<i>${marks.join("·")}</i>`:""}</span>`);
   }
   box.innerHTML=cells.join("");
 }
 function tlPickDay(iso){
   VIEW_DATE=iso;refreshDay();setTLView("day");
+}
+/* ═══ 月视图：重要日子与备忘 ═══ */
+function saveDay(){
+  const d=document.getElementById("dayDate").value;
+  const t=document.getElementById("dayTxt").value.trim();
+  if(!d||!t){toast("日子和名字都要填");return;}
+  DATA.days.push({d:d,text:t.slice(0,20),yearly:document.getElementById("dayYearly").checked});
+  saveData();
+  document.getElementById("dayTxt").value="";
+  TL_MONTH=d.slice(0,7);
+  renderTLMonth();renderDayList();
+}
+function delDay(i){DATA.days.splice(i,1);saveData();renderTLMonth();renderDayList();}
+function renderDayList(){
+  const box=document.getElementById("dayList");if(!box)return;
+  if(!DATA.days.length){box.innerHTML="";return;}
+  const sorted=[...DATA.days].sort((a,b)=>a.d<b.d?-1:1);
+  box.innerHTML='<div class="dc-sec">记下的日子</div>'+sorted.map(x=>{
+    const i=DATA.days.indexOf(x);
+    return `<div class="note-item"><span class="ty rule">${x.d.slice(5)}${x.yearly?" · 每年":""}</span>
+      <span class="tx">${esc(x.text)}</span>
+      <span class="del" onclick="delDay(${i})">×</span></div>`;}).join("");
 }
 function renderWeek(){
   const grid=document.getElementById("wkGrid");if(!grid)return;
