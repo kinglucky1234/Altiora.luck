@@ -1163,7 +1163,20 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
         <button class="btn" onclick="saveDiary()">保存</button>
       </div>
     </div>
-    <div id="weekReview" style="margin-bottom:12px"></div>
+    <div class="card">
+      <div class="ttl">生活碎碎念</div>
+      <div class="dsrc-grid">
+        <div class="dsrc" onclick="document.getElementById('diaryIn').focus();window.scrollTo({top:0,behavior:'smooth'})">
+          <b id="dsrcDiary">0</b><span>日记</span><em>打开就能写</em>
+        </div>
+        <div class="dsrc" onclick="openSheet()">
+          <b id="dsrcNotes">0</b><span>随手记</span><em>想到就写</em>
+        </div>
+        <div class="dsrc" onclick="openSocialSheet()">
+          <b id="dsrcSocial">0</b><span>我的生活圈</span><em>导入发言</em>
+        </div>
+      </div>
+    </div>
     <div class="diary-list" id="diaryListBox" style="border-top:none;padding-top:0"></div>
   </div>
 
@@ -1198,21 +1211,6 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
     <div class="card">
       <div class="ttl">我眼里的你 <small>关于你的真实记录</small></div>
       <div class="kv" id="kv"></div>
-    </div>
-
-    <div class="card">
-      <div class="ttl">我的三个入口</div>
-      <div class="dsrc-grid">
-        <div class="dsrc" onclick="go('diary')">
-          <b id="dsrcDiary">0</b><span>日记</span><em>打开就能写</em>
-        </div>
-        <div class="dsrc" onclick="openSheet()">
-          <b id="dsrcNotes">0</b><span>随手记</span><em>想到就写</em>
-        </div>
-        <div class="dsrc" onclick="openSocialSheet()">
-          <b id="dsrcSocial">0</b><span>我的生活圈</span><em>导入发言</em>
-        </div>
-      </div>
     </div>
 
     <div class="card" style="display:none">
@@ -1767,21 +1765,6 @@ function moveEventTo(i,dn){
   e.date=addDays(e.date,dn);e.done=false;
   saveData();refreshDay();
 }
-function renderWeekReview(){
-  const box=document.getElementById("weekReview");if(!box)return;
-  const since=addDays(todayStr(),-6);
-  const done=DATA.events.filter(e=>e.done&&e.type!=="sleep"&&e.date>=since&&e.date<=todayStr());
-  const diaries=DATA.diary.filter(x=>x.d>=since&&x.d<=todayStr());
-  const names={};done.forEach(e=>{names[e.name]=(names[e.name]||0)+1;});
-  const chips=Object.keys(names).map(k=>`<span class="chip">${esc(k)}${names[k]>1?" ×"+names[k]:""}</span>`).join("");
-  box.innerHTML=`<div class="card" style="background:rgba(16,185,129,.04);border-color:rgba(16,185,129,.2)">
-    <div class="ttl" style="margin-bottom:8px">这 7 天，你保住了什么 <small>只列做到的</small></div>
-    ${done.length?`<div class="chips">${chips}</div>
-      <div style="font-size:12px;color:var(--t3);margin-top:8px">共完成 ${done.length} 件，写了 ${diaries.length} 篇日记。</div>`
-      :`<div style="font-size:12.5px;color:var(--t3)">这 7 天还没有标记完成的事。想记的时候，在时间轴上点一下圆圈就行。</div>`}
-  </div>`;
-}
-
 /* ════════ 渲染：冲突卡片 ════════ */
 function renderConflicts(){
   const w=document.getElementById("cfWrap");if(!w)return;
@@ -4048,7 +4031,7 @@ function delEvent(i){
 let DIARY_DAY=todayStr();
 function renderDiaryPage(){
   DIARY_DAY=todayStr();
-  renderDiaryDay();renderDiaryList();renderWeekReview();
+  renderDiaryDay();renderDiaryList();updStats();
 }
 function diaryDayShift(n){
   const d=new Date(DIARY_DAY+"T00:00:00");d.setDate(d.getDate()+n);
