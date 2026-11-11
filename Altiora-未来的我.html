@@ -1298,7 +1298,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
   </div>
 </div>
 
-<button class="fab" onclick="openSheet()" title="随手记一笔">+<span class="n" id="fabN" style="display:none">0</span></button>
+<button class="fab" onclick="openSheet()" title="随手记一笔" style="display:none">+</button>
 
 <!-- 添加课表弹窗 -->
 <div class="sheet" id="daySheet" onclick="if(event.target===this)closeDaySheet()">
@@ -4342,8 +4342,6 @@ function updStats(){
   if(!c&&!todayN){gm.style.display="none";}
   else{gm.style.display="";document.getElementById("gazeTxt").textContent=c?`我盯着呢，今天有 ${c} 处冲突等你定`:"我盯着呢，今天没冲突";}
   gm.className=c?"gaze-msg warn":"gaze-msg";
-  const n=document.getElementById("fabN");
-  if(DATA.notes.length){n.style.display="grid";n.textContent=DATA.notes.length;}else n.style.display="none";
 }
 
 /* ════════ 快捷键 ════════ */
