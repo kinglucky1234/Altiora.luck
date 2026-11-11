@@ -1281,6 +1281,20 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
       <div class="ttl">外观 <small>换皮肤、换主色，只存在这台电脑</small></div>
       <div class="skin-row" id="skinRow"></div>
     </div>
+
+    <div class="card">
+      <div class="ttl">数据 <small>全部只存在这台设备，换浏览器前先导出</small></div>
+      <div class="chips-row" style="margin:0">
+        <button class="btn ghost" onclick="exportData()">导出存档（JSON）</button>
+        <button class="btn ghost" onclick="document.getElementById('importFile').click()">从存档导入</button>
+        <input type="file" id="importFile" accept=".json,application/json" style="display:none" onchange="importData(this)">
+      </div>
+      <div class="chips-row" style="margin:10px 0 0;font-size:12px;color:var(--t3)">
+        <span>两件事挨着多久算「撞上了」：缓冲</span>
+        <input type="number" id="bufMin" min="0" max="120" step="5" style="width:64px;font:inherit;padding:4px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--t1)" onchange="setBufferMin(this.value)">
+        <span>分钟（默认 10——连轴转没饭吃，也算撞）</span>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1826,7 +1840,7 @@ function renderConflicts(){
     card.innerHTML=`
       <div class="cf-head">
         <div class="ic">!</div>
-        <div class="cf-title">「${c.a.name} ${c.a.start}-${c.a.end}」与「${c.b.name} ${c.b.start}-${c.b.end}」<em>重叠 ${c.overlap_min} 分钟</em></div>
+        <div class="cf-title">「${c.a.name} ${c.a.start}-${c.a.end}」与「${c.b.name} ${c.b.start}-${c.b.end}」<em>${c.overlap_min?`重叠 ${c.overlap_min} 分钟`:"挨在一起，没留缓冲"}</em></div>
       </div>
       <div class="cf-sub">三个选项都算过账了，代价写在下面 · ${c.risk}</div>
       <div class="opts">
@@ -1994,11 +2008,14 @@ function detectConflicts(dateIso){
   // 只比同一天的事，跨天的两件事不会「冲突」
   const day=dateIso||VIEW_DATE;
   const list=DATA.events.filter(e=>e.date===day);
+  const bufRaw=Number(DATA.profile.buffer_min);
+  const buffer=Number.isFinite(bufRaw)?bufRaw:10; // 缓冲：两件挨得太近也算撞（默认 10 分钟，画像页可调）
   for(let i=0;i<list.length;i++)for(let j=i+1;j<list.length;j++){
     const a=list[i],b=list[j];
     if(a.type==="sleep"||b.type==="sleep")continue;
     const ov=Math.min(toMin(a.end),toMin(b.end))-Math.max(toMin(a.start),toMin(b.start));
     if(ov>0)cs.push(makeConflict(a,b,ov));
+    else if(ov>-buffer)cs.push(makeConflict(a,b,0)); // 没重叠但中间没有缓冲：连轴转，饭都没吃
   }
   return cs;
 }
@@ -2923,7 +2940,7 @@ function tryFillPending(t){
   if(date!==VIEW_DATE){VIEW_DATE=date;refreshDay();}
   const c=detectConflicts(date).find(x=>x.a===res.ev||x.b===res.ev);
   return res.delta>0
-    ? `${tag}补上了，撞出 <b>${res.delta}</b> 处冲突${c?`——和「${esc(c.a===res.ev?c.b.name:c.a.name)}」重叠 ${c.overlap_min} 分钟`:""}。代价在时间轴页。`
+    ? `${tag}补上了，撞出 <b>${res.delta}</b> 处冲突${c?`——和「${esc(c.a===res.ev?c.b.name:c.a.name)}」${c.overlap_min?`重叠 ${c.overlap_min} 分钟`:"挨得太近，没留缓冲"}`:""}。代价在时间轴页。`
     : `${tag}补上了，那天没冲突。`;
 }
 function esc(s){
@@ -3356,6 +3373,24 @@ function replyTo(v){
       ? `${added.join("、")}排进去了，撞了 <b>${total}</b> 处。代价算好了，去时间轴页看${dupTxt}。`
       : `${added.join("、")}排进去了，那天没撞${dupTxt}。`;
   }
+  // 2.6) 「重开」类先反问半句——确认真想扔才拦，只是烦就当烦接住（防止关键词误伤）
+  const RELAPSE_NEG=/没想|不想|不是|谈不上|才不会|只是/;
+  if(SESS.relapseAsk){
+    SESS.relapseAsk=false;
+    if(/只是想|只是烦|就是烦|没有|不是|没想|谈不上/.test(t)){
+      return "那就只是烦。烦就说烦，「重开」两个字以后少说——我看着心疼。";
+    }
+    if(/真想|想重开|想扔|重来|算了/.test(t)){
+      return pickFresh([
+        "「明天开始」这句你说过不少次了。我不是说你，是这句真的不太管用。",
+        "先别按那个键——今天不用重新开始，接着往下走就行。",
+        "完美起点不存在。头发油着、房间乱着、心情烂着，都能开始。"
+      ]);
+    }
+  }else if(/重开|重新开始|从头来过/.test(t)&&!RELAPSE_NEG.test(t)){
+    SESS.relapseAsk=true;
+    return "听着像想按重开键。先问半句：是真想扔了重来，还是只是今天烦？";
+  }
   // 3) 情绪优先——先当人，再当工具
   for(const e of EMOTIONS) if(e.k.test(t)){
     SESS.mood=(MOOD_LABEL.find(([re])=>re.test(t))||[,"情绪低"])[1];
@@ -3387,7 +3422,7 @@ function replyTo(v){
   if(/冲突|撞|怎么排|排一下|帮我排/.test(t)){
     if(!DATA.conflicts.length)return "现在没撞。你把新的事和时间告诉我，我随时算。";
     const c=DATA.conflicts[0];
-    return `现在撞的是「${c.a.name}」和「${c.b.name}」，重叠 ${c.overlap_min} 分钟。三个选项的代价我摆在时间轴页了。`;
+    return `现在撞的是「${c.a.name}」和「${c.b.name}」，${c.overlap_min?`重叠 ${c.overlap_min} 分钟`:"挨在一起，没留缓冲"}。三个选项的代价我摆在时间轴页了。`;
   }
   // 7) 日常对话：没配 Key 也得接得住，别让用户对着复读机说话
   for(const c of LOCAL_CHAT) if(c.k.test(t)) return pickFresh(c.r);
@@ -3399,7 +3434,7 @@ function slashCmd(v){
   if(cmd==="/冲突"){
     if(!DATA.conflicts.length){push("ai","现在没冲突。想试，可以用 <b>/加事 周五 15:00-16:00 临时事</b> 看看冲突是什么样。");return;}
     DATA.conflicts.forEach(c=>{
-      push("ai",`「${c.a.name} ${c.a.start}-${c.a.end}」和「${c.b.name} ${c.b.start}-${c.b.end}」重叠 ${c.overlap_min} 分钟：<br>${c.options.map(o=>`<b>${o.k}</b> ${o.name}（${o.costs[0]}）`).join("<br>")}<br>——去时间轴页，我替你把账摆好了。`);
+      push("ai",`「${c.a.name} ${c.a.start}-${c.a.end}」和「${c.b.name} ${c.b.start}-${c.b.end}」${c.overlap_min?`重叠 ${c.overlap_min} 分钟`:"挨在一起，没留缓冲"}：<br>${c.options.map(o=>`<b>${o.k}</b> ${o.name}（${o.costs[0]}）`).join("<br>")}<br>——去时间轴页，我替你把账摆好了。`);
     });
   }else if(cmd==="/加事"){
     const t=v.slice(3).trim();
@@ -3454,7 +3489,7 @@ async function startVoice(btn,inp,cb){
   if(micOn){ if(webStop){webStop();} else stopRecording(btn,inp,cb); return; }
   if(micStarting)return;   // 权限弹窗还没点完时，别开第二条录音
   if(location.protocol==="file:"){
-    toast("双击打开时浏览器不给麦克风，直接打字就行。");
+    toast("双击打开的文件用不了麦克风。最短路径：电脑上跑 python server.py 后开 http://localhost:8000，手机直接用部署的网页版；打字一直能用。");
     return;
   }
   if(!MIC_SERVER){
@@ -3725,6 +3760,39 @@ function openDayView(iso){
   document.getElementById("dayView").classList.add("on");
 }
 function closeDayView(){DAY_VIEW_ISO="";document.getElementById("dayView").classList.remove("on");}
+/* ═══ 数据存档：导出 / 导入（数据只在 localStorage，这是唯一的保命绳） ═══ */
+function exportData(){
+  try{
+    const blob=new Blob([JSON.stringify(DATA,null,2)],{type:"application/json"});
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download="altiora-存档-"+todayStr()+".json";
+    a.click();URL.revokeObjectURL(a.href);
+    toast("存档已下载，收好它");
+  }catch(e){toast("导出失败，再试一次");}
+}
+function importData(inp){
+  const f=inp.files&&inp.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const d=JSON.parse(r.result);
+      if(!d||typeof d!=="object"||!d.profile||typeof d.profile!=="object")throw new Error("bad");
+      Object.keys(DATA).forEach(k=>{if(d[k]!==undefined)DATA[k]=d[k];});
+      saveData();renderMe();renderOrbs();updStats();refreshDay();renderDiaryPage();
+      toast("档案回来了。我还是我。");
+    }catch(e){toast("这个文件不是 Altiora 的存档");}
+  };
+  r.readAsText(f);
+  inp.value="";
+}
+function setBufferMin(v){
+  const n=Math.round(Number(v));
+  if(!Number.isFinite(n)||n<0||n>120){toast("缓冲填 0 到 120 之间的数字");return;}
+  DATA.profile.buffer_min=n;saveData();refreshDay();
+  toast("缓冲改成 "+n+" 分钟，时间轴的账重算了");
+}
+(function(){const el=document.getElementById("bufMin");if(el)el.value=DATA.profile.buffer_min!=null?DATA.profile.buffer_min:10;})();
 function renderWeek(){
   const grid=document.getElementById("wkGrid");if(!grid)return;
   const ps=DATA.week.periods,wds=todayWeekday(),mon=weekMonday();
@@ -4289,8 +4357,8 @@ document.addEventListener("keydown",e=>{
 
 /* ════════ 首进问卷 ════════ */
 const INTRO_STEPS=[
-  {key:"weak",title:"你明知道该改、就是改不掉的是哪些？",sub:"选 1–3 个。以后每次有冲突，我会拿它们提醒你。",
-   type:"multi",opts:["熬夜刷手机","拖延","起床困难","乱花钱","暴饮暴食","容易暴躁","焦虑内耗","学不进去","戒不掉游戏","其他"]},
+  {key:"weak",title:"先聊两句：你明知道该改、就是改不掉的是哪些？",sub:"它会陪你很久，所以先记三样东西。以后每次有冲突，我拿它们提醒你——说到做到。",
+   type:"multi",opts:["熬夜刷手机","拖延","起床困难","乱花钱","暴饮暴食","容易暴躁","焦虑内耗","学不进去","戒不掉游戏"]},
   {key:"sleep",title:"你每晚最晚几点必须睡？",sub:"过了这个点就算熬夜，有冲突时我会拿它算代价。",
    type:"single",opts:["22:30","23:00","23:30","00:00","不固定"]},
   {key:"focus",title:"你一天里精力最顶的是哪个时段？",sub:"我排「今日方案」时，把最要脑力的事放到这段。",
@@ -4322,7 +4390,7 @@ function introRender(){
     });
     // 软肋：预设之外可以自己写一个（最多选 3 个的限制仍然生效）
     const inp=document.createElement("input");
-    inp.className="intro-text"; inp.placeholder="或者自己写一个…";
+    inp.className="intro-text"; inp.placeholder="或者自己写一件，越具体越好（比如：一焦虑就点外卖）";
     const multiCustom=[...introPicked.multi].find(x=>s.opts.indexOf(x)<0)||"";
     inp.value=multiCustom;
     inp.oninput=()=>{
@@ -4399,6 +4467,15 @@ function introCommit(){
 }
 function introNext(){
   introCommit();
+  // 回执：选了什么当场确认「写进去了」，承诺才有兑现感
+  const s=INTRO_STEPS[introIdx];
+  let got="";
+  if(s.type==="multi"&&introPicked.multi.size)got=[...introPicked.multi].join("、");
+  else if(s.type==="single"&&introPicked.single)got=introPicked.single;
+  else if(s.type==="pick"&&introPicked[s.field||"goal"])got=introPicked[s.field||"goal"];
+  else if(s.type==="text"&&introPicked.name)got="叫你「"+introPicked.name+"」";
+  else if(s.type==="color"&&introPicked.color)got="分身的颜色";
+  if(got)toast("记住了，已经写进去了："+got);
   introIdx++;
   if(introIdx>=INTRO_STEPS.length){introFinish();return;}
   introRender();
@@ -4409,6 +4486,7 @@ function introFinish(){
   document.getElementById("introMask").classList.remove("on");
   document.getElementById("introBox").classList.remove("on");
   try{localStorage.setItem("altiora_intro_done","1");}catch(e){}
+  toast("都写进去了。以后每次有冲突，我拿这些提醒你。");
   // 问卷做完，接着放游戏式引导（对从没引导过的人）
   try{
     if(!localStorage.getItem("altiora_guide_done"))setTimeout(startGuide,400);
