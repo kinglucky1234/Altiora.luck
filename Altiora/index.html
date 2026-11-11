@@ -1059,7 +1059,6 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
       <button class="tab on" data-p="home">主页</button>
       <button class="tab" data-p="diary">生活碎碎念</button>
       <button class="tab" data-p="timeline">时间轴</button>
-      <button class="tab" data-p="week">课表</button>
       <button class="tab" data-p="me">我的画像</button>
     </div>
   </div>
@@ -1133,10 +1132,8 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
     <div id="reconWrap"></div>
     <div id="cfWrap"></div>
     <div id="planWrap"></div>
-  </div>
 
-  <!-- ═══ 课表：一周网格 ═══ -->
-  <div class="page" id="p-week">
+    <!-- 本周课表：并入时间轴页，导入后每天的课自动进时间轴 -->
     <div class="card">
       <div class="wk-tools">
         <div class="ttl" style="margin:0">本周课表 <small id="wkRange"></small></div>
@@ -1150,7 +1147,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
         课表还是空的。<br>点右上角「+ 导入课表」，把教务系统里的课表粘进来。
       </div>
       <div class="band-lbl" style="margin-top:14px">
-        <span>今天的课会自动进「时间轴」，参与冲突和代价计算</span>
+        <span>今天的课会自动进上面的时间轴，参与冲突和代价计算</span>
         <span id="wkTodayTxt"></span>
       </div>
     </div>
