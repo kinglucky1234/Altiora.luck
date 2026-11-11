@@ -1050,7 +1050,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
   <div class="tabs-wrap">
     <div class="tabs">
       <button class="tab on" data-p="home">主页</button>
-      <button class="tab" data-p="diary">日记</button>
+      <button class="tab" data-p="diary">生活碎碎念</button>
       <button class="tab" data-p="timeline">时间轴</button>
       <button class="tab" data-p="week">课表</button>
       <button class="tab" data-p="me">我的画像</button>
@@ -1149,25 +1149,12 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
     </div>
   </div>
 
-  <!-- ═══ 日记：一个页签，打开就能写，不用点第二下 ═══ -->
+  <!-- ═══ 生活碎碎念：三个板块，点进去再写 ═══ -->
   <div class="page" id="p-diary">
     <div class="card">
-      <div class="cal-head">
-        <button class="btn ghost" onclick="diaryDayShift(-1)">‹</button>
-        <div class="cal-m" id="diaryDayLbl"></div>
-        <button class="btn ghost" onclick="diaryDayShift(1)">›</button>
-      </div>
-      <textarea id="diaryIn" placeholder="这一天过得怎么样？写点什么…"></textarea>
-      <div class="result" id="diaryRes"></div>
-      <div class="sheet-act">
-        <button class="btn" onclick="saveDiary()">保存</button>
-      </div>
-    </div>
-    <div class="card">
-      <div class="ttl">生活碎碎念</div>
       <div class="dsrc-grid">
-        <div class="dsrc" onclick="document.getElementById('diaryIn').focus();window.scrollTo({top:0,behavior:'smooth'})">
-          <b id="dsrcDiary">0</b><span>日记</span><em>打开就能写</em>
+        <div class="dsrc" onclick="toggleDiaryEditor()">
+          <b id="dsrcDiary">0</b><span>日记</span><em>点进去写</em>
         </div>
         <div class="dsrc" onclick="openSheet()">
           <b id="dsrcNotes">0</b><span>随手记</span><em>想到就写</em>
@@ -1177,7 +1164,21 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
         </div>
       </div>
     </div>
-    <div class="diary-list" id="diaryListBox" style="border-top:none;padding-top:0"></div>
+    <div id="diaryEditor" style="display:none">
+      <div class="card">
+        <div class="cal-head">
+          <button class="btn ghost" onclick="diaryDayShift(-1)">‹</button>
+          <div class="cal-m" id="diaryDayLbl"></div>
+          <button class="btn ghost" onclick="diaryDayShift(1)">›</button>
+        </div>
+        <textarea id="diaryIn" placeholder="这一天过得怎么样？写点什么…"></textarea>
+        <div class="result" id="diaryRes"></div>
+        <div class="sheet-act">
+          <button class="btn" onclick="saveDiary()">保存</button>
+        </div>
+      </div>
+      <div class="diary-list" id="diaryListBox" style="border-top:none;padding-top:0"></div>
+    </div>
   </div>
 
   <!-- ═══ 我的画像 ═══ -->
@@ -4032,6 +4033,14 @@ let DIARY_DAY=todayStr();
 function renderDiaryPage(){
   DIARY_DAY=todayStr();
   renderDiaryDay();renderDiaryList();updStats();
+}
+/* 日记板块默认收着，点「日记」才展开写 */
+function toggleDiaryEditor(){
+  const ed=document.getElementById("diaryEditor");
+  const show=ed.style.display==="none";
+  ed.style.display=show?"":"none";
+  if(show){renderDiaryDay();renderDiaryList();
+    setTimeout(()=>document.getElementById("diaryIn").focus(),60);}
 }
 function diaryDayShift(n){
   const d=new Date(DIARY_DAY+"T00:00:00");d.setDate(d.getDate()+n);
