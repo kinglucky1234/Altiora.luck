@@ -324,6 +324,12 @@ pre.json .n{color:#FDBA74}
   outline:none;resize:vertical;line-height:1.65;
 }
 .sheet-box textarea:focus{border-color:rgba(59,130,246,.5);background:rgba(59,130,246,.05)}
+#noteTyRow .chip{cursor:pointer}
+#noteTyRow .chip.sel{background:rgba(59,130,246,.18);border-color:rgba(59,130,246,.55);color:#93C5FD}
+#p-diary textarea{width:100%;min-height:120px;padding:12px 14px;border-radius:10px;border:1px solid var(--line);
+  background:rgba(255,255,255,.03);color:var(--t1);font-size:13px;font-family:inherit;
+  outline:none;resize:vertical;line-height:1.65;margin-top:4px}
+#p-diary textarea:focus{border-color:rgba(59,130,246,.5)}
 .sheet-act{display:flex;gap:10px;align-items:center;margin-top:14px}
 .result{
   margin-top:14px;padding:13px 15px;border-radius:10px;font-size:12.5px;line-height:1.7;
@@ -1044,6 +1050,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
   <div class="tabs-wrap">
     <div class="tabs">
       <button class="tab on" data-p="home">主页</button>
+      <button class="tab" data-p="diary">日记</button>
       <button class="tab" data-p="timeline">时间轴</button>
       <button class="tab" data-p="week">课表</button>
       <button class="tab" data-p="me">我的画像</button>
@@ -1142,6 +1149,24 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
     </div>
   </div>
 
+  <!-- ═══ 日记：一个页签，打开就能写，不用点第二下 ═══ -->
+  <div class="page" id="p-diary">
+    <div class="card">
+      <div class="cal-head">
+        <button class="btn ghost" onclick="diaryDayShift(-1)">‹</button>
+        <div class="cal-m" id="diaryDayLbl"></div>
+        <button class="btn ghost" onclick="diaryDayShift(1)">›</button>
+      </div>
+      <textarea id="diaryIn" placeholder="这一天过得怎么样？写点什么…"></textarea>
+      <div class="result" id="diaryRes"></div>
+      <div class="sheet-act">
+        <button class="btn" onclick="saveDiary()">保存</button>
+      </div>
+    </div>
+    <div id="weekReview" style="margin-bottom:12px"></div>
+    <div class="diary-list" id="diaryListBox" style="border-top:none;padding-top:0"></div>
+  </div>
+
   <!-- ═══ 我的画像 ═══ -->
   <div class="page" id="p-me">
     <div class="me-hero">
@@ -1178,8 +1203,8 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
     <div class="card">
       <div class="ttl">我的三个入口</div>
       <div class="dsrc-grid">
-        <div class="dsrc" onclick="openDiary()">
-          <b id="dsrcDiary">0</b><span>日记</span><em>按日历写</em>
+        <div class="dsrc" onclick="go('diary')">
+          <b id="dsrcDiary">0</b><span>日记</span><em>打开就能写</em>
         </div>
         <div class="dsrc" onclick="openSheet()">
           <b id="dsrcNotes">0</b><span>随手记</span><em>想到就写</em>
@@ -1210,42 +1235,17 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 <div class="sheet" id="sheet" onclick="if(event.target===this)closeSheet()">
   <div class="sheet-box">
     <h3>随手记</h3>
-    <div class="sub">想到什么说什么，不用挑格式。我自己判断这是件要办的事、一条规矩，还是一句吐槽。</div>
-    <div class="note-list" id="noteListBox"></div>
-    <textarea id="noteIn" placeholder="例：周五老板临时加了两小时晚班 19:00-21:00&#10;例：以后周一不接活&#10;例：今天高数又没听懂，烦"></textarea>
-    <div class="chips-row">
-      <span class="chip">说时间 → 记成日程</span>
-      <span class="chip">说「以后/不要」 → 记成规矩</span>
-      <span class="chip g">其它 → 攒着提炼</span>
+    <div class="chips-row" id="noteTyRow" style="margin:0 0 10px">
+      <span class="chip" data-ty="event" onclick="pickNoteTy('event')">记日程</span>
+      <span class="chip" data-ty="rule" onclick="pickNoteTy('rule')">记规矩</span>
+      <span class="chip g" data-ty="note" onclick="pickNoteTy('note')">其他</span>
     </div>
+    <div class="note-list" id="noteListBox"></div>
+    <textarea id="noteIn" placeholder="例：周五晚班 19:00-21:00" oninput="autoNoteTy()"></textarea>
     <div class="result" id="noteRes"></div>
     <div class="sheet-act">
       <button class="btn" onclick="saveNote()">记下</button>
       <button class="btn ghost" onclick="closeSheet()">取消</button>
-      <span class="hint">快捷键：按 N 直接唤出</span>
-    </div>
-  </div>
-</div>
-
-<!-- 日记弹窗 -->
-<div class="sheet" id="diarySheet" onclick="if(event.target===this)closeDiary()">
-  <div class="sheet-box">
-    <h3>日记</h3>
-    <div class="sub">挑一天，写点今天发生的事。写给自己看，我也会读进对你的了解里。</div>
-    <div class="cal-head">
-      <button class="btn ghost" onclick="diaryMonthShift(-1)">‹</button>
-      <div class="cal-m" id="diaryMonth"></div>
-      <button class="btn ghost" onclick="diaryMonthShift(1)">›</button>
-    </div>
-    <div class="cal-grid" id="diaryCal"></div>
-    <div class="cal-day" id="diaryDayLbl"></div>
-    <textarea id="diaryIn" placeholder="这一天过得怎么样？写点什么…"></textarea>
-    <div class="result" id="diaryRes"></div>
-    <div id="weekReview" style="margin:14px 0 4px"></div>
-    <div class="diary-list" id="diaryListBox"></div>
-    <div class="sheet-act">
-      <button class="btn" onclick="saveDiary()">保存这一天的日记</button>
-      <button class="btn ghost" onclick="closeDiary()">关闭</button>
     </div>
   </div>
 </div>
@@ -1254,8 +1254,8 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 <div class="sheet" id="socialSheet" onclick="if(event.target===this)closeSocialSheet()">
   <div class="sheet-box">
     <h3>我的生活圈</h3>
-    <div class="sub">把你发过的朋友圈 / 微博 / 说说贴进来，一行一条。我提炼成「你是个怎样的人」，只存在这台电脑。</div>
-    <textarea id="socialIn" placeholder="例：&#10;我总是忍不住熬夜刷手机&#10;今天又去跑步了，第五天&#10;分享：最近在读《认知觉醒》"></textarea>
+    <div class="sub">贴你公开发过的内容，一行一条，只存在这台电脑。</div>
+    <textarea id="socialIn" placeholder="例：我总是忍不住熬夜刷手机"></textarea>
     <div class="result" id="socialRes"></div>
     <div class="soc-list" id="socialListBox" style="margin-top:14px"></div>
     <div class="sheet-act">
@@ -1269,8 +1269,8 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 <div class="sheet" id="schedSheet" onclick="if(event.target===this)closeSchedSheet()">
   <div class="sheet-box">
     <h3 id="schedTitle">导入课表</h3>
-    <div class="sub" id="schedSub">把教务系统的课表复制进来，一行一门课。支持「周一 08:00-09:40 高数 教A101」，也支持「周一 第1-2节 高等数学」。</div>
-    <textarea id="schedIn" placeholder="例：&#10;周一 08:30-10:10 高等数学 教A101&#10;周一 10:20-12:00 英语 教B202&#10;周二 第5-6节 大学物理 实验楼301"></textarea>
+    <div class="sub" id="schedSub">把课表复制进来，一行一门课。</div>
+    <textarea id="schedIn" placeholder="例：周一 08:00-09:40 高等数学 教A101"></textarea>
     <div id="schedPrev"></div>
     <div class="result" id="schedRes"></div>
     <div class="sheet-act">
@@ -1284,7 +1284,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 <div class="sheet" id="periodSheet" onclick="if(event.target===this)closePeriodSheet()">
   <div class="sheet-box">
     <h3>节次时间设置</h3>
-    <div class="sub">按你们学校的作息改。导入课表时用这套时间对齐网格；写「第3节」的课也会按这里换算成具体时间。</div>
+    <div class="sub">导入课表时按这套时间对齐网格。</div>
     <div id="periodRows"></div>
     <div class="sheet-act">
       <button class="btn" onclick="savePeriods()">保存</button>
@@ -3975,22 +3975,32 @@ function go(p){
   document.querySelectorAll(".page").forEach(x=>x.classList.toggle("on",x.id==="p-"+p));
   document.body.dataset.tab=p;
   if(p==="week")renderWeek();
+  if(p==="diary")renderDiaryPage();
 }
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>go(t.dataset.p));
 
 /* ════════ 随手记 ════════ */
 function openSheet(){document.getElementById("sheet").classList.add("on");renderNotes();
+  NOTE_TY=null;NOTE_TY_MANUAL=false;syncNoteTyRow();
   setTimeout(()=>document.getElementById("noteIn").focus(),40);}
 function closeSheet(){document.getElementById("sheet").classList.remove("on");
-  document.getElementById("noteRes").className="result";document.getElementById("noteIn").value="";}
+  document.getElementById("noteRes").className="result";document.getElementById("noteIn").value="";
+  NOTE_TY=null;NOTE_TY_MANUAL=false;syncNoteTyRow();}
 function classify(t){
   if(/以后|不要|不许|再也不|必须|记住|别再/.test(t))return"rule";
   if(/\d{1,2}[:：]\d{2}/.test(t))return"event";
   return"note";
 }
+/* 类型由用户说了算：输入时自动预选，点一下就改 */
+let NOTE_TY=null,NOTE_TY_MANUAL=false;
+function syncNoteTyRow(){
+  document.querySelectorAll("#noteTyRow .chip").forEach(c=>c.classList.toggle("sel",c.dataset.ty===NOTE_TY));
+}
+function pickNoteTy(ty){NOTE_TY=ty;NOTE_TY_MANUAL=true;syncNoteTyRow();}
+function autoNoteTy(){if(NOTE_TY_MANUAL)return;NOTE_TY=classify(document.getElementById("noteIn").value);syncNoteTyRow();}
 function saveNote(){
   const el=document.getElementById("noteIn"),t=el.value.trim();if(!t)return;
-  const ty=classify(t),res=document.getElementById("noteRes");
+  const ty=(NOTE_TY_MANUAL&&NOTE_TY)?NOTE_TY:classify(t),res=document.getElementById("noteRes");
   DATA.notes.unshift({text:t,type:ty});
   saveData();   // 随手记也要落盘，刷新后还在
   renderNotes();
@@ -4015,7 +4025,7 @@ function saveNote(){
 }
 function renderNotes(){
   const box=document.getElementById("noteListBox");if(!box)return;
-  const M={rule:["rule","规矩"],event:["event","日程"],note:["","吐槽"]};
+  const M={rule:["rule","规矩"],event:["event","日程"],note:["","随手记"]};
   if(!DATA.notes.length){box.classList.remove("on");box.innerHTML="";return;}
   box.classList.add("on");
   box.innerHTML=DATA.notes.map((n,i)=>{
@@ -4034,45 +4044,18 @@ function delEvent(i){
   toast(`已删掉「${ev.name} ${ev.start}-${ev.end}」`);
 }
 
-/* ════════ 日记（按日历写） ════════ */
-let DIARY_MONTH=todayStr().slice(0,7), DIARY_DAY=todayStr();
-function openDiary(){
-  DIARY_DAY=todayStr();DIARY_MONTH=todayStr().slice(0,7);
-  renderDiaryCal();renderDiaryDay();renderDiaryList();renderWeekReview();
-  document.getElementById("diarySheet").classList.add("on");
-  setTimeout(()=>document.getElementById("diaryIn").focus(),40);
+/* ════════ 日记（一个页签，打开就能写） ════════ */
+let DIARY_DAY=todayStr();
+function renderDiaryPage(){
+  DIARY_DAY=todayStr();
+  renderDiaryDay();renderDiaryList();renderWeekReview();
 }
-function closeDiary(){
-  document.getElementById("diarySheet").classList.remove("on");
-  document.getElementById("diaryRes").className="result";
+function diaryDayShift(n){
+  const d=new Date(DIARY_DAY+"T00:00:00");d.setDate(d.getDate()+n);
+  DIARY_DAY=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  renderDiaryDay();
 }
-function diaryMonthShift(n){
-  const y=+DIARY_MONTH.slice(0,4),m=+DIARY_MONTH.slice(5);
-  const d=new Date(y,m-1+n,1);
-  DIARY_MONTH=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
-  renderDiaryCal();
-}
-function pickDiaryDay(iso){DIARY_DAY=iso;renderDiaryCal();renderDiaryDay();}
-function renderDiaryCal(){
-  const box=document.getElementById("diaryCal");if(!box)return;
-  document.getElementById("diaryMonth").textContent=DIARY_MONTH.slice(0,4)+" 年 "+DIARY_MONTH.slice(5)+" 月";
-  const y=+DIARY_MONTH.slice(0,4),m=+DIARY_MONTH.slice(5);
-  const first=new Date(y,m-1,1).getDay();
-  const days=new Date(y,m,0).getDate();
-  const today=todayStr();
-  const set=new Set(DATA.diary.map(x=>x.d));
-  const cells=[];
-  for(let i=0;i<first;i++)cells.push('<span class="dc pad"></span>');
-  for(let d=1;d<=days;d++){
-    const iso=`${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
-    const cls=["dc"];
-    if(iso===DIARY_DAY)cls.push("sel");
-    if(iso===today)cls.push("today");
-    if(set.has(iso))cls.push("mark");
-    cells.push(`<span class="${cls.join(" ")}" onclick="pickDiaryDay('${iso}')">${d}</span>`);
-  }
-  box.innerHTML=cells.join("");
-}
+function pickDiaryDay(iso){DIARY_DAY=iso;renderDiaryDay();}
 function renderDiaryDay(){
   document.getElementById("diaryDayLbl").textContent=dayTag(DIARY_DAY);
   const existing=DATA.diary.find(x=>x.d===DIARY_DAY);
@@ -4099,7 +4082,7 @@ function renderDiaryList(){
   if(auto.length){
     const last=auto[auto.length-1];
     const frag=last.s?last.s.split(/[，,；;]/)[0].replace(/[。.]$/,"").slice(0,18):"";
-    parts.push(`<div class="dc-sec">分身自动记的（隔 3 天以上回来会翻）</div>`+
+    parts.push(`<div class="dc-sec">分身自动记的</div>`+
       auto.slice().reverse().map(x=>{
         const idx=DATA.memory.diary.indexOf(x);
         return `<div class="diary-card auto">
@@ -4110,16 +4093,16 @@ function renderDiaryList(){
       }).join("")+
       (frag?`<div class="dc-recall">久别重逢预览：<span>上次（${esc(cuteDate(last.d))}）你说${esc(frag)}，后来怎么样了？</span></div>`:""));
   }
-  box.innerHTML=parts.join("")||'<div class="hint">还没有日记。排一件事、说一个目标，或者挑一天写点什么。</div>';
+  box.innerHTML=parts.join("")||'<div class="hint">还没有日记，写点什么吧。</div>';
 }
-function delDiary(i){DATA.diary.splice(i,1);saveData();renderDiaryCal();renderDiaryList();renderMe();updStats();}
+function delDiary(i){DATA.diary.splice(i,1);saveData();renderDiaryDay();renderDiaryList();renderMe();updStats();}
 function delAutoDiary(i){DATA.memory.diary.splice(i,1);saveData();renderDiaryList();renderMe();}
 function saveDiary(){
   const el=document.getElementById("diaryIn"),t=el.value.trim();
   if(!t)return;
   const existing=DATA.diary.find(x=>x.d===DIARY_DAY);
   if(existing)existing.t=t;else DATA.diary.push({d:DIARY_DAY,t:t});
-  saveData();renderDiaryCal();renderDiaryList();renderMe();updStats();
+  saveData();renderDiaryDay();renderDiaryList();renderMe();updStats();
   const res=document.getElementById("diaryRes");
   res.className="result on";
   res.innerHTML=`<span class="lbl">已写进日记</span>${dayTag(DIARY_DAY)}这一页记好了，AI 会读进对你的了解里。`;
@@ -4176,7 +4159,7 @@ document.addEventListener("keydown",e=>{
   const tag=document.activeElement.tagName;
   if((e.key==="n"||e.key==="N")&&tag!=="INPUT"&&tag!=="TEXTAREA"){e.preventDefault();openSheet();}
   if(e.key==="Escape"){
-    closeSheet();closeSchedSheet();closeDiary();closeSocialSheet();endGuide();exitFullChat();
+    closeSheet();closeSchedSheet();closeSocialSheet();endGuide();exitFullChat();
   }
 });
 

@@ -27,7 +27,7 @@ jobs:
         run: |
           mkdir -p _site
           cp index.html _site/
-          cp "Altiora-未来的我.html" _site/
+          cp "Altiora/Altiora-未来的我.html" _site/  # 从 Altiora/ 取最新成品，根目录同名文件只是镜像
           cp "Altiora-给老师看.html" _site/
           cp avatar-preview.html _site/ 2>/dev/null || true
 
