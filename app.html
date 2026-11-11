@@ -3095,15 +3095,15 @@ async function handleUser(v){
     if(gn){
       const need=(DATA.profile.goal_min||{})[(hit?hit[0]:pool[0][0])]||60;
       const slot=push("ai","<span class='typing'>正在按你的空档排计划…</span>");
-      const items=await buildPlan(gn,need,planScope(v),preferStartMin(v));
-      if(!items.length){
+      const plan=await buildPlan(gn,need,planScope(v),preferStartMin(v));
+      if(!plan.days.length){
         setMsg(slot.id,`接下来这几天没有够 ${fmtDur(need)} 的空当给「${esc(gn)}」。要么把时长调小一点，要么先把某件事挪走——你说了算。`);
         return;
       }
       DATA.care=DATA.care||{};
-      DATA.care.pending={type:"plan",items};
+      DATA.care.pending={type:"plan",items:plan.items};
       DATA.care.date=todayStr();saveData();
-      setMsg(slot.id,planText(gn,items));
+      setMsg(slot.id,planText(gn,plan.days));
       return;
     }
     setTimeout(()=>push("ai","你想给哪个目标排？先说一句「六级每天一个半小时」这样的，我记下节奏再排。"),200);
@@ -3116,14 +3116,17 @@ async function handleUser(v){
       if(!gn||!matchGoal(v,gn))continue;
       const need=(DATA.profile.goal_min||{})[k]||60;
       const slot=proposeSlot(need);
-      const name=gn.slice(0,12);
+      /* 别只往时间轴里丢一个光秃秃的目标名：带上今天该练什么 */
+      const tl=planTopicsLocal(gn);
+      const part=tl[new Date().getDate()%tl.length].split(/[+＋]/)[0].trim().slice(0,12);
+      const name=`${part}·${gn}`.slice(0,20);
       if(slot){
         DATA.care=DATA.care||{};
         DATA.care.pending={date:todayStr(),goal:name,start:slot.start,end:slot.end};
         DATA.care.date=todayStr();saveData();
-        setTimeout(()=>push("ai",`今天 ${slot.start} 到 ${slot.end} 空着，给「${esc(name)}」？回一句「行」我就排进去。`),200);
+        setTimeout(()=>push("ai",`今天 ${slot.start} 到 ${slot.end} 空着，先排「${esc(part)}」？回一句「行」我就排进去。`),200);
       }else{
-        setTimeout(()=>push("ai",`今天没找到够长的空当给「${esc(name)}」。要不要把哪件往后挪挪？你说了算。`),200);
+        setTimeout(()=>push("ai",`今天没找到够长的空当给「${esc(gn)}」。要不要把哪件往后挪挪？你说了算。`),200);
       }
       return;
     }
@@ -4371,16 +4374,36 @@ async function buildPlan(goal,need,scope,from){
     for(let i=0;i<14;i++){const d=addDays(t,i);if(d>end)break;dates.push(d);}
   }else dates.push(t);
   const topics=await planTopics(goal,dates.length);
-  const items=[];
+  const items=[],days=[];
   dates.forEach((d,i)=>{
     const s=freeSlotOn(d,need,from);
     if(!s)return;
     const topic=topics[i%topics.length];
-    /* 事件名要短：取「+」前面那一段，避免排进时间轴后被截断成半句 */
-    const short=topic.split(/[+＋/]/)[0].trim().slice(0,10);
-    items.push({date:d,start:s.start,end:s.end,name:`${goal}·${short}`.slice(0,20),topic});
+    /* 一天的内容按「+」拆成几段，各占一段连续时间：时间轴上看得见「单词」「听力」，而不是一条叫「英语」的空壳 */
+    const parts=topic.split(/[+＋]/).map(x=>x.trim()).filter(Boolean);
+    /* 内容里写了时长的（「单词 30 分」）就按它来，没写的平分剩下的时间，避免标签和实际块长对不上 */
+    const durOf=p=>{
+      const m=/(\d+)\s*分/.exec(p);
+      if(m)return parseInt(m[1],10);
+      const h=/(\d+(?:\.\d+)?)\s*个?小时/.exec(p);
+      return h?Math.round(parseFloat(h[1])*60):0;
+    };
+    const alloc=[],flex=[];
+    parts.forEach((p,i)=>{const d=durOf(p);if(d){alloc[i]=d;}else flex.push(i);});
+    let rest=need-alloc.reduce((a,b)=>a+(b||0),0);
+    if(rest<flex.length*15)rest=flex.length*15;
+    flex.forEach(i=>{alloc[i]=Math.max(15,Math.floor(rest/flex.length));});
+    let cursor=toMin(s.start);
+    parts.forEach((p,k)=>{
+      const len=(k===parts.length-1)?(toMin(s.end)-cursor):alloc[k];
+      if(len<15)return;
+      items.push({date:d,start:fmtHM(cursor),end:fmtHM(cursor+len),
+        name:`${p}·${goal}`.slice(0,20),topic:p});
+      cursor+=len;
+    });
+    days.push({date:d,start:s.start,end:s.end,topic});
   });
-  return items;
+  return {items,days};
 }
 function dateLabel(d){
   const t=todayStr();
@@ -4388,9 +4411,9 @@ function dateLabel(d){
   if(d===addDays(t,1))return "明天";
   return d.slice(5).replace("-","/");
 }
-function planText(goal,items){
-  const head=`按空档排了 ${items.length} 天，${goal}：`;
-  const lines=items.map(it=>`${dateLabel(it.date)} ${it.start}-${it.end} ${esc(it.topic)}`);
+function planText(goal,days){
+  const head=`按空档排了 ${days.length} 天，${goal}：`;
+  const lines=days.map(it=>`${dateLabel(it.date)} ${it.start}-${it.end} ${esc(it.topic)}`);
   return esc(head)+"<br>"+lines.join("<br>")+"<br>回一句「行」全部排进去，不想就说「算了」。";
 }
 function proactiveCare(){
