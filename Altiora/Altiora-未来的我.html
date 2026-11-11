@@ -1,0 +1,4400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Altiora · 未来的你</title>
+<style>
+:root{
+  --bg:#0B1020;
+  --card:rgba(255,255,255,.035);
+  --card-hi:rgba(255,255,255,.055);
+  --line:rgba(255,255,255,.08);
+  --line-hi:rgba(255,255,255,.16);
+  --t1:#E5E7EB;
+  --t2:#9CA3AF;
+  --t3:#6B7280;
+  --blue:#3B82F6;
+  --green:#10B981;
+  --orange:#F97316;
+  --red:#EF4444;
+  --purple:#8B5CF6;
+  --cyan:#06B6D4;
+  --r:12px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  background:var(--bg);
+  color:var(--t1);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:14px;line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh;
+}
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(900px 500px at 12% -8%, rgba(59,130,246,.14), transparent 60%),
+    radial-gradient(700px 420px at 92% 4%, rgba(139,92,246,.11), transparent 60%);
+}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px 80px;position:relative;z-index:1}
+
+/* ── 顶部凝视条 ── */
+.gaze{
+  position:sticky;top:0;z-index:50;
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  background:rgba(11,16,32,.78);
+  border-bottom:1px solid var(--line);
+}
+.gaze-in{max-width:1080px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;gap:14px}
+.logo{font-size:16px;font-weight:700;letter-spacing:.5px}
+.logo span{color:var(--t3);font-weight:400;font-size:12px;margin-left:8px;letter-spacing:0}
+.gaze-msg{
+  flex:1;font-size:12.5px;color:var(--t2);
+  font-variant-numeric:tabular-nums;
+  display:flex;align-items:center;gap:8px;
+}
+.gaze-msg .dot{width:6px;height:6px;border-radius:50%;background:var(--red);animation:pulse 2s infinite}
+.gaze-msg:not(.warn) .dot{background:var(--green)}
+.gaze-msg.warn{color:#FCA5A5}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.8)}}
+.ai-pill{
+  font-size:11px;padding:3px 9px;border-radius:999px;white-space:nowrap;
+  color:var(--t3);border:1px solid var(--line);background:rgba(255,255,255,.02);
+}
+.ai-pill.on{color:#6EE7B7;border-color:rgba(16,185,129,.35);background:rgba(16,185,129,.08)}
+.tts-btn{
+  width:26px;height:26px;border-radius:999px;display:grid;place-items:center;flex:none;
+  background:rgba(255,255,255,.02);border:1px solid var(--line);color:var(--t3);
+  cursor:pointer;padding:0;transition:.15s;
+}
+.tts-btn svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.tts-btn:hover{color:var(--t1);border-color:var(--line-hi)}
+.tts-btn.on{color:#6EE7B7;border-color:rgba(16,185,129,.35);background:rgba(16,185,129,.08)}
+.typing{letter-spacing:3px;color:var(--t3);animation:tp 1.2s ease-in-out infinite}
+@keyframes tp{0%,100%{opacity:.3}50%{opacity:1}}
+.avatar-mini{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;
+  box-shadow:0 0 15px 4px var(--glow,rgba(239,68,68,.4))}
+.avatar-mini svg{width:100%;height:100%;display:block}
+
+/* ── Tab ── */
+.tabs{display:flex;gap:4px;padding:16px 0 22px}
+.tab{
+  padding:7px 16px;border-radius:9px;font-size:13px;color:var(--t2);
+  cursor:pointer;border:1px solid transparent;transition:.15s;background:none;
+  font-family:inherit;
+}
+.tab:hover{color:var(--t1);background:var(--card)}
+.tab.on{color:#fff;background:rgba(59,130,246,.14);border-color:rgba(59,130,246,.4)}
+.page{display:none}
+.page.on{display:block;animation:fade .25s}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ── 通用卡片 ── */
+.card{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  padding:18px;transition:.15s;
+}
+.card:hover{border-color:var(--line-hi)}
+.card+.card{margin-top:14px}
+.ttl{font-size:13px;font-weight:600;color:var(--t1);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.ttl small{color:var(--t3);font-weight:400;font-size:11.5px}
+
+/* ── 主页：只有一个球 ── */
+#p-home.on{display:flex;flex-direction:column;min-height:calc(100vh - 190px);justify-content:space-between}
+body[data-tab="home"] .fab{display:none}
+.orb-stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 0 0}
+.hero-avatar{
+  width:168px;height:168px;border-radius:50%;display:grid;place-items:center;position:relative;
+  box-shadow:0 0 70px 16px var(--glow,rgba(239,68,68,.35));
+  animation:breathe 3.6s ease-in-out infinite;
+}
+.hero-avatar svg{width:88%;height:88%;display:block}
+@keyframes breathe{0%,100%{transform:scale(1);opacity:.95}50%{transform:scale(1.045);opacity:1}}
+.hero-name{font-size:14px;font-weight:500;margin-top:30px;letter-spacing:1.5px;color:var(--t3)}
+.hero-state{font-size:12.5px;color:var(--red);margin-top:9px;text-align:center;opacity:.9}
+.hero-state.green{color:var(--green)}
+.hero-state.blue{color:var(--blue)}
+
+/* ── 聊天气泡（仅全屏） ── */
+.msg{max-width:74%;animation:fade .22s}
+.msg.me{align-self:flex-end;display:flex;flex-direction:column;align-items:flex-end}
+.msg.ai{align-self:flex-start;display:flex;gap:9px;align-items:flex-start}
+.msg .avatar-sm{
+  width:30px;height:30px;border-radius:50%;flex:none;background:#1E293B;
+  display:grid;place-items:center;overflow:hidden;border:1px solid var(--line);
+}
+.msg .avatar-sm svg{width:80%;height:80%}
+.msg .bubble{
+  padding:11px 15px;border-radius:16px;font-size:13.5px;line-height:1.7;word-break:break-word;
+}
+.msg.ai .bubble{
+  background:var(--card);border:1px solid var(--line);
+  border-bottom-left-radius:5px;color:var(--t1);
+}
+.msg.me .bubble{
+  background:rgba(59,130,246,.18);border:1px solid rgba(59,130,246,.32);
+  border-bottom-right-radius:5px;color:#DBEAFE;
+}
+.msg.sys{align-self:center;max-width:100%;color:var(--t3);font-size:11px;padding:2px;text-align:center}
+.msg .speak{
+  margin-top:6px;width:26px;height:26px;border-radius:50%;border:1px solid var(--line);
+  background:rgba(255,255,255,.03);color:var(--t3);font-size:12px;cursor:pointer;
+  display:grid;place-items:center;transition:.15s;
+}
+.msg .speak:hover{color:var(--t1);border-color:var(--line-hi)}
+.msg .speak.playing{color:var(--blue);border-color:rgba(59,130,246,.45)}
+
+/* ── 微信式输入条 ── */
+.wx-bar{display:flex;align-items:center;gap:8px;padding:14px 0 6px}
+.wx-bar input{
+  flex:1;min-width:0;padding:12px 16px;border-radius:10px;border:1px solid var(--line);
+  background:rgba(255,255,255,.04);color:var(--t1);font-size:14px;font-family:inherit;
+  outline:none;transition:.15s;
+}
+.wx-bar input:focus{border-color:rgba(59,130,246,.5);background:rgba(59,130,246,.06)}
+.wx-bar input::placeholder{color:var(--t3)}
+.icon-btn{
+  width:42px;height:42px;border-radius:10px;border:1px solid var(--line);flex:none;position:relative;
+  background:rgba(255,255,255,.03);color:var(--t2);font-size:17px;cursor:pointer;transition:.15s;
+  display:grid;place-items:center;
+}
+.icon-btn:hover{color:var(--t1);background:var(--card-hi)}
+.icon-btn.on{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.5);color:var(--red);animation:pulse 1.2s infinite}
+.icon-btn svg{width:19px;height:19px}
+.icon-btn .dot{
+  position:absolute;top:-4px;right:-4px;min-width:15px;height:15px;border-radius:8px;
+  background:var(--red);color:#fff;font-size:9.5px;line-height:15px;text-align:center;padding:0 4px;
+  display:none;
+}
+.icon-btn .dot.on{display:block}
+.icon-btn.primary{background:rgba(59,130,246,.16);border-color:rgba(59,130,246,.45);color:#93C5FD}
+.icon-btn.primary:hover{background:rgba(59,130,246,.28);color:#DBEAFE}
+
+/* AI 回复预览（主页） */
+.peek{
+  max-width:640px;margin:0 auto 16px;padding:13px 17px;border-radius:14px;width:100%;
+  background:var(--card);border:1px solid var(--line);border-left:2px solid var(--blue);
+  font-size:13px;line-height:1.7;color:var(--t1);cursor:pointer;
+  opacity:0;transform:translateY(8px);transition:.3s;pointer-events:none;
+}
+.peek.on{opacity:1;transform:none;pointer-events:auto}
+.peek .more{display:block;margin-top:8px;font-size:11.5px;color:var(--t3)}
+/* 轻提示 */
+#toast{
+  position:fixed;left:50%;bottom:96px;transform:translate(-50%,10px);z-index:1200;
+  max-width:86vw;padding:10px 16px;border-radius:10px;background:#1B2334;
+  border:1px solid var(--line-hi);color:var(--t1);font-size:12.5px;line-height:1.6;
+  box-shadow:0 8px 28px rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:.25s;
+}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+.btn{
+  padding:8px 18px;border-radius:9px;border:1px solid rgba(59,130,246,.45);
+  background:rgba(59,130,246,.16);color:#93C5FD;font-size:12.5px;cursor:pointer;transition:.15s;
+  font-family:inherit;
+}
+.btn:hover{background:rgba(59,130,246,.28);color:#fff}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn.ghost{background:none;border-color:var(--line);color:var(--t2)}
+.btn.ghost:hover{background:var(--card-hi);color:var(--t1)}
+.hint{font-size:11.5px;color:var(--t3)}
+
+/* ── 竖版时间轴 ── */
+.timeline-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap}
+.daynav{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.daynav .btn{padding:6px 12px;font-size:13px}
+.vtl{position:relative;padding-left:0}
+.vtl-line{position:absolute;left:11px;top:4px;bottom:10px;width:2px;border-radius:2px;
+  background:linear-gradient(180deg,transparent,rgba(59,130,246,.55) 4%,rgba(139,92,246,.4) 96%,transparent)}
+.vtl-item{position:relative;padding:0 0 16px 34px;animation:fade .22s}
+.vtl-dot{position:absolute;left:4px;top:5px;width:16px;height:16px;border-radius:50%;
+  border:3px solid var(--bg);box-shadow:0 0 0 1px var(--line-hi),0 0 12px rgba(255,255,255,.12);z-index:2}
+.vtl-chunk{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 13px;transition:.15s}
+.vtl-item:hover .vtl-chunk{border-color:var(--line-hi)}
+.vtl-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.vtl-name{font-size:13px;font-weight:600;color:var(--t1)}
+.vtl-tag{font-size:10.5px;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.04);
+  border:1px solid var(--line);font-variant-numeric:tabular-nums}
+.vtl-tm{font-size:11px;color:var(--t3);margin-top:4px;font-variant-numeric:tabular-nums;letter-spacing:.3px}
+.vtl-del{position:absolute;right:4px;top:8px;color:var(--t3);cursor:pointer;font-size:16px;line-height:1;
+  padding:2px 6px;border-radius:5px;opacity:0;transition:opacity .15s,color .15s,background .15s}
+.vtl-item:hover .vtl-del{opacity:1}
+.vtl-del:hover{color:var(--red);background:rgba(239,68,68,.1)}
+.vtl-item.cf .vtl-dot{background:var(--red);box-shadow:0 0 0 1px var(--red),0 0 16px rgba(239,68,68,.65)}
+.vtl-item.cf .vtl-chunk{border-color:rgba(239,68,68,.5);background:rgba(239,68,68,.06)}
+.vtl-item.cf .vtl-name{color:#FCA5A5}
+.vtl-done{position:absolute;right:26px;top:8px;width:18px;height:18px;border-radius:50%;
+  border:1px solid var(--line-hi);color:transparent;font-size:11px;line-height:16px;text-align:center;
+  cursor:pointer;opacity:0;transition:opacity .15s,background .15s,color .15s,border-color .15s}
+.vtl-item:hover .vtl-done{opacity:1}
+.vtl-done.on{opacity:1;background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.6);color:#34D399}
+.vtl-item.done .vtl-chunk{opacity:.5}
+.vtl-item.done .vtl-name{text-decoration:line-through}
+.cd-line{font-size:12px;color:var(--t3);margin:-4px 0 12px;letter-spacing:.2px}
+.cd-line b{color:var(--t1);font-variant-numeric:tabular-nums}
+.legend{display:flex;gap:16px;margin-top:12px;font-size:11.5px;color:var(--t3);flex-wrap:wrap}
+.legend b{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;vertical-align:middle}
+.band{height:4px;border-radius:3px;margin-top:14px;position:relative;overflow:hidden;
+  background:linear-gradient(90deg,rgba(16,185,129,.5),rgba(59,130,246,.5))}
+.band .seg{position:absolute;top:0;bottom:0;background:linear-gradient(90deg,rgba(239,68,68,.5),var(--red));
+  box-shadow:0 0 14px rgba(239,68,68,.7)}
+.band-lbl{display:flex;justify-content:space-between;font-size:10.5px;color:var(--t3);margin-top:6px}
+
+/* ── 冲突卡片 ── */
+.cf-card{
+  background:linear-gradient(180deg,rgba(239,68,68,.06),rgba(255,255,255,.02));
+  border:1px solid rgba(239,68,68,.28);border-radius:var(--r);padding:18px;margin-top:14px;
+}
+.cf-head{display:flex;align-items:flex-start;gap:10px;margin-bottom:4px}
+.cf-head .ic{width:20px;height:20px;border-radius:6px;background:rgba(239,68,68,.18);color:var(--red);
+  display:grid;place-items:center;font-size:12px;flex:none;margin-top:2px}
+.cf-title{font-size:14.5px;font-weight:600;line-height:1.45}
+.cf-title em{font-style:normal;color:var(--red)}
+.cf-sub{font-size:11.5px;color:var(--t3);margin:6px 0 16px;padding-left:30px}
+.opts{display:grid;gap:10px}
+.opt{
+  background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:10px;
+  padding:13px 15px;cursor:pointer;transition:.15s;position:relative;
+}
+.opt:hover{background:var(--card-hi);border-color:var(--line-hi)}
+.opt.sel{border-color:rgba(59,130,246,.55);background:rgba(59,130,246,.09)}
+.opt.sel::after{content:"✓ 已选";position:absolute;right:13px;top:12px;font-size:11px;color:var(--blue)}
+.opt-top{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.tag{
+  width:22px;height:22px;border-radius:6px;display:grid;place-items:center;
+  font-size:11.5px;font-weight:700;background:rgba(255,255,255,.07);color:var(--t2);flex:none;
+}
+.opt.sel .tag{background:var(--blue);color:#fff}
+.opt-name{font-size:13.5px;font-weight:600}
+.io{display:grid;gap:5px;font-size:12px;padding-left:32px}
+.io div{display:flex;gap:7px;align-items:flex-start;line-height:1.5}
+.io .m{flex:none;font-size:11px;margin-top:1px}
+.io .g .m{color:var(--green)}
+.io .c .m{color:var(--red)}
+.io .g{color:#A7F3D0}
+.io .c{color:#FCA5A5}
+.advice{
+  margin-top:16px;padding:13px 15px;border-radius:10px;
+  background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.22);
+  font-size:12.5px;line-height:1.65;color:#BFDBFE;
+}
+.advice b{color:#93C5FD;font-weight:600}
+.advice .lbl{font-size:11px;color:var(--blue);letter-spacing:1px;margin-bottom:5px;display:block;font-weight:600}
+.act{margin-top:14px;display:flex;gap:10px;align-items:center}
+
+/* ── 画像页 ── */
+.kv{display:grid;grid-template-columns:150px 1fr;gap:1px;background:var(--line);border:1px solid var(--line);
+  border-radius:10px;overflow:hidden;font-size:12.5px}
+.kv div{background:#0E1425;padding:11px 14px}
+.kv div:nth-child(odd){color:var(--t3);font-size:11.5px}
+.chips{display:flex;gap:7px;flex-wrap:wrap}
+.chip{padding:4px 11px;border-radius:20px;background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.3);
+  color:#FDBA74;font-size:11.5px}
+.chip.g{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.3);color:#6EE7B7}
+pre.json{
+  background:#0A0E1C;border:1px solid var(--line);border-radius:10px;padding:14px;
+  font-size:11.5px;line-height:1.7;color:#8FA3C0;overflow-x:auto;
+  font-family:"SF Mono",Menlo,Consolas,monospace;
+}
+pre.json .k{color:#93C5FD}
+pre.json .s{color:#6EE7B7}
+pre.json .n{color:#FDBA74}
+
+/* ── 弹窗 ── */
+.fab{
+  position:fixed;right:22px;bottom:22px;width:52px;height:52px;border-radius:50%;border:none;
+  background:linear-gradient(135deg,#3B82F6,#8B5CF6);color:#fff;font-size:26px;line-height:1;
+  display:grid;place-items:center;cursor:pointer;z-index:100;transition:.15s;
+  box-shadow:0 8px 26px rgba(59,130,246,.42);font-family:inherit;
+}
+.fab:hover{transform:scale(1.07)}
+.fab .n{position:absolute;top:-4px;right:-4px;min-width:19px;height:19px;border-radius:10px;
+  background:var(--red);color:#fff;font-size:11px;display:grid;place-items:center;padding:0 5px;
+  font-variant-numeric:tabular-nums}
+.sheet{position:fixed;inset:0;background:rgba(5,8,18,.66);backdrop-filter:blur(5px);
+  z-index:200;display:none;place-items:center;padding:20px}
+.sheet.on{display:grid;animation:fade .18s}
+.sheet-box{width:min(580px,94vw);background:#101626;border:1px solid var(--line-hi);
+  border-radius:16px;padding:22px;box-shadow:0 26px 70px rgba(0,0,0,.55)}
+.sheet-box h3{font-size:15px;font-weight:600;margin-bottom:6px}
+.sheet-box .sub{font-size:11.5px;color:var(--t3);margin-bottom:14px;line-height:1.6}
+.sheet-box textarea{
+  width:100%;min-height:120px;padding:12px 14px;border-radius:10px;border:1px solid var(--line);
+  background:rgba(255,255,255,.03);color:var(--t1);font-size:13px;font-family:inherit;
+  outline:none;resize:vertical;line-height:1.65;
+}
+.sheet-box textarea:focus{border-color:rgba(59,130,246,.5);background:rgba(59,130,246,.05)}
+#noteTyRow .chip{cursor:pointer}
+#noteTyRow .chip.sel{background:rgba(59,130,246,.18);border-color:rgba(59,130,246,.55);color:#93C5FD}
+#p-diary textarea{width:100%;min-height:120px;padding:12px 14px;border-radius:10px;border:1px solid var(--line);
+  background:rgba(255,255,255,.03);color:var(--t1);font-size:13px;font-family:inherit;
+  outline:none;resize:vertical;line-height:1.65;margin-top:4px}
+#p-diary textarea:focus{border-color:rgba(59,130,246,.5)}
+.sheet-act{display:flex;gap:10px;align-items:center;margin-top:14px}
+.result{
+  margin-top:14px;padding:13px 15px;border-radius:10px;font-size:12.5px;line-height:1.7;
+  background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.24);color:#A7F3D0;display:none;
+}
+.result.on{display:block;animation:fade .2s}
+.result .lbl{font-size:11px;color:var(--green);letter-spacing:1px;font-weight:600;display:block;margin-bottom:5px}
+.result.warn{background:rgba(249,115,22,.08);border-color:rgba(249,115,22,.26);color:#FED7AA}
+.result.warn .lbl{color:var(--orange)}
+.chips-row{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap}
+.note-item{
+  display:flex;gap:11px;align-items:flex-start;padding:11px 13px;border-radius:9px;
+  background:rgba(255,255,255,.025);border:1px solid var(--line);margin-bottom:8px;
+}
+.note-item .ty{
+  flex:none;font-size:10.5px;padding:2px 9px;border-radius:20px;margin-top:1px;
+  background:rgba(59,130,246,.13);border:1px solid rgba(59,130,246,.3);color:#93C5FD;
+}
+.note-item .ty.rule{background:rgba(249,115,22,.13);border-color:rgba(249,115,22,.3);color:#FDBA74}
+.note-item .ty.event{background:rgba(16,185,129,.13);border-color:rgba(16,185,129,.3);color:#6EE7B7}
+.note-item .tx{flex:1;font-size:12.5px;line-height:1.6}
+.note-item .del{flex:none;color:var(--t3);cursor:pointer;font-size:15px;line-height:1;padding:2px 4px}
+.note-item .del:hover{color:var(--red)}
+.empty{font-size:12px;color:var(--t3);padding:14px 0;text-align:center}
+.dash{color:var(--t3)}
+.kv small{color:var(--t3);font-size:11px;margin-left:6px}
+.diary-h{font-size:11.5px;color:var(--t3);margin:12px 0 2px}
+.diary-line{font-size:12.5px;color:var(--t2);padding:7px 0;border-top:1px dashed var(--line);font-variant-numeric:tabular-nums}
+/* 日记卡片：像日记本里的一页，不是输入框 */
+.diary-list{max-height:240px;overflow:auto;margin-top:14px;padding-top:10px;border-top:1px solid var(--line)}
+.diary-card{
+  background:linear-gradient(135deg,rgba(255,255,255,.04),rgba(255,255,255,.015));
+  border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px;
+  cursor:pointer;transition:border-color .15s,transform .1s;position:relative;
+}
+.diary-card:hover{border-color:var(--hue-line);transform:translateY(-1px)}
+.diary-card .dc-date{font-size:11px;color:var(--t3);margin-bottom:6px;font-variant-numeric:tabular-nums;letter-spacing:.3px}
+.diary-card .dc-text{font-size:13px;color:var(--t1);line-height:1.65;white-space:pre-wrap;word-break:break-word}
+.diary-card .dc-del{position:absolute;top:8px;right:10px;color:var(--t3);cursor:pointer;font-size:14px;line-height:1;padding:2px 5px;border-radius:4px}
+.diary-card .dc-del:hover{color:var(--red);background:rgba(239,68,68,.1)}
+.dc-sec{font-size:12px;color:var(--t3);margin:14px 2px 8px;padding-left:4px;border-left:3px solid var(--hue-line);letter-spacing:.3px}
+.diary-card.auto{opacity:.72;background:linear-gradient(135deg,rgba(59,130,246,.06),rgba(59,130,246,.02));border-style:dashed;cursor:default}
+.diary-card.auto:hover{transform:none;border-color:var(--line)}
+.dc-recall{font-size:12px;color:var(--t2);background:rgba(59,130,246,.08);border:1px dashed var(--hue-line);border-radius:10px;padding:10px 12px;margin-top:10px;line-height:1.7}
+.dc-recall span{color:var(--hue)}
+/* 弹窗内的小清单 */
+.note-list,.soc-list{max-height:180px;overflow:auto;display:none;margin-bottom:12px}
+.note-list.on,.soc-list.on{display:block}
+.soc-item{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin-bottom:8px}
+.soc-item .soc-tx{font-size:12.5px;color:var(--t1);line-height:1.6}
+.soc-item .soc-src{font-size:11px;color:var(--t3);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 日记日历 */
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin:2px 0 10px}
+.cal-m{font-size:13px;font-weight:600;color:var(--t1)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:12px}
+.dc{height:30px;display:grid;place-items:center;font-size:12px;border-radius:8px;color:var(--t2);
+  cursor:pointer;font-variant-numeric:tabular-nums;position:relative;background:rgba(255,255,255,.02)}
+.dc:hover{background:var(--card-hi);color:var(--t1)}
+.dc.pad{cursor:default;background:none}
+.dc.today{box-shadow:inset 0 0 0 1px var(--hue);color:var(--t1)}
+.dc.sel{background:var(--hue);color:#fff}
+.dc.mark::after{content:"";position:absolute;bottom:4px;left:50%;transform:translateX(-50%);
+  width:4px;height:4px;border-radius:50%;background:var(--green)}
+.dc.sel.mark::after{background:#fff}
+.cal-day{font-size:11.5px;color:var(--t3);margin:2px 0 8px}
+.sheet-box{max-height:min(88vh,760px);overflow:auto}
+
+@media(max-width:720px){
+  .kv{grid-template-columns:110px 1fr}
+}
+
+/* ── 游戏式新手引导 ── */
+.guide-mask{
+  position:fixed;inset:0;z-index:999;pointer-events:none;
+  box-shadow:0 0 0 9999px rgba(5,8,18,.78);
+  border-radius:10px;transition:all .35s ease;
+  display:none;
+}
+.guide-mask.on{display:block;animation:fade .2s}
+.guide-box{
+  position:fixed;z-index:1000;width:min(320px,86vw);
+  background:#101626;border:1px solid var(--line-hi);border-radius:14px;
+  padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.6);
+  display:none;animation:fade .25s;
+}
+.guide-box.on{display:block}
+.guide-box .step{font-size:11px;color:var(--blue);letter-spacing:1px;font-weight:600;margin-bottom:8px}
+.guide-box .txt{font-size:13.5px;line-height:1.65;color:var(--t1);margin-bottom:14px}
+.guide-box .txt b{color:#93C5FD}
+.guide-act{display:flex;justify-content:space-between;align-items:center}
+.guide-act .skip{font-size:11.5px;color:var(--t3);cursor:pointer;background:none;border:none;font-family:inherit}
+.guide-act .skip:hover{color:var(--t1)}
+.guide-dots{display:flex;gap:6px;align-items:center}
+.guide-dots i{width:6px;height:6px;border-radius:50%;background:var(--line);display:inline-block}
+.guide-dots i.on{background:var(--blue);width:18px;border-radius:3px}
+.guide-next{
+  padding:7px 16px;border-radius:8px;border:1px solid rgba(59,130,246,.45);
+  background:rgba(59,130,246,.16);color:#93C5FD;font-size:12.5px;cursor:pointer;transition:.15s;
+  font-family:inherit;
+}
+.guide-next:hover{background:rgba(59,130,246,.28);color:#fff}
+
+/* ── 首进问卷 ── */
+.intro-mask{position:fixed;inset:0;background:rgba(5,7,14,.74);z-index:1001;display:none;backdrop-filter:blur(3px)}
+.intro-mask.on{display:block}
+.intro-box{position:fixed;z-index:1002;left:50%;top:50%;transform:translate(-50%,-50%);width:min(430px,92vw);background:#101626;border:1px solid var(--line-hi);border-radius:16px;padding:22px;box-shadow:0 24px 70px rgba(0,0,0,.62);display:none}
+.intro-box.on{display:block}
+.intro-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.intro-step{font-size:11px;color:var(--blue);letter-spacing:1px;font-weight:600}
+.intro-skip{font-size:11.5px;color:var(--t3);background:none;border:none;cursor:pointer;font-family:inherit}
+.intro-skip:hover{color:var(--t1)}
+.intro-title{font-size:19px;font-weight:700;color:var(--t1);line-height:1.4;margin-bottom:6px}
+.intro-sub{font-size:12.5px;color:var(--t3);line-height:1.6;margin-bottom:18px}
+.intro-body{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:20px}
+.intro-chip{padding:9px 14px;border-radius:20px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--t1);font-size:13px;cursor:pointer;font-family:inherit;transition:.14s}
+.intro-chip:hover{border-color:rgba(59,130,246,.5)}
+.intro-chip.on{background:rgba(59,130,246,.18);border-color:var(--blue);color:#93C5FD}
+.intro-color{width:46px;height:46px;border-radius:50%;border:2px solid var(--line);cursor:pointer;transition:.14s}
+.intro-color.on{border-color:#fff;transform:scale(1.08)}
+.intro-text{width:100%;padding:11px 13px;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--t1);font-size:13.5px;font-family:inherit}
+.intro-text::placeholder{color:var(--t3)}
+.intro-text:focus{outline:none;border-color:var(--blue)}
+.intro-act{display:flex;justify-content:space-between;gap:10px}
+
+/* ── 全屏对话模式 ── */
+.fullchat{
+  position:fixed;inset:0;z-index:800;background:#0A0D17;
+  display:none;flex-direction:column;
+}
+.fullchat.on{display:flex;animation:fade .2s}
+.fullchat-bar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 22px;border-bottom:1px solid var(--line);
+}
+.full-back{
+  background:none;border:none;color:var(--t2);font-size:14px;cursor:pointer;
+  padding:6px 10px;border-radius:6px;font-family:inherit;
+}
+.full-back:hover{background:var(--card-hi);color:var(--t1)}
+.full-title{font-size:15px;color:var(--t1);font-weight:600}
+.fullchat-body{
+  flex:1;overflow-y:auto;padding:22px;
+  display:flex;flex-direction:column;gap:16px;
+}
+.fullchat-body::-webkit-scrollbar{width:6px}
+.fullchat-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:3px}
+.fullchat-input{
+  display:flex;gap:10px;padding:16px 22px 22px;border-top:1px solid var(--line);
+}
+.fullchat-input input{
+  flex:1;padding:12px 16px;border-radius:12px;border:1px solid var(--line);
+  background:rgba(255,255,255,.03);color:var(--t1);font-size:14px;font-family:inherit;outline:none;transition:.15s;
+}
+.fullchat-input input:focus{border-color:rgba(59,130,246,.5);background:rgba(59,130,246,.05)}
+
+/* ── 大模型设置（自带 Key） ── */
+.llm-mask{position:fixed;inset:0;z-index:1100;display:none;align-items:center;justify-content:center;
+  background:rgba(5,8,18,.74);backdrop-filter:blur(4px);padding:20px}
+.llm-mask.on{display:flex;animation:fade .2s}
+.llm-card{width:min(430px,92vw);max-height:88vh;overflow:auto;background:#101626;
+  border:1px solid var(--line-hi);border-radius:16px;padding:22px;box-shadow:0 24px 70px rgba(0,0,0,.6)}
+.llm-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.llm-head b{font-size:15px}
+.llm-x{background:none;border:none;color:var(--t3);font-size:18px;cursor:pointer;padding:0 4px;line-height:1}
+.llm-x:hover{color:var(--t1)}
+.llm-tip{font-size:11.5px;color:var(--t3);line-height:1.75}
+.llm-card label{display:block;font-size:11.5px;color:var(--t2);margin:13px 0 6px}
+.llm-card input,.llm-card select,.llm-card textarea{width:100%;padding:10px 12px;border-radius:9px;
+  border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--t1);
+  font-size:13px;font-family:inherit;outline:none}
+.llm-card textarea{resize:vertical;line-height:1.6;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px}
+.llm-card input:focus,.llm-card select:focus,.llm-card textarea:focus{border-color:rgba(59,130,246,.5)}
+.llm-actions{display:flex;gap:8px;margin-top:18px}
+.llm-actions .btn{flex:1}
+.llm-msg{font-size:12px;color:var(--t2);margin-top:12px;min-height:18px;line-height:1.7}
+.llm-msg.err{color:#FCA5A5}
+.llm-msg.ok{color:#6EE7B7}
+.ai-pill{cursor:pointer}
+.ai-pill:hover{border-color:var(--line-hi);color:var(--t1)}
+
+/* ════════ 周课表 ════════ */
+.wk-tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:16px}
+.wk-tools .btn{padding:8px 14px;font-size:13px}
+.wk-scroll{overflow-x:auto;padding-bottom:6px}
+.wk-grid{display:grid;grid-template-columns:54px repeat(7,minmax(104px,1fr));gap:5px;min-width:800px}
+.wk-hd{font-size:12px;color:var(--t2);text-align:center;padding:7px 2px;font-weight:600;border-radius:8px}
+.wk-hd small{display:block;font-size:10px;color:var(--t3);font-weight:400;margin-top:1px}
+.wk-hd.today{color:#fff;background:rgba(59,130,246,.22)}
+.wk-t{font-size:9.5px;color:var(--t3);text-align:right;padding:5px 5px 0 0;line-height:1.35}
+.wk-t b{display:block;color:var(--t2);font-size:11.5px;margin-bottom:1px}
+.wk-cell{background:rgba(255,255,255,.018);border:1px dashed rgba(255,255,255,.055);border-radius:9px;min-height:64px}
+.wk-course{border-radius:9px;padding:6px 8px;font-size:10.5px;line-height:1.35;overflow:hidden;
+  border-left:3px solid;position:relative;z-index:2}
+.wk-course b{display:block;font-size:11.5px;color:#fff;margin-bottom:3px;line-height:1.3;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wk-course span{display:block;color:rgba(255,255,255,.6);font-size:9.5px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wk-empty{color:var(--t3);font-size:13px;text-align:center;padding:30px 10px;line-height:1.9}
+.wk-prev{max-height:230px;overflow:auto;border:1px solid var(--line);border-radius:10px;margin-top:12px}
+.wk-prev table{width:100%;border-collapse:collapse;font-size:12px}
+.wk-prev th{color:var(--t3);font-weight:500;text-align:left;padding:8px 10px;
+  border-bottom:1px solid var(--line);font-size:11px;position:sticky;top:0;background:#12182C}
+.wk-prev td{padding:7px 10px;border-bottom:1px solid rgba(255,255,255,.04);color:var(--t2)}
+.wk-prev td b{color:var(--t1);font-weight:500}
+.wk-prev .bad{color:#FCA5A5}
+.period-row{display:grid;grid-template-columns:40px 1fr 1fr;gap:9px;align-items:center;margin-bottom:8px}
+.period-row span{font-size:12px;color:var(--t2)}
+.period-row input{padding:8px 10px;border-radius:8px;border:1px solid var(--line);
+  background:rgba(255,255,255,.03);color:var(--t1);font-size:12.5px;font-family:inherit;outline:none}
+.period-row input:focus{border-color:rgba(59,130,246,.5)}
+.ucard{margin-top:8px;font-size:12px;border:1px dashed rgba(128,128,128,.4);border-radius:8px;padding:6px 9px;background:rgba(128,128,128,.06)}
+.ucard summary{cursor:pointer;color:#8b8b8b;font-weight:600;list-style:none;outline:none}
+.ucard summary::-webkit-details-marker{display:none}
+.ucard summary:before{content:"▸ "}
+.ucard[open] summary:before{content:"▾ "}
+.uc-body{margin-top:5px;line-height:1.75;color:var(--t2)}
+.uc-k{display:inline-block;min-width:38px;color:#9a9a9a;margin-right:4px}
+.uc-v{font-weight:600}
+</style>
+<style id="skin-engine">
+/* ══════════ 可切换主题：3 套皮肤 × 主色 ══════════ */
+:root{
+  --hue:#3D6FE0; --hue-weak:#EAF0FD; --hue-line:#C9D9F8; --hue-deep:#2A56B8;
+}
+
+/* ── 皮肤 1：清爽（中性灰白，默认） ── */
+body[data-skin="fresh"]{
+  --bg:#F7F8FA; --card:#FFFFFF; --card-hi:#F1F4F8;
+  --line:#E4E8EF; --line-hi:#CBD4E1;
+  --t1:#1F2937; --t2:#5B6472; --t3:#8B95A5;
+  --green:#2E9E6B; --orange:#E07B39; --red:#D9534F;
+  --r:14px; --ink:#1F2937;
+  --shadow:0 1px 2px rgba(16,24,40,.04),0 6px 18px -6px rgba(16,24,40,.10);
+}
+/* ── 皮肤 2：奶油白（微暖，最淡） ── */
+body[data-skin="cream"]{
+  --bg:#FAF6EE; --card:#FFFDF9; --card-hi:#F4EDE1;
+  --line:#E9E0D1; --line-hi:#D6C8B0;
+  --t1:#2B2620; --t2:#6E6558; --t3:#A09584;
+  --green:#3F8C66; --orange:#D9823F; --red:#C9564F;
+  --r:14px; --ink:#2B2620;
+  --shadow:0 1px 2px rgba(43,38,32,.045),0 6px 18px -6px rgba(43,38,32,.11);
+}
+/* ── 皮肤 3：奶油米（明显暖，像牛皮纸） ── */
+body[data-skin="latte"]{
+  --bg:#F3E9D8; --card:#FFFCF4; --card-hi:#EADDC6;
+  --line:#DCCBAE; --line-hi:#C4AC85;
+  --t1:#2A231A; --t2:#6B5D49; --t3:#9C8B72;
+  --green:#3C7F5C; --orange:#C97434; --red:#BF4F48;
+  --r:14px; --ink:#2A231A;
+  --shadow:0 1px 2px rgba(42,35,26,.06),0 6px 18px -6px rgba(42,35,26,.14);
+}
+/* ── 皮肤 4：原木（胡桃木色，深棕暖） ── */
+body[data-skin="wood"]{
+  --bg:#2A2119; --card:#342A20; --card-hi:#3E3226;
+  --line:#4A3D2E; --line-hi:#5F4F3C;
+  --t1:#F0E6D8; --t2:#C0AE97; --t3:#8E7C66;
+  --green:#6BB894; --orange:#D9A05C; --red:#E0796F;
+  --r:14px; --ink:#F0E6D8;
+  --shadow:0 1px 2px rgba(0,0,0,.34),0 6px 18px -6px rgba(0,0,0,.5);
+}
+/* ── 皮肤 5：深夜黑（冷调） ── */
+body[data-skin="night"]{
+  --bg:#171A20; --card:#1F232B; --card-hi:#262B34;
+  --line:#2E343D; --line-hi:#3E4652;
+  --t1:#E8EBF0; --t2:#A7B0BC; --t3:#78828F;
+  --green:#4FBB8A; --orange:#E59456; --red:#E5716B;
+  --r:14px; --ink:#E8EBF0;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 18px -6px rgba(0,0,0,.45);
+}
+body{background:var(--bg);color:var(--t1);transition:background .25s,color .25s}
+body::before{background:
+  radial-gradient(760px 460px at 88% -12%, var(--hue-weak), transparent 62%),
+  radial-gradient(620px 420px at -6% 26%, var(--hue-weak), transparent 58%);
+  opacity:.55}
+body[data-skin="cream"]::before{background:
+  radial-gradient(760px 460px at 88% -12%, #FFF3DC, transparent 62%),
+  radial-gradient(620px 420px at -6% 26%, #F6EEE0, transparent 58%);opacity:.75}
+body[data-skin="latte"]::before{background:
+  radial-gradient(760px 460px at 88% -12%, #FFEBC6, transparent 62%),
+  radial-gradient(620px 420px at -6% 26%, #EDE1CB, transparent 58%);opacity:.8}
+body[data-skin="wood"]::before{background:
+  radial-gradient(760px 460px at 88% -12%, rgba(217,160,92,.13), transparent 62%),
+  radial-gradient(620px 420px at -6% 26%, rgba(107,184,148,.07), transparent 58%);opacity:.85}
+body[data-skin="night"]::before{background:
+  radial-gradient(760px 460px at 88% -12%, rgba(61,111,224,.16), transparent 62%),
+  radial-gradient(620px 420px at -6% 26%, rgba(46,158,107,.10), transparent 58%);opacity:.8}
+
+.logo{font-weight:700;letter-spacing:0}
+.ttl,.cf-title,.opt-name,.full-title,.sheet-box h3,.llm-head b{font-weight:650}
+.logo span{color:var(--t3)}
+
+/* 顶栏 */
+.gaze{background:color-mix(in srgb,var(--bg) 86%,transparent);border-bottom:1px solid var(--line);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.gaze-msg.warn{color:var(--red)}
+.ai-pill{border:1px solid var(--line);background:var(--card);color:var(--t2);border-radius:999px;font-weight:600}
+.ai-pill.on{background:color-mix(in srgb,var(--green) 14%,var(--card));border-color:color-mix(in srgb,var(--green) 34%,var(--card));color:var(--green)}
+.tts-btn{border:1px solid var(--line);background:var(--card);border-radius:10px;color:var(--t2)}
+.tts-btn.on{background:color-mix(in srgb,var(--green) 14%,var(--card));color:var(--green);border-color:color-mix(in srgb,var(--green) 34%,var(--card))}
+.tts-btn:hover{color:var(--t1);border-color:var(--line-hi);background:var(--card-hi)}
+.avatar-mini{background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow)}
+
+/* ── 底部导航：居中、随流、不悬浮 ── */
+.tabs-wrap{display:flex;justify-content:center;padding:22px 0 4px}
+.tabs{display:flex;gap:4px;background:var(--card);border:1px solid var(--line);
+  border-radius:14px;padding:5px;box-shadow:var(--shadow);margin:0;position:static;
+  width:max-content;max-width:100%;flex-wrap:nowrap}
+.tab{border-radius:10px;font-weight:600;color:var(--t2);padding:8px 18px;font-size:13px;
+  border:1px solid transparent;white-space:nowrap;flex:0 0 auto;writing-mode:horizontal-tb;
+  line-height:1.2;min-width:max-content}
+.tab:hover{background:var(--card-hi);color:var(--t1)}
+.tab.on{background:var(--hue-weak);color:var(--hue-deep);border-color:var(--hue-line)}
+.wrap{padding:0 20px 64px}
+
+/* 卡片 */
+.card{background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--r)}
+.card:hover{border-color:var(--line-hi)}
+
+/* 按钮 */
+.btn{background:var(--card);color:var(--hue-deep);border:1px solid var(--hue-line);border-radius:10px;
+  font-weight:600;padding:9px 16px;transition:background .15s,border-color .15s,transform .1s}
+.btn:hover{background:var(--hue-weak);color:var(--hue-deep);border-color:var(--hue)}
+.btn:active{transform:translateY(1px)}
+.btn.ghost{background:var(--card);color:var(--t2);border-color:var(--line)}
+.btn.ghost:hover{background:var(--card-hi);color:var(--t1);border-color:var(--line-hi)}
+.hint{color:var(--t3)}
+
+/* 主页 */
+.hero-avatar{background:var(--card);border:1px solid var(--line);
+  box-shadow:0 0 56px 12px var(--glow,rgba(217,83,79,.22)),var(--shadow)}
+.hero-name{color:var(--t2);font-weight:600;letter-spacing:.5px}
+.peek{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--hue);
+  border-radius:14px;box-shadow:var(--shadow)}
+.peek .more{color:var(--t3);font-weight:500}
+
+/* 聊天气泡 */
+.msg.ai .bubble{background:var(--card);border:1px solid var(--line);color:var(--t1);
+  border-radius:16px 16px 16px 5px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+.msg.me .bubble{background:var(--hue-weak);border:1px solid var(--hue-line);color:var(--hue-deep);
+  border-radius:16px 16px 5px 16px}
+.msg .avatar-sm{background:var(--card-hi);border:1px solid var(--line)}
+.msg .speak{background:var(--card);border:1px solid var(--line);color:var(--t2)}
+.msg .speak:hover{color:var(--t1);border-color:var(--line-hi);background:var(--card-hi)}
+.msg .speak.playing{color:var(--hue);border-color:var(--hue-line);background:var(--hue-weak)}
+
+/* 输入条 */
+.wx-bar input,.fullchat-input input{background:var(--card);border:1px solid var(--line-hi);
+  border-radius:12px;color:var(--t1)}
+.wx-bar input:focus,.fullchat-input input:focus{border-color:var(--hue);background:var(--card);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--hue) 14%,transparent)}
+.wx-bar input::placeholder,.fullchat-input input::placeholder{color:var(--t3)}
+.icon-btn{background:var(--card);border:1px solid var(--line);border-radius:12px;color:var(--t2)}
+.icon-btn:hover{color:var(--t1);background:var(--card-hi);border-color:var(--line-hi)}
+.icon-btn.primary{background:var(--hue);border-color:var(--hue);color:#fff}
+.icon-btn.primary:hover{filter:brightness(.92);border-color:var(--hue);color:#fff}
+.icon-btn.on{background:color-mix(in srgb,var(--red) 14%,var(--card));
+  border-color:color-mix(in srgb,var(--red) 40%,var(--card));color:var(--red)}
+
+/* 时间轴 */
+.vtl-chunk{background:var(--card)}
+.vtl-dot{border-color:var(--bg)}
+.vtl-line{background:linear-gradient(180deg,transparent,color-mix(in srgb,var(--hue) 45%,transparent) 4%,color-mix(in srgb,var(--purple) 35%,transparent) 96%,transparent)}
+.vtl-item:hover .vtl-chunk{border-color:var(--line-hi)}
+.vtl-item.cf .vtl-chunk{border-color:color-mix(in srgb,var(--red) 50%,var(--line));background:color-mix(in srgb,var(--red) 6%,var(--card))}
+.legend b{border-radius:3px}
+
+/* 冲突卡片 */
+.cf-card{background:var(--card);border:1px solid color-mix(in srgb,var(--red) 24%,var(--line));
+  border-left:3px solid var(--red);box-shadow:var(--shadow);border-radius:var(--r)}
+.cf-head .ic{background:color-mix(in srgb,var(--red) 12%,var(--card));color:var(--red);border-radius:8px;font-weight:700}
+.cf-title em{color:var(--red);font-weight:600}
+.opt{background:var(--card);border:1px solid var(--line);border-radius:12px}
+.opt:hover{background:var(--card-hi);border-color:var(--line-hi)}
+.opt.sel{border-color:var(--hue);background:color-mix(in srgb,var(--hue-weak) 60%,var(--card));
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--hue) 12%,transparent)}
+.opt.sel::after{content:"✓ 已选";color:var(--hue-deep);font-weight:600}
+.tag{background:var(--card-hi);color:var(--t2);border-radius:7px;font-weight:700}
+.opt.sel .tag{background:var(--hue);color:#fff}
+.io .g{color:var(--green)}.io .c{color:var(--red)}
+.advice{background:color-mix(in srgb,var(--hue-weak) 55%,var(--card));
+  border:1px solid var(--hue-line);color:var(--t1);border-radius:12px}
+.advice b{color:var(--hue-deep);font-weight:650}
+.advice .lbl{color:var(--hue);letter-spacing:.6px}
+
+/* 画像页 */
+.kv{border:1px solid var(--line);background:var(--line);border-radius:12px}
+.kv div{background:var(--card);color:var(--t1)}
+.kv div:nth-child(odd){color:var(--t3);font-weight:600}
+.chip{background:color-mix(in srgb,var(--orange) 12%,var(--card));
+  border:1px solid color-mix(in srgb,var(--orange) 32%,var(--card));color:var(--orange);border-radius:999px}
+.chip.g{background:color-mix(in srgb,var(--green) 12%,var(--card));
+  border-color:color-mix(in srgb,var(--green) 32%,var(--card));color:var(--green)}
+pre.json{background:#1E2733;color:#D6DEE8;border:1px solid #1E2733;border-radius:12px}
+pre.json .k{color:#93B4F0}
+pre.json .s{color:#98D5B4}
+pre.json .n{color:#E9B98A}
+
+/* 悬浮按钮 / 弹窗 */
+.fab{background:var(--hue);color:#fff;border:none;bottom:26px;
+  box-shadow:0 6px 20px -4px color-mix(in srgb,var(--hue) 55%,transparent)}
+.fab:hover{filter:brightness(.94);transform:scale(1.05)}
+.fab .n{background:var(--red);border:2px solid var(--card)}
+.sheet{background:color-mix(in srgb,var(--ink) 34%,transparent);backdrop-filter:blur(4px)}
+.sheet-box{background:var(--card);border:1px solid var(--line);border-radius:18px;
+  box-shadow:0 24px 60px -12px rgba(0,0,0,.28)}
+.sheet-box textarea{background:var(--card-hi);border:1px solid var(--line-hi);border-radius:10px;color:var(--t1)}
+.sheet-box textarea:focus{border-color:var(--hue);background:var(--card);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--hue) 14%,transparent)}
+.result{background:color-mix(in srgb,var(--green) 11%,var(--card));
+  border:1px solid color-mix(in srgb,var(--green) 28%,var(--card));color:var(--green);border-radius:10px}
+.result .lbl{color:var(--green)}
+.result.warn{background:color-mix(in srgb,var(--orange) 11%,var(--card));
+  border-color:color-mix(in srgb,var(--orange) 30%,var(--card));color:var(--orange)}
+.result.warn .lbl{color:var(--orange)}
+.note-item{background:var(--card);border:1px solid var(--line);border-radius:10px}
+.note-item .ty{background:var(--hue-weak);border:1px solid var(--hue-line);color:var(--hue-deep);border-radius:999px}
+.note-item .ty.rule{background:color-mix(in srgb,var(--orange) 12%,var(--card));
+  border-color:color-mix(in srgb,var(--orange) 32%,var(--card));color:var(--orange)}
+.note-item .ty.event{background:color-mix(in srgb,var(--green) 12%,var(--card));
+  border-color:color-mix(in srgb,var(--green) 32%,var(--card));color:var(--green)}
+.note-item .del{color:var(--t3)}
+.note-item .del:hover{color:var(--red)}
+#toast{background:var(--ink);color:var(--bg);border:none;border-radius:10px;
+  box-shadow:0 10px 30px -6px rgba(0,0,0,.35)}
+body[data-skin="night"] #toast,body[data-skin="wood"] #toast{background:#4A4F5A;color:#F2F4F7}
+body[data-skin="wood"] #toast{background:#5F4F3C}
+
+/* 引导 */
+.guide-mask{box-shadow:0 0 0 9999px color-mix(in srgb,var(--ink) 55%,transparent)}
+.guide-box{background:var(--card);border:1px solid var(--line);border-radius:14px;
+  box-shadow:0 20px 50px -12px rgba(0,0,0,.3)}
+.guide-box .step{color:var(--hue);letter-spacing:.6px}
+.guide-box .txt b{color:var(--hue-deep)}
+.guide-dots i{background:var(--line-hi)}
+.guide-dots i.on{background:var(--hue)}
+.guide-next{background:var(--hue);color:#fff;border:none;border-radius:9px;font-weight:600;padding:8px 16px}
+.guide-next:hover{filter:brightness(.92);color:#fff}
+
+/* 全屏对话 */
+.fullchat{background:var(--bg)}
+.fullchat-bar{border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--bg) 88%,transparent)}
+.full-back{color:var(--t2)}
+.full-back:hover{background:var(--card-hi);color:var(--t1)}
+.fullchat-body::-webkit-scrollbar-thumb{background:var(--line-hi)}
+.fullchat-input{border-top:1px solid var(--line);background:var(--bg)}
+
+/* 大模型设置 */
+.llm-mask{background:color-mix(in srgb,var(--ink) 36%,transparent)}
+.llm-card{background:var(--card);border:1px solid var(--line);border-radius:16px;
+  box-shadow:0 24px 60px -12px rgba(0,0,0,.3)}
+.llm-card input,.llm-card select,.llm-card textarea{background:var(--card-hi);
+  border:1px solid var(--line-hi);color:var(--t1);border-radius:9px}
+.llm-card input:focus,.llm-card select:focus,.llm-card textarea:focus{border-color:var(--hue);
+  background:var(--card);box-shadow:0 0 0 3px color-mix(in srgb,var(--hue) 14%,transparent)}
+.llm-msg.err{color:var(--red)}
+.llm-msg.ok{color:var(--green)}
+
+/* 周课表 */
+.wk-hd.today{background:var(--hue-weak);color:var(--hue-deep);border:1px solid var(--hue-line)}
+.wk-cell{background:var(--card-hi);border:1px dashed var(--line);border-radius:9px}
+.wk-course{border-radius:9px;box-shadow:0 1px 2px rgba(0,0,0,.10)}
+.wk-prev{border:1px solid var(--line);border-radius:10px}
+.wk-prev th{background:var(--card-hi);color:var(--t2);border-bottom:1px solid var(--line)}
+.wk-prev td{border-bottom:1px solid var(--line);color:var(--t2)}
+.wk-prev td b{color:var(--t1)}
+.wk-prev .bad{color:var(--red)}
+.period-row input{background:var(--card-hi);border:1px solid var(--line-hi);color:var(--t1);border-radius:8px}
+.period-row input:focus{border-color:var(--hue);background:var(--card)}
+.wk-empty{color:var(--t3)}
+.dash,.diary-h{color:var(--t3)}
+.diary-line{color:var(--t2);border-top:1px dashed var(--line)}
+
+/* 顶栏消息：窄屏不挤成竖排，超长省略 */
+.gaze-msg{min-width:0}
+.gaze-msg #gazeTxt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+@media(max-width:640px){
+  .gaze-in{gap:8px}
+  .gaze-msg{font-size:11.5px}
+  .logo span{display:none}   /* 手机上副标题让位给消息 */
+}
+
+/* ── 全局兜底：所有按钮、标签、徽章一律横排不折行 ── */
+button,.btn,.tab,.chip,.tag,.ai-pill,.hint,.ttl,.opt-name,.io div,.legend span,
+.note-item .ty,.guide-next,.sw,.llm-actions .btn,.full-back{
+  writing-mode:horizontal-tb;white-space:nowrap;
+}
+.msg .bubble,.card p,.sheet-box .sub,.advice,.llm-tip,.cf-sub,.guide-box .txt,
+.wk-empty,.diary-line,.empty,.note-item .tx{
+  writing-mode:horizontal-tb;word-break:normal;overflow-wrap:anywhere;
+}
+
+
+/* ══════════ 竖排时间轴 ══════════ */
+.vt{display:flex;gap:0;margin-top:6px;position:relative}
+.vt-hours{width:52px;flex:none;position:relative}
+.vt-hours i{position:absolute;right:8px;transform:translateY(-50%);font-style:normal;
+  font-size:11px;color:var(--t3);font-variant-numeric:tabular-nums;white-space:nowrap}
+.vt-track{flex:1;position:relative;border-left:1px solid var(--line);
+  min-height:calc(var(--span) * 1px)}
+.vt-line i{position:absolute;left:0;right:0;height:1px;background:var(--line);opacity:.7}
+.vt-line i.noon{background:var(--line-hi);opacity:1}
+
+.vtb{position:absolute;left:6px;right:6px;border-radius:10px;padding:7px 11px;
+  display:flex;flex-direction:column;justify-content:center;overflow:hidden;
+  cursor:default;transition:filter .15s,transform .1s;
+  background:var(--card);border:1px solid var(--line);
+  border-left:3px solid var(--c,var(--hue));}
+.vtb:hover{filter:brightness(.98);transform:translateX(2px);z-index:5;box-shadow:var(--shadow)}
+.vtb .n{font-size:12.5px;font-weight:600;color:var(--t1);line-height:1.35;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vtb .h{font-size:10.5px;color:var(--t3);font-variant-numeric:tabular-nums;margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vtb.short{padding:3px 11px;flex-direction:row;align-items:center;gap:8px}
+.vtb.short .h{margin:0}
+.vtb.short .n{font-size:12px}
+.vtb .fill{position:absolute;inset:0;opacity:.10;background:var(--c,var(--hue));z-index:-1}
+
+.vtb.cf{border:1.5px solid var(--red);border-left:3px solid var(--red);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--red) 12%,transparent)}
+.vtb.cf .flag{position:absolute;right:8px;top:6px;font-size:9.5px;padding:1px 6px;border-radius:999px;
+  background:var(--red);color:#fff;font-weight:600;letter-spacing:.3px}
+.vtb.cf:hover{cursor:pointer}
+
+.vt-now{position:absolute;left:-1px;right:0;height:2px;background:var(--hue);z-index:6}
+.vt-now::before{content:"";position:absolute;left:-4px;top:-3px;width:8px;height:8px;
+  border-radius:50%;background:var(--hue)}
+.vt-now span{position:absolute;right:4px;top:-17px;font-size:9.5px;color:var(--hue);
+  background:var(--card);padding:0 4px;border-radius:4px;font-weight:600}
+
+@media(max-width:520px){
+  .vt-hours{width:44px}
+  .vtb{padding:6px 9px}
+  .vtb .n{font-size:12px}
+}
+
+/* ── 外观选择器 ── */
+.skin-row{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+@media(max-width:560px){.skin-row{grid-template-columns:repeat(3,1fr)}}
+.sw{
+  display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;
+  border:1px solid var(--line);border-radius:12px;padding:9px;background:var(--card);
+  transition:.15s;font-size:12px;color:var(--t2);min-width:0;
+}
+.sw:hover{border-color:var(--line-hi);background:var(--card-hi)}
+.sw.on{border-color:var(--hue);box-shadow:0 0 0 2px color-mix(in srgb,var(--hue) 18%,transparent);color:var(--t1);font-weight:600}
+.sw i{width:100%;height:34px;border-radius:8px;border:1px solid rgba(0,0,0,.12);
+  display:block;position:relative;overflow:hidden}
+.sw span{white-space:nowrap}
+
+/* ── 首进问卷：浅色皮肤下也保持清晰 ── */
+.intro-box{background:var(--card);border-color:var(--line-hi);color:var(--t1)}
+.intro-chip{background:var(--card);border-color:var(--line);color:var(--t1)}
+.intro-chip.on{background:var(--hue-weak);border-color:var(--hue-line);color:var(--hue-deep)}
+.intro-color{border-color:var(--line)}
+.intro-color.on{border-color:var(--hue)}
+.intro-skip{color:var(--t3)}
+.intro-sub{color:var(--t2)}
+/* 画像页：顶部 hero、三档目标、三个数据源 */
+.me-hero{display:flex;align-items:center;gap:14px;padding:6px 2px 18px}
+.me-avatar{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;font-size:22px;font-weight:650;color:#fff;box-shadow:var(--shadow);flex:none}
+.me-hero-txt{min-width:0;flex:1}
+.me-name{font-size:15px;font-weight:650;color:var(--t1);letter-spacing:.3px}
+.me-sub{font-size:12px;color:var(--t3);margin-top:3px}
+.me-prog{height:6px;border-radius:6px;background:var(--line);margin-top:8px;overflow:hidden}
+.me-prog-bar{height:100%;border-radius:6px;background:var(--hue);width:0;transition:width .5s ease}
+.me-prog-txt{font-size:11px;color:var(--t3);margin-top:5px}
+.goal-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.goal-col{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 12px 14px;min-width:0}
+.goal-col i{display:block;font-style:normal;font-size:11px;color:var(--t3);margin-bottom:7px}
+.goal-col b{display:block;font-weight:600;font-size:13px;color:var(--t1);line-height:1.5;word-break:break-word}
+.dsrc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.dsrc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 12px 12px;text-align:center;
+  cursor:pointer;transition:.15s;position:relative}
+.dsrc:hover{border-color:var(--line-hi);background:var(--card-hi);transform:translateY(-2px)}
+.dsrc b{display:block;font-size:22px;font-weight:700;color:var(--hue);font-variant-numeric:tabular-nums}
+.dsrc span{display:block;font-size:13px;font-weight:600;color:var(--t1);margin-top:3px}
+.dsrc em{display:block;font-style:normal;font-size:10.5px;color:var(--t3);margin-top:2px}
+.soc-list{margin-top:14px}
+.diary-line em{font-style:normal;color:var(--t3);font-size:11px;margin-left:8px}
+@media(max-width:560px){.goal-grid,.dsrc-grid{grid-template-columns:1fr}}
+</style>
+<style id="ui-polish">
+/* ════════ UI 精修：视觉统一 / 动效过渡 / 移动端响应 ════════ */
+
+/* ── 视觉统一：焦点环 · 滚动条 · 排版 ── */
+:root{--ring:color-mix(in srgb,var(--hue) 42%,transparent)}
+html{scroll-behavior:smooth}
+body{text-rendering:optimizeLegibility}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,summary:focus-visible{
+  outline:none;box-shadow:0 0 0 3px var(--ring);
+}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:var(--line-hi);border-radius:999px;border:2px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background:var(--t3)}
+::-webkit-scrollbar-track{background:transparent}
+*{scrollbar-width:thin;scrollbar-color:var(--line-hi) transparent}
+
+/* ── 交互节奏统一：跟手 + 微微上浮 ── */
+.card,.dsrc,.opt,.sw,.goal-col,.note-item,.soc-item{
+  transition:transform .18s ease,border-color .18s ease,background .18s ease,box-shadow .2s ease;
+}
+.card:hover{transform:translateY(-1px)}
+.goal-col:hover{border-color:var(--line-hi)}
+.btn,.icon-btn,.tab,.fab,.tts-btn,.ai-pill,.guide-next{
+  transition:transform .15s ease,background .15s ease,border-color .15s ease,color .15s ease,box-shadow .15s ease,filter .15s ease;
+}
+.btn:active,.icon-btn:active,.tab:active,.fab:active{transform:translateY(1px)}
+
+/* ── 弹窗 / 抽屉入场：上滑 + 轻弹性 ── */
+@keyframes sheetIn{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes maskIn{from{opacity:0}to{opacity:1}}
+.sheet.on,.llm-mask.on,.intro-mask.on{animation:maskIn .18s ease}
+.sheet.on .sheet-box{animation:sheetIn .28s cubic-bezier(.2,.8,.2,1)}
+.llm-mask.on .llm-card{animation:sheetIn .28s cubic-bezier(.2,.8,.2,1)}
+.intro-box.on{animation:sheetIn .3s cubic-bezier(.2,.8,.2,1)}
+
+/* ── 页面切换带一点位移 ── */
+.page.on{animation:pageIn .32s cubic-bezier(.2,.8,.2,1)}
+@keyframes pageIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* ── 时间轴条目错落入场 ── */
+.vtl-item{animation:itemIn .34s ease both}
+@keyframes itemIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:none}}
+.vtl-item:nth-child(1){animation-delay:.02s}
+.vtl-item:nth-child(2){animation-delay:.06s}
+.vtl-item:nth-child(3){animation-delay:.10s}
+.vtl-item:nth-child(4){animation-delay:.14s}
+.vtl-item:nth-child(5){animation-delay:.18s}
+.vtl-item:nth-child(6){animation-delay:.22s}
+.vtl-item:nth-child(7){animation-delay:.26s}
+.vtl-item:nth-child(8){animation-delay:.30s}
+
+/* ── 呼吸球光晕同步呼吸 ── */
+.hero-avatar{will-change:transform}
+@keyframes breathe{0%,100%{transform:scale(1);opacity:.95;filter:brightness(1)}50%{transform:scale(1.05);opacity:1;filter:brightness(1.045)}}
+
+/* ── 输入聚焦反馈统一 ── */
+.wx-bar input,.fullchat-input input,.sheet-box textarea,.intro-text,
+.llm-card input,.llm-card select,.llm-card textarea,.period-row input{
+  transition:border-color .15s ease,background .15s ease,box-shadow .15s ease;
+}
+
+/* ════════ 移动端响应式 ════════ */
+@media(max-width:640px){
+  .wrap{padding:0 14px 56px}
+  .gaze-in{padding:10px 14px}
+  .logo{font-size:15px}
+  .tabs-wrap{padding:16px 0 4px}
+  .tabs{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{padding:8px 15px;font-size:12.5px}
+  #p-home.on{min-height:calc(100vh - 150px);min-height:calc(100dvh - 150px)}
+  .hero-avatar{width:140px;height:140px}
+  .hero-name{margin-top:22px}
+  .msg{max-width:88%}
+  .wx-bar{gap:7px}
+  .wx-bar input{padding:11px 14px;font-size:13px}
+  .icon-btn{width:40px;height:40px;border-radius:11px}
+  .card{padding:15px}
+  .me-hero{flex-wrap:wrap;gap:12px}
+  .me-hero .btn{margin-left:auto}
+  .timeline-head{gap:8px}
+  .daynav{width:100%}
+  .io{padding-left:0}
+  .cf-head .ic{width:18px;height:18px;font-size:11px}
+  .cf-sub{padding-left:0;margin-top:8px}
+  /* 弹窗改成底部抽屉 */
+  .sheet{padding:0;place-items:end stretch}
+  .sheet-box{width:100%;max-width:100%;border-radius:18px 18px 0 0;
+    padding:20px 18px calc(20px + env(safe-area-inset-bottom));max-height:88vh;max-height:88dvh}
+  .sheet-box h3{font-size:14.5px}
+  .cal-grid .dc{height:32px}
+  .fullchat-body{padding:16px 16px 20px}
+  .fullchat-input{padding:12px 14px calc(14px + env(safe-area-inset-bottom))}
+  .fullchat-input input{font-size:13px}
+}
+@media(max-width:400px){
+  .hero-avatar{width:124px;height:124px}
+  .wx-bar input{font-size:12.5px}
+  .tab{padding:8px 12px}
+  .gaze-msg{font-size:11px}
+  .card{padding:13px}
+  .sheet-box,.llm-card{padding:16px 14px calc(16px + env(safe-area-inset-bottom))}
+}
+
+/* 无障碍：尊重系统「减少动态」偏好 */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
+}
+/* 今日方案 */
+.plan-caption{font-size:12.5px;color:var(--t2);line-height:1.7;padding:10px 12px;border-radius:9px;
+  background:var(--card);border:1px solid var(--line);border-left:2px solid var(--blue);margin-bottom:12px}
+.plan-list{display:flex;flex-direction:column;gap:8px}
+.plan-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;
+  background:var(--card);border:1px solid var(--line)}
+.plan-dot{width:10px;height:10px;border-radius:50%;flex:none}
+.plan-nm{font-size:13px;font-weight:600;color:var(--t1);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.plan-tm{font-size:12px;color:var(--t2);font-variant-numeric:tabular-nums;white-space:nowrap;margin-left:auto}
+.plan-flag{font-size:10.5px;padding:2px 7px;border-radius:999px;color:var(--t3);border:1px solid var(--line);white-space:nowrap;flex:none}
+.plan-flag.on{color:#6EE7B7;border-color:rgba(16,185,129,.35);background:rgba(16,185,129,.1)}
+.plan-flag.cf{color:#FCA5A5;border-color:rgba(239,68,68,.35);background:rgba(239,68,68,.1)}
+</style>
+</head>
+<body>
+
+<div class="gaze">
+  <div class="gaze-in">
+    <div class="logo">Altiora<span>记录自我，向着更高处成长</span></div>
+    <div class="gaze-msg" id="gazeMsg"><span class="dot"></span><span id="gazeTxt">今天还是一张白纸，你说一句我就开始记</span></div>
+    <div class="ai-pill" id="aiPill" onclick="openLLM()" title="点这里填你自己的 API Key">模型</div>
+    <button class="tts-btn" id="ttsBtn" onclick="toggleTTS()" title="朗读回复"></button>
+    <div class="avatar-mini" id="gazeAvatar"></div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="tabs-wrap">
+    <div class="tabs">
+      <button class="tab on" data-p="home">主页</button>
+      <button class="tab" data-p="diary">日记</button>
+      <button class="tab" data-p="timeline">时间轴</button>
+      <button class="tab" data-p="week">课表</button>
+      <button class="tab" data-p="me">我的画像</button>
+    </div>
+  </div>
+
+  <!-- ═══ 主页：一个球 + 一条输入框 ═══ -->
+  <div class="page on" id="p-home">
+    <div class="orb-stage">
+      <div class="hero-avatar" id="bigAvatar"></div>
+      <div class="hero-name" id="ovName">未来的你</div>
+      <div class="hero-state" id="ovState"></div>
+    </div>
+
+    <div class="peek" id="peek" onclick="openFullChat()">
+      <div id="peekTxt"></div>
+      <span class="more">查看完整对话 →</span>
+    </div>
+
+    <div class="wx-bar">
+      <input id="chatIn" autocomplete="off">
+      <button class="icon-btn" id="micBtn" onclick="toggleMic()" title="语音输入">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/>
+          <path d="M19 11a7 7 0 0 1-14 0"/><path d="M12 18v3"/>
+        </svg>
+      </button>
+      <button class="icon-btn primary" id="sendBtn" onclick="send()" title="发送">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 12h15M13 6l6 6-6 6"/>
+        </svg>
+      </button>
+      <button class="icon-btn" id="histBtn" onclick="openFullChat()" title="聊天记录">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <path d="M21 12a8 8 0 0 1-8 8H7l-4 3V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8Z"/>
+          <path d="M8.5 12h.01M12 12h.01M15.5 12h.01"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══ 时间轴 ═══ -->
+  <div class="page" id="p-timeline">
+    <div class="card">
+      <div class="timeline-head">
+        <div class="ttl" style="margin:0" id="dayTitle">今日时间轴 <small>06:00 — 次日 02:00</small></div>
+        <div class="daynav">
+          <button class="btn ghost" onclick="shiftView(-1)" title="前一天">‹</button>
+          <button class="btn ghost" id="dayToday" onclick="goToday()">今天</button>
+          <button class="btn ghost" onclick="shiftView(1)" title="后一天">›</button>
+          <button class="btn" onclick="openScheduleSheet('day')">+ 导入日程</button>
+          <button class="btn" onclick="openPlan()">生成今日方案</button>
+        </div>
+      </div>
+      <div id="countdown" class="cd-line"></div>
+      <div class="vtl">
+        <div class="vtl-line"></div>
+        <div id="bars"></div>
+      </div>
+      <div class="empty" id="ganttEmpty" style="display:none"></div>
+      <div class="legend">
+        <span><b style="background:#3B82F6"></b>课程</span>
+        <span><b style="background:#06B6D4"></b>兼职</span>
+        <span><b style="background:#F97316"></b>会议</span>
+        <span><b style="background:#10B981"></b>学习</span>
+        <span><b style="background:#6B7280"></b>睡眠</span>
+        <span><b style="background:#EF4444"></b>冲突</span>
+      </div>
+      <div class="band" id="band"><div class="seg" id="bandSeg"></div></div>
+      <div class="band-lbl"><span>光带 · 今日节奏</span><span id="bandTxt">红色区段 = 冲突发生处</span></div>
+    </div>
+
+    <div id="reconWrap"></div>
+    <div id="cfWrap"></div>
+    <div id="planWrap"></div>
+  </div>
+
+  <!-- ═══ 课表：一周网格 ═══ -->
+  <div class="page" id="p-week">
+    <div class="card">
+      <div class="wk-tools">
+        <div class="ttl" style="margin:0">本周课表 <small id="wkRange"></small></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn ghost" onclick="openPeriodSheet()">节次设置</button>
+          <button class="btn" onclick="openScheduleSheet()">+ 导入课表</button>
+        </div>
+      </div>
+      <div class="wk-scroll"><div class="wk-grid" id="wkGrid"></div></div>
+      <div class="wk-empty" id="wkEmpty" style="display:none">
+        课表还是空的。<br>点右上角「+ 导入课表」，把教务系统里的课表粘进来。
+      </div>
+      <div class="band-lbl" style="margin-top:14px">
+        <span>今天的课会自动进「时间轴」，参与冲突和代价计算</span>
+        <span id="wkTodayTxt"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 日记：一个页签，打开就能写，不用点第二下 ═══ -->
+  <div class="page" id="p-diary">
+    <div class="card">
+      <div class="cal-head">
+        <button class="btn ghost" onclick="diaryDayShift(-1)">‹</button>
+        <div class="cal-m" id="diaryDayLbl"></div>
+        <button class="btn ghost" onclick="diaryDayShift(1)">›</button>
+      </div>
+      <textarea id="diaryIn" placeholder="这一天过得怎么样？写点什么…"></textarea>
+      <div class="result" id="diaryRes"></div>
+      <div class="sheet-act">
+        <button class="btn" onclick="saveDiary()">保存</button>
+      </div>
+    </div>
+    <div id="weekReview" style="margin-bottom:12px"></div>
+    <div class="diary-list" id="diaryListBox" style="border-top:none;padding-top:0"></div>
+  </div>
+
+  <!-- ═══ 我的画像 ═══ -->
+  <div class="page" id="p-me">
+    <div class="me-hero">
+      <div class="me-avatar" id="meAvatar">我</div>
+      <div class="me-hero-txt">
+        <div class="me-name" id="meName">还没告诉我你的名字</div>
+        <div class="me-sub">这是你想成为的那个自己，住在这台电脑里。</div>
+        <div class="me-prog"><div class="me-prog-bar" id="meProgBar"></div></div>
+        <div class="me-prog-txt" id="meProgTxt"></div>
+      </div>
+      <button class="btn ghost" style="margin-left:auto" onclick="openProfileSurvey()">重新填一次问卷</button>
+    </div>
+
+    <div class="card">
+      <div class="ttl">目标 <small>长期 · 中期 · 短期，各记一个</small></div>
+      <div class="goal-grid">
+        <div class="goal-col" id="goalLong"></div>
+        <div class="goal-col" id="goalMid"></div>
+        <div class="goal-col" id="goalShort"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:12px;font-size:12px;color:var(--t3);flex-wrap:wrap">
+        <span>最近一个截止日期</span>
+        <input type="date" id="goalDeadline" onchange="setGoalDeadline(this.value)"
+          style="font:inherit;padding:4px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--t1)">
+        <span id="goalDeadlineHint"></span>
+      </div>
+      </div>
+
+    <div class="card">
+      <div class="ttl">我眼里的你 <small>关于你的真实记录</small></div>
+      <div class="kv" id="kv"></div>
+    </div>
+
+    <div class="card">
+      <div class="ttl">我的三个入口</div>
+      <div class="dsrc-grid">
+        <div class="dsrc" onclick="go('diary')">
+          <b id="dsrcDiary">0</b><span>日记</span><em>打开就能写</em>
+        </div>
+        <div class="dsrc" onclick="openSheet()">
+          <b id="dsrcNotes">0</b><span>随手记</span><em>想到就写</em>
+        </div>
+        <div class="dsrc" onclick="openSocialSheet()">
+          <b id="dsrcSocial">0</b><span>我的生活圈</span><em>导入发言</em>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="display:none">
+      <details>
+        <summary class="ttl" style="cursor:pointer;margin-bottom:0">原始数据 <small>确定性计算器的输入，全部存在本地</small></summary>
+        <pre class="json" id="jsonBox" style="margin-top:12px"></pre>
+      </details>
+    </div>
+
+    <div class="card">
+      <div class="ttl">外观 <small>换皮肤、换主色，只存在这台电脑</small></div>
+      <div class="skin-row" id="skinRow"></div>
+    </div>
+  </div>
+</div>
+
+<button class="fab" onclick="openSheet()" title="随手记一笔">+<span class="n" id="fabN" style="display:none">0</span></button>
+
+<!-- 随手记弹窗 -->
+<div class="sheet" id="sheet" onclick="if(event.target===this)closeSheet()">
+  <div class="sheet-box">
+    <h3>随手记</h3>
+    <div class="note-list" id="noteListBox"></div>
+    <textarea id="noteIn" placeholder="例：周五晚班 19:00-21:00" oninput="autoNoteTy()"></textarea>
+    <div class="chips-row" id="noteTyRow">
+      <span class="chip" data-ty="event" onclick="pickNoteTy('event')">日程</span>
+      <span class="chip" data-ty="rule" onclick="pickNoteTy('rule')">规矩</span>
+      <span class="chip g" data-ty="note" onclick="pickNoteTy('note')">随手记</span>
+    </div>
+    <div class="result" id="noteRes"></div>
+    <div class="sheet-act">
+      <button class="btn" onclick="saveNote()">记下</button>
+      <button class="btn ghost" onclick="closeSheet()">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- 我的生活圈弹窗 -->
+<div class="sheet" id="socialSheet" onclick="if(event.target===this)closeSocialSheet()">
+  <div class="sheet-box">
+    <h3>我的生活圈</h3>
+    <div class="sub">贴你公开发过的内容，一行一条，只存在这台电脑。</div>
+    <textarea id="socialIn" placeholder="例：我总是忍不住熬夜刷手机"></textarea>
+    <div class="result" id="socialRes"></div>
+    <div class="soc-list" id="socialListBox" style="margin-top:14px"></div>
+    <div class="sheet-act">
+      <button class="btn" onclick="saveSocial()">导入并提炼</button>
+      <button class="btn ghost" onclick="closeSocialSheet()">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- 添加课表弹窗 -->
+<div class="sheet" id="schedSheet" onclick="if(event.target===this)closeSchedSheet()">
+  <div class="sheet-box">
+    <h3 id="schedTitle">导入课表</h3>
+    <div class="sub" id="schedSub">把课表复制进来，一行一门课。</div>
+    <textarea id="schedIn" placeholder="例：周一 08:00-09:40 高等数学 教A101"></textarea>
+    <div id="schedPrev"></div>
+    <div class="result" id="schedRes"></div>
+    <div class="sheet-act">
+      <button class="btn" id="schedActBtn" onclick="saveSchedule()">解析课表</button>
+      <button class="btn ghost" onclick="closeSchedSheet()">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- 节次时间设置 -->
+<div class="sheet" id="periodSheet" onclick="if(event.target===this)closePeriodSheet()">
+  <div class="sheet-box">
+    <h3>节次时间设置</h3>
+    <div class="sub">导入课表时按这套时间对齐网格。</div>
+    <div id="periodRows"></div>
+    <div class="sheet-act">
+      <button class="btn" onclick="savePeriods()">保存</button>
+      <button class="btn ghost" onclick="closePeriodSheet()">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- 游戏式新手引导 -->
+<!-- 首进问卷 -->
+<div class="intro-mask" id="introMask"></div>
+<div class="intro-box" id="introBox">
+  <div class="intro-top">
+    <span class="intro-step" id="introStep">1 / 5</span>
+    <button class="intro-skip" onclick="introSkip()">跳过</button>
+  </div>
+  <div class="intro-title" id="introTitle"></div>
+  <div class="intro-sub" id="introSub"></div>
+  <div class="intro-body" id="introBody"></div>
+  <div class="intro-act">
+    <button class="btn ghost" id="introBack" onclick="introBack()">上一步</button>
+    <button class="btn" id="introNext" onclick="introNext()">下一步</button>
+  </div>
+</div>
+
+<div class="guide-mask" id="guideMask"></div>
+<div class="guide-box" id="guideBox">
+  <div class="step" id="guideStep">1 / 5</div>
+  <div class="txt" id="guideTxt"></div>
+  <div class="guide-act">
+    <button class="skip" onclick="endGuide()">跳过</button>
+    <div class="guide-dots" id="guideDots"></div>
+    <button class="guide-next" id="guideNext" onclick="nextGuide()">下一步</button>
+  </div>
+</div>
+
+<!-- 全屏聊天记录 -->
+<div class="fullchat" id="fullChat">
+  <div class="fullchat-bar">
+    <button class="full-back" onclick="exitFullChat()">← 返回</button>
+    <div class="full-title" id="fullTitle">和未来的你</div>
+    <div style="width:52px"></div>
+  </div>
+  <div class="fullchat-body" id="fullChatBox"></div>
+  <div class="fullchat-input">
+    <input id="fullChatIn" autocomplete="off">
+    <button class="icon-btn" id="fullMicBtn" onclick="toggleFullMic()" title="语音输入">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+        <path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/>
+        <path d="M19 11a7 7 0 0 1-14 0"/><path d="M12 18v3"/>
+      </svg>
+    </button>
+    <button class="icon-btn" onclick="fullSend()" title="发送">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 12h15M13 6l6 6-6 6"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- ═══ 大模型设置：每个用户用自己的 Key ═══ -->
+<div class="llm-mask" id="llmMask" onclick="if(event.target===this)closeLLM()">
+  <div class="llm-card">
+    <div class="llm-head"><b>大模型设置</b><button class="llm-x" onclick="closeLLM()" title="关闭">×</button></div>
+    <p class="llm-tip">用你自己的 Key。它只存在这台电脑的浏览器里，请求直接发给你选的厂商，不经过任何中转服务器，也不进仓库。<br>不填也能用：全部走模型。填了就能直接用，不用开任何后台窗口。</p>
+    <label>厂商</label>
+    <select id="llmProvider" onchange="llmPreset()">
+      <option value="deepseek">DeepSeek</option>
+      <option value="deepseek_manual">DeepSeek（手动填模型名）</option>
+      <option value="dashscope">通义千问（阿里云百炼）</option>
+      <option value="ark">火山方舟（豆包）</option>
+      <option value="custom">自定义（OpenAI 兼容）</option>
+    </select>
+    <label>API Key</label>
+    <input id="llmKey" type="password" autocomplete="off" placeholder="sk-...">
+    <label>模型名</label>
+    <input id="llmModel" autocomplete="off" placeholder="deepseek-chat">
+    <label>URL（Base URL，OpenAI 兼容）</label>
+    <input id="llmBase" autocomplete="off" placeholder="https://api.deepseek.com/v1">
+    <label>额外请求头（可选，一行一个，格式 Key: Value）</label>
+    <textarea id="llmHeaders" rows="2" autocomplete="off" placeholder="一般不用填。中转站要求时再加，例如：&#10;X-Api-Key: xxx"></textarea>
+    <div class="llm-actions">
+      <button class="btn" onclick="saveLLM()">保存</button>
+      <button class="btn" id="llmTest" onclick="testLLM()">测试连接</button>
+      <button class="btn ghost" onclick="clearLLM()">清除</button>
+    </div>
+    <div class="llm-msg" id="llmMsg"></div>
+  </div>
+</div>
+
+<script>
+/* ════════ 数据 ════════ */
+const DATA = {
+  profile:{
+    name:"",
+    hard_sleep_deadline:"",
+    hard_morning_start:"",
+    preferred_focus_hours:"",
+    known_weakness:[],
+    /* 目标分三档：长期 / 中期 / 短期。都只存本地，喂给画像页和计算器。 */
+    long_term_goal:"",
+    mid_term_goal:"",
+    short_term_goal:"",
+    /* 最近一个截止日期：陪跑的方向感，倒计时和缺口都靠它 */
+    goal_deadline:"",
+    /* 第三类数据源：公开发言（朋友圈/微博/说说）里提炼出的关于他自己的话 */
+    social_insights:[],
+    avatar_color:"#5B7CFA"
+  },
+  events:[],
+  conflicts:[],
+  notes:[],
+  /* 第一类数据源：日记（按日历写）。每一条 {d:日期, t:正文}，一天一篇 */
+  diary:[],
+  /* 记忆分三层，各管各的：
+     long  长期记忆 = 上面的 profile。用户亲口说的事实，计算器唯一的输入。
+     chat  聊天记忆 = 最近 3 轮。只为接住半句话，超过就滚掉，不沉淀。
+     diary 日记     = 每次聊完一行「日期：摘要」。平时不出现，只在久别回来时翻。 */
+  memory:{chat:[],diary:[],last_seen:"",pending:null,emotion_history:[]},
+  /* 周课表：periods 是节次时间表（可在界面上改），courses 是一周课程 */
+  week:{
+    periods:[
+      {no:1,start:"08:30",end:"09:15"},
+      {no:2,start:"09:25",end:"10:10"},
+      {no:3,start:"10:20",end:"11:05"},
+      {no:4,start:"11:15",end:"12:00"},
+      {no:5,start:"14:00",end:"14:45"},
+      {no:6,start:"14:55",end:"15:40"},
+      {no:7,start:"15:50",end:"16:35"},
+      {no:8,start:"16:45",end:"17:30"}
+    ],
+    courses:[],
+    synced:{date:"",ids:[]}
+  }
+};
+
+/* 持久化：画像、日程、三层记忆。刷新不丢 */
+const SAVE_KEY="altiora_state_v2";
+const CHAT_KEEP=6;      // 聊天记忆 6 条 = 3 轮，超了滚掉
+const DIARY_KEEP=180;   // 日记最多留半年
+// 旧版本的内置示例数据不再沿用，清掉，第一次打开就是一张白纸
+try{localStorage.removeItem("altiora_state_v1");}catch(e){}
+function saveData(){
+  try{localStorage.setItem(SAVE_KEY,JSON.stringify({
+    profile:DATA.profile,events:DATA.events,notes:DATA.notes,diary:DATA.diary,
+    week:{periods:DATA.week.periods,courses:DATA.week.courses,synced:DATA.week.synced},
+    memory:{chat:DATA.memory.chat,diary:DATA.memory.diary,
+            last_seen:DATA.memory.last_seen,pending:DATA.memory.pending,
+            emotion_history:DATA.memory.emotion_history}
+  }));}catch(e){}
+}
+try{
+  const s=JSON.parse(localStorage.getItem(SAVE_KEY)||"null");
+  if(s&&s.profile)Object.assign(DATA.profile,s.profile);
+  if(s&&Array.isArray(s.events))DATA.events=s.events.filter(e=>e&&e.start&&e.end).map(e=>({...e,date:e.date||todayStr()}));
+  if(s&&Array.isArray(s.notes))DATA.notes=s.notes;
+  if(s&&Array.isArray(s.diary))DATA.diary=s.diary;
+  if(s&&s.week){
+    if(Array.isArray(s.week.periods)&&s.week.periods.length)DATA.week.periods=s.week.periods;
+    if(Array.isArray(s.week.courses))DATA.week.courses=s.week.courses;
+    if(s.week.synced&&typeof s.week.synced==="object")DATA.week.synced=s.week.synced;
+  }
+  if(s&&s.memory){
+    const m=s.memory;
+    if(Array.isArray(m.chat))DATA.memory.chat=m.chat.slice(-CHAT_KEEP);
+    if(Array.isArray(m.diary))DATA.memory.diary=m.diary.slice(-DIARY_KEEP);
+    if(typeof m.last_seen==="string")DATA.memory.last_seen=m.last_seen;
+    if(m.pending&&m.pending.name)DATA.memory.pending=m.pending;
+    if(Array.isArray(m.emotion_history))DATA.memory.emotion_history=m.emotion_history.slice(-60);
+  }
+}catch(e){}
+
+/* ════════ 记忆三层 ════════ */
+function todayStr(d){
+  d=d||new Date();
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+/* 日期轴：时间轴看的到底是哪一天 */
+const WD_CN=["日","一","二","三","四","五","六"];
+let VIEW_DATE=todayStr();
+function addDays(iso,n){
+  const d=new Date(iso+"T00:00:00");d.setDate(d.getDate()+n);return todayStr(d);
+}
+function weekLabel(iso){
+  return "周"+WD_CN[new Date(iso+"T00:00:00").getDay()];
+}
+/* 说人话的日子标签 */
+function dayTag(iso){
+  const t=todayStr();
+  if(iso===t)return "今天";
+  if(iso===addDays(t,1))return "明天";
+  if(iso===addDays(t,2))return "后天";
+  if(iso===addDays(t,-1))return "昨天";
+  return cuteDate(iso)+" "+weekLabel(iso);
+}
+/* 从一句话里认出是哪天：今天/明天/后天/周X/下周X，认不出就当今天 */
+function resolveDate(text,baseIso){
+  const base=baseIso||todayStr();
+  if(/大后天/.test(text))return addDays(base,3);
+  if(/后天/.test(text))return addDays(base,2);
+  if(/明天|明早|明晚|明儿/.test(text))return addDays(base,1);
+  if(/今天|今早|今晚|待会|一会儿|等下/.test(text))return base;
+  const m=String(text).match(/(下下个?周|下个?周|下个?星期|周|星期)([一二三四五六日天])/);
+  if(m){
+    const tgt={"一":1,"二":2,"三":3,"四":4,"五":5,"六":6,"日":0,"天":0}[m[2]];
+    const cur=new Date(base+"T00:00:00").getDay();
+    const curMon=(cur+6)%7, tgtMon=(tgt+6)%7;   // 周一=0 … 周日=6
+    let diff;
+    if(/下下/.test(m[1])){
+      diff=(7-curMon)+tgtMon+7;                 // 下下周
+    }else if(/下周|下个?星期/.test(m[1])){
+      diff=(7-curMon)+tgtMon;                   // 下周：先到下周周一，再走到那天
+    }else{
+      diff=tgt-cur;if(diff<0)diff+=7;           // 本周：说过的那天还没到就本周，过了就下周
+    }
+    return addDays(base,diff);
+  }
+  return base;
+}
+function daysBetween(fromIso,toIso){
+  const a=new Date(fromIso+"T00:00:00"),b=new Date(toIso+"T00:00:00");
+  if(isNaN(a)||isNaN(b))return 0;
+  return Math.round((b-a)/86400000);
+}
+function cuteDate(iso){
+  const p=iso.split("-");
+  return (+p[1])+"月"+(+p[2])+"日";
+}
+/* 聊天记忆：只留最近 3 轮，多了就丢——短，是为了接得上，不是为了记住你 */
+function memPush(r,t){
+  const s=String(t||"").replace(/\s+/g," ").trim().slice(0,120);
+  if(!s)return;
+  const last=DATA.memory.chat[DATA.memory.chat.length-1];
+  if(last&&last.r===r&&last.t===s)return;      // 同一句不重复记
+  DATA.memory.chat.push({r,t:s,ts:Date.now()});
+  while(DATA.memory.chat.length>CHAT_KEEP)DATA.memory.chat.shift();
+  saveData();
+}
+function memRecent(n){return DATA.memory.chat.slice(-(n||CHAT_KEEP));}
+/* 日记：一行一条，攒着，不掺和日常对话 */
+function diaryWrite(summary){
+  const s=String(summary||"").trim().slice(0,60);
+  if(!s)return;
+  const d=todayStr();
+  DATA.memory.diary.push({d,s});
+  while(DATA.memory.diary.length>DIARY_KEEP)DATA.memory.diary.shift();
+  DATA.memory.last_seen=d;
+  saveData();
+  renderMe();
+}
+/* 情绪历史：大模型返回 intensity 时记录，每天衰减 10%（至少留 1） */
+function emotionRecord(tag,intensity){
+  if(!tag||tag==="none"||!intensity)return;
+  DATA.memory.emotion_history.push({ts:Date.now(),tag,intensity:Math.max(1,Math.min(10,parseInt(intensity)||1))});
+  while(DATA.memory.emotion_history.length>60)DATA.memory.emotion_history.shift();
+  saveData();
+}
+/* 取最近一次情绪衰减后的强度。衰减=每天强度×0.9^(天数差) */
+function emotionNow(){
+  const arr=DATA.memory.emotion_history;
+  if(!arr||!arr.length)return null;
+  const last=arr[arr.length-1];
+  const days=(Date.now()-last.ts)/86400000;
+  const decayed=Math.max(1,Math.round(last.intensity*Math.pow(0.9,days)));
+  return {tag:last.tag,intensity:decayed,days:days};
+}
+/* 久别回来：翻最近一条日记 + 情绪状态，决定怎么问 */
+function diaryRecall(){
+  const last=DATA.memory.last_seen;
+  if(!last)return "";
+  const gap=daysBetween(last,todayStr());
+  if(gap<3)return "";
+  const e=[].concat(DATA.memory.diary).reverse().find(x=>x.d<=last);
+  const recall=e&&e.s?`上次（${cuteDate(e.d)}）你说${esc(e.s.split(/[，,；;]/)[0].replace(/[。.]$/,"").slice(0,18))}，后来怎么样了？`:"";
+  // 情绪还在的话补一句软关心
+  const emo=emotionNow();
+  if(emo&&emo.intensity>=5&&emo.days<=7){
+    const hints={"sad":"这几天还是不太好？","anxious":"事情还悬着？","selfblame":"那件事过去了吗？","lonely":"有没有找人说说话？","tired":"这阵子还累？","numb":"还好吗？","relapse":"又滑了一下？"};
+    const hint=hints[emo.tag]||"这几天怎么样？";
+    return (recall?recall+" ":"")+hint;
+  }
+  return recall;
+}
+
+/* 本次会话：聊完攒成一行日记 */
+const SESS={t0:Date.now(),last:Date.now(),users:[],topics:[],events:[],goal:"",mood:""};
+function sessBegin(){
+  const now=Date.now();
+  if(now-SESS.last>30*60000)sessFlush();      // 隔了半小时，上一次就算聊完了
+  SESS.last=now;
+}
+function sessFlush(){
+  if(!SESS.users.length&&!SESS.events.length&&!SESS.goal)return;
+  const bits=[];
+  if(SESS.goal)bits.push(`想${SESS.goal.startsWith("成为")?SESS.goal:"成为"+SESS.goal}`);
+  if(SESS.events.length)bits.push(`排了${SESS.events.slice(0,2).join("、")}`);
+  if(SESS.mood)bits.push(`那会儿${SESS.mood}`);
+  if(!bits.length&&SESS.topics.length)bits.push(`聊了${SESS.topics.slice(-2).join("、")}`);
+  diaryWrite(bits.join("，")||"聊了几句，没说什么具体的");
+  SESS.users.length=0;SESS.topics.length=0;SESS.events.length=0;SESS.goal="";SESS.mood="";
+  SESS.t0=Date.now();
+}
+setInterval(()=>{if(Date.now()-SESS.last>60*1000)sessFlush();},15000);
+window.addEventListener("pagehide",sessFlush);
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")sessFlush();});
+
+const COLORS={class:"#3B82F6",work:"#06B6D4",meeting:"#F97316",study:"#10B981",sleep:"#6B7280"};
+const T0=360, T1=1560, SPAN=T1-T0;
+const toMin=s=>{if(typeof s!=="string"||!s.includes(":"))return 0;const[h,m]=s.split(":").map(Number);let v=(h||0)*60+(m||0);if(v<T0)v+=1440;return v;};
+const pct=v=>((v-T0)/SPAN*100);
+
+/* ════════ 分身球 ════════ */
+const ORB_COLORS=["#5B7CFA","#8B5CF6","#06B6D4","#F97316","#F472B6"];
+function shade(hex,p){
+  const n=parseInt(hex.slice(1),16);
+  const f=v=>Math.max(0,Math.min(255,v+Math.round(255*p/100)));
+  return `rgb(${f(n>>16&255)},${f(n>>8&255)},${f(n&255)})`;
+}
+function orbSVG(base,mood){
+  const gid="g"+base.replace("#","")+mood;
+  let face;
+  if(mood==="joy"){
+    face=`<path d="M30 52 q8 -11 16 0" stroke="#26262e" stroke-width="4" fill="none" stroke-linecap="round"/>
+          <path d="M54 52 q8 -11 16 0" stroke="#26262e" stroke-width="4" fill="none" stroke-linecap="round"/>
+          <path d="M39 61 q11 12 22 0 z" fill="#26262e"/>`;
+  }else if(mood==="worry"){
+    face=`<circle cx="38" cy="50" r="4.2" fill="#26262e"/><circle cx="62" cy="50" r="4.2" fill="#26262e"/>
+          <circle cx="39.6" cy="48.4" r="1.4" fill="#fff"/><circle cx="63.6" cy="48.4" r="1.4" fill="#fff"/>
+          <path d="M31 41 l12 4 M69 41 l-12 4" stroke="#26262e" stroke-width="3" stroke-linecap="round"/>
+          <path d="M43 63 q7 -5 14 0" stroke="#26262e" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+  }else{
+    face=`<circle cx="38" cy="50" r="4.2" fill="#26262e"/><circle cx="62" cy="50" r="4.2" fill="#26262e"/>
+          <circle cx="39.6" cy="48.4" r="1.4" fill="#fff"/><circle cx="63.6" cy="48.4" r="1.4" fill="#fff"/>
+          <path d="M43 60 q7 7 14 0" stroke="#26262e" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+  }
+  return `<svg viewBox="0 0 100 100">
+    <defs><radialGradient id="${gid}" cx="36%" cy="30%" r="78%">
+      <stop offset="0%" stop-color="${shade(base,36)}"/><stop offset="100%" stop-color="${base}"/>
+    </radialGradient></defs>
+    <circle cx="50" cy="50" r="42" fill="url(#${gid})"/>
+    <ellipse cx="34" cy="29" rx="13" ry="7.5" fill="#fff" opacity=".5" transform="rotate(-22 34 29)"/>
+    <ellipse cx="28" cy="61" rx="5.5" ry="3.2" fill="#ff97ad" opacity=".55"/>
+    <ellipse cx="72" cy="61" rx="5.5" ry="3.2" fill="#ff97ad" opacity=".55"/>
+    ${face}</svg>`;
+}
+function orbMood(){return DATA.conflicts.length?"worry":"happy";}
+function miniOrb(){
+  const c=DATA.profile.avatar_color||ORB_COLORS[0];
+  return orbSVG(c,orbMood());
+}
+function renderOrbs(joy){
+  const c=DATA.profile.avatar_color||ORB_COLORS[0];
+  const mood=joy?"joy":orbMood();
+  const glow=joy?"rgba(59,130,246,.45)":(mood==="worry"?"rgba(239,68,68,.42)":"rgba(16,185,129,.4)");
+  const g1=document.getElementById("bigAvatar"),g2=document.getElementById("gazeAvatar");
+  if(g1)g1.innerHTML=orbSVG(c,mood);
+  if(g2)g2.innerHTML=orbSVG(c,mood);
+  [g1,g2].forEach(x=>x&&x.style.setProperty("--glow",glow));
+  const s=document.getElementById("ovState");
+  if(s){
+    s.className="hero-state";
+    if(joy){s.textContent="排好了";s.classList.add("blue");}
+    else if(mood==="worry"){s.textContent="有冲突了，账算好了";}
+    else{s.textContent=DATA.events.filter(e=>e.date===todayStr()).length?"今天稳着":"还没开始，先聊两句";s.classList.add("green");}
+  }
+}
+
+const TYPE_CN={class:"课程",work:"兼职",meeting:"会议",study:"学习",sleep:"睡眠"};
+function renderGantt(){
+  const box=document.getElementById("bars");if(!box)return;
+  box.innerHTML="";
+  const list=DATA.events.filter(e=>e.date===VIEW_DATE).slice().sort((a,b)=>toMin(a.start)-toMin(b.start));
+  const cfIds=new Set();DATA.conflicts.forEach(c=>{cfIds.add(c.a.id);cfIds.add(c.b.id);});
+  box.innerHTML=list.map((e,i)=>{
+    const cf=cfIds.has(e.id);
+    const col=COLORS[e.type]||"#3B82F6";
+    const idx=DATA.events.indexOf(e);
+    return `<div class="vtl-item${cf?" cf":""}${e.done?" done":""}" title="${esc(e.name)} ${e.start}-${e.end} · 优先级 ${e.priority}${e.wage?" · 时薪"+e.wage+"元":""}">
+      <div class="vtl-dot" style="background:${col}"></div>
+      <div class="vtl-chunk">
+        <div class="vtl-row"><b class="vtl-name">${esc(e.name)}</b><span class="vtl-tag">${TYPE_CN[e.type]||"日程"}</span></div>
+        <div class="vtl-tm">${e.start} — ${e.end}${e.loc?" · "+esc(e.loc):""}</div>
+      </div>
+      <span class="vtl-done${e.done?" on":""}" onclick="event.stopPropagation();toggleEventDone(${idx})" title="${e.done?"点一下取消完成":"点一下标记完成"}">${e.done?"✓":""}</span>
+      <span class="vtl-del" onclick="delEvent(${idx})" title="删掉这条">×</span>
+    </div>`;
+  }).join("");
+  const seg=document.getElementById("bandSeg");
+  if(seg){
+    const c=DATA.conflicts[0];
+    if(c){const s=toMin(c.a.start),en=toMin(c.b.end);
+      seg.style.left=pct(s)+"%";seg.style.width=((en-s)/SPAN*100)+"%";}
+    else seg.style.width="0";
+  }
+  const em=document.getElementById("ganttEmpty");
+  if(em){
+    em.style.display=list.length?"none":"block";
+    if(!list.length)em.textContent=(VIEW_DATE===todayStr()
+      ?"今天还是一张白纸。贴一份课表，或者直接说一句「三点到五点去家教」。"
+      :"这一天还是空的。说一句「明天三点到五点开会」，我就排进来。");
+  }
+}
+function hexA(hex,a){
+  const n=parseInt(hex.slice(1),16);
+  return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`;
+}
+/* ════════ 日期轴：切到哪一天，就只看那一天 ════════ */
+function renderDayBar(){
+  const el=document.getElementById("dayTitle");if(!el)return;
+  const isToday=VIEW_DATE===todayStr();
+  el.innerHTML=`${isToday?"今日":cuteDate(VIEW_DATE)}时间轴
+    <small>${weekLabel(VIEW_DATE)}${isToday?"":" · "+cuteDate(VIEW_DATE)} · 06:00 — 次日 02:00</small>`;
+  const b=document.getElementById("dayToday");
+  if(b)b.style.opacity=isToday?".45":"1";
+}
+function shiftView(n){VIEW_DATE=addDays(VIEW_DATE,n);refreshDay();}
+function goToday(){VIEW_DATE=todayStr();refreshDay();}
+function refreshDay(){
+  DATA.conflicts=detectConflicts();
+  saveData();
+  renderDayBar();renderGantt();renderRecon();renderCountdown();renderConflicts();renderOrbs();renderMe();updStats();
+}
+
+/* ════════ 陪跑：截止日期 / 完成 / 对账 / 周回顾 ════════ */
+function goalTitle(){
+  const p=DATA.profile;
+  return (p.mid_term_goal||p.long_term_goal||p.short_term_goal||"").trim();
+}
+function daysUntil(iso){
+  if(!iso)return null;
+  const a=new Date(todayStr()+"T00:00:00"), b=new Date(iso+"T00:00:00");
+  return Math.round((b-a)/86400000);
+}
+function setGoalDeadline(v){
+  DATA.profile.goal_deadline=v||"";
+  saveData();renderCountdown();renderMe();updStats();
+}
+function renderCountdown(){
+  const el=document.getElementById("countdown");if(!el)return;
+  const iso=DATA.profile.goal_deadline;
+  if(VIEW_DATE!==todayStr()){el.innerHTML="";return;}
+  if(!iso){
+    el.innerHTML="还没有截止日期。去「我的画像」填一个，我就知道要陪你走到哪天。";
+    return;
+  }
+  const n=daysUntil(iso), t=goalTitle(), who=t?`<b>${esc(t)}</b>`:"那个日子";
+  el.innerHTML=n>0?`距 ${who} 还有 <b>${n}</b> 天`
+    :n===0?`今天就是 ${who}`
+    :`${who} 已经过去 <b>${-n}</b> 天`;
+}
+function toggleEventDone(i){
+  const e=DATA.events[i];if(!e)return;
+  e.done=!e.done;saveData();
+  renderGantt();renderRecon();renderMe();updStats();
+}
+function todayPlans(){
+  return DATA.events.filter(e=>e.date===todayStr()&&e.type!=="sleep");
+}
+function renderRecon(){
+  const w=document.getElementById("reconWrap");if(!w)return;
+  if(VIEW_DATE!==todayStr()){w.innerHTML="";return;}
+  const list=todayPlans();
+  if(!list.length){w.innerHTML="";return;}
+  const done=list.filter(e=>e.done), undone=list.filter(e=>!e.done);
+  const rows=undone.map(e=>`<div style="display:flex;align-items:center;gap:8px;margin-top:7px">
+      <span style="flex:1;color:var(--t2);font-size:12.5px">${esc(e.name)} · ${e.start}-${e.end}</span>
+      <button class="btn ghost" style="padding:2px 10px;font-size:11.5px" onclick="moveEventTo(${DATA.events.indexOf(e)},1)">顺延到明天</button>
+    </div>`).join("");
+  w.innerHTML=`<div class="card">
+    <div class="ttl">今天的对账 <small>只记事实，不评对错</small></div>
+    <div style="font-size:12.5px;color:var(--t2);line-height:1.7">
+      今天你给自己排了 <b>${list.length}</b> 件，完成 <b>${done.length}</b> 件${undone.length?"，还剩 "+undone.length+" 件":""}。
+      ${undone.length?"<div style='color:var(--t3);margin-top:4px'>没做的放哪，你说了算。不说原因也行。</div>":""}
+    </div>${rows}</div>`;
+}
+function moveEventTo(i,dn){
+  const e=DATA.events[i];if(!e)return;
+  e.date=addDays(e.date,dn);e.done=false;
+  saveData();refreshDay();
+}
+function renderWeekReview(){
+  const box=document.getElementById("weekReview");if(!box)return;
+  const since=addDays(todayStr(),-6);
+  const done=DATA.events.filter(e=>e.done&&e.type!=="sleep"&&e.date>=since&&e.date<=todayStr());
+  const diaries=DATA.diary.filter(x=>x.d>=since&&x.d<=todayStr());
+  const names={};done.forEach(e=>{names[e.name]=(names[e.name]||0)+1;});
+  const chips=Object.keys(names).map(k=>`<span class="chip">${esc(k)}${names[k]>1?" ×"+names[k]:""}</span>`).join("");
+  box.innerHTML=`<div class="card" style="background:rgba(16,185,129,.04);border-color:rgba(16,185,129,.2)">
+    <div class="ttl" style="margin-bottom:8px">这 7 天，你保住了什么 <small>只列做到的</small></div>
+    ${done.length?`<div class="chips">${chips}</div>
+      <div style="font-size:12px;color:var(--t3);margin-top:8px">共完成 ${done.length} 件，写了 ${diaries.length} 篇日记。</div>`
+      :`<div style="font-size:12.5px;color:var(--t3)">这 7 天还没有标记完成的事。想记的时候，在时间轴上点一下圆圈就行。</div>`}
+  </div>`;
+}
+
+/* ════════ 渲染：冲突卡片 ════════ */
+function renderConflicts(){
+  const w=document.getElementById("cfWrap");if(!w)return;
+  w.innerHTML="";
+  if(!DATA.conflicts.length){
+    const isToday=VIEW_DATE===todayStr();
+    const dayEvents=DATA.events.filter(e=>e.date===VIEW_DATE);
+    w.innerHTML=`<div class="card" style="border-color:rgba(16,185,129,.22);background:rgba(16,185,129,.04)">
+      <div class="ttl" style="margin:0;color:#6EE7B7">${isToday?"今天":"这一天"}没有冲突
+      <small>${dayEvents.length?"安排都在时间轴上，互不重叠":"还没有安排——先告诉我一件带时间的事"}</small></div></div>`;
+    return;
+  }
+  DATA.conflicts.forEach((c,ci)=>{
+    const card=document.createElement("div");card.className="cf-card";
+    card.innerHTML=`
+      <div class="cf-head">
+        <div class="ic">!</div>
+        <div class="cf-title">「${c.a.name} ${c.a.start}-${c.a.end}」与「${c.b.name} ${c.b.start}-${c.b.end}」<em>重叠 ${c.overlap_min} 分钟</em></div>
+      </div>
+      <div class="cf-sub">三个选项都算过账了，代价写在下面 · ${c.risk}</div>
+      <div class="opts">
+        ${c.options.map(o=>`
+          <div class="opt" onclick="pick(this,'${o.k}')">
+            <div class="opt-top"><div class="tag">${o.k}</div><div class="opt-name">${o.name}</div></div>
+            <div class="io">
+              ${o.gains.map(g=>`<div class="g"><span class="m">✓</span><span>${g}</span></div>`).join("")}
+              ${o.costs.map(x=>`<div class="c"><span class="m">✕</span><span>${x}</span></div>`).join("")}
+            </div>
+          </div>`).join("")}
+      </div>
+      <div class="advice"><span class="lbl">分身建议</span>${c.advice}</div>
+      <div class="act">
+        <button class="btn cf-apply" disabled onclick="apply(${ci})">采纳并重新排布</button>
+        <span class="hint cf-hint">先选一个选项</span>
+      </div>`;
+    w.appendChild(card);
+  });
+}
+
+/* 每个冲突卡片各自记自己选中的方案，互不影响 */
+function pick(el,k){
+  const card=el.closest(".cf-card");
+  if(!card)return;
+  card.querySelectorAll(".opt").forEach(o=>o.classList.remove("sel"));
+  el.classList.add("sel");
+  card.dataset.picked=k;
+  const btn=card.querySelector(".cf-apply");
+  if(btn)btn.disabled=false;
+  const hint=card.querySelector(".cf-hint");
+  if(hint)hint.textContent="已选 "+k+" · 点了采纳才会真的改你的日程";
+}
+
+let snapshot=null;
+function takeSnapshot(){
+  snapshot=JSON.stringify({events:DATA.events,conflicts:DATA.conflicts});
+}
+function undoApply(){
+  if(!snapshot)return;
+  const s=JSON.parse(snapshot);snapshot=null;
+  DATA.events=s.events;DATA.conflicts=s.conflicts;
+  saveData();
+  renderDayBar();renderConflicts();renderGantt();renderOrbs();updStats();
+  push("ai","已撤销上一次采纳，日程回到改动前");
+}
+function addStructuredEvent(ev){
+  const name=(ev.name||"新安排").slice(0,12);
+  const date=ev.date||VIEW_DATE;
+  // 同一天、同名、同时间段不重复加，否则会自己跟自己「冲突」，算出一堆假冲突
+  const dup=DATA.events.find(e=>e.date===date&&e.name===name&&e.start===ev.start&&e.end===ev.end);
+  if(dup)return {ev:dup,delta:0,dup:true};
+  // 加进去之前，先数一遍这天有几处冲突——顺序不能反，否则 delta 永远是 0
+  const before=detectConflicts(date).length;
+  const e={id:"n"+Date.now()+Math.random().toString(36).slice(2,4),
+    name,type:ev.type||"work",date,
+    start:ev.start||"09:00",end:ev.end||"10:00",loc:ev.loc||"",priority:ev.priority||2,wage:ev.wage||0};
+  DATA.events.push(e);
+  SESS.events.push((date===todayStr()?"":dayTag(date)+" ")+name+" "+e.start+"-"+e.end);
+  saveData();sessFlush();
+  DATA.conflicts=detectConflicts();
+  const delta=detectConflicts(date).length-before;
+  renderDayBar();renderGantt();renderConflicts();renderNotes();renderOrbs();renderMe();updStats();
+  return {ev:e,delta,dup:false};
+}
+function addEventFromText(t){
+  // 先走和聊天同一套解析：认「周五 / 明天」等日期，也认名字在前或在后
+  const p=parseEventsFromText(t);
+  if(p.length){
+    const r=addStructuredEvent(p[0]);
+    return {ev:r.ev,s:p[0].start,e:p[0].end,delta:r.delta,dup:r.dup,date:r.ev.date};
+  }
+  const m=t.match(/(\d{1,2})[:：](\d{2})\s*(?:至|-|到|~)?\s*(\d{1,2})?[:：]?(\d{2})?/);
+  // 名字可能写时间前面，也可能写时间后面，两边都要认
+  let name=t.replace(/\d{1,2}[:：]\d{2}/g," ")
+           .replace(/[至到~\-–—]/g," ")
+           .replace(/[，,。.\s]+/g," ").trim()||"新安排";
+  let s="19:00",e="21:00";
+  if(m){s=String(m[1]).padStart(2,"0")+":"+m[2];if(m[3]&&m[4])e=String(m[3]).padStart(2,"0")+":"+m[4];}
+  const r=addStructuredEvent({name:name.slice(0,10),type:"work",start:s,end:e,date:resolveDate(t)});
+  return {ev:r.ev,s,e,delta:r.delta,dup:r.dup,date:r.ev.date};
+}
+const fmtHM=m=>{m=((m%1440)+1440)%1440;return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0");};
+function apply(ci){
+  const idx=ci||0;
+  const c=DATA.conflicts[idx];if(!c)return;
+  const card=document.querySelectorAll(".cf-card")[idx];
+  const picked=card?card.dataset.picked:"";
+  const o=c.options.find(x=>x.k===picked);if(!o)return;
+  takeSnapshot();
+
+  // 真的改日程，不只是嘴上说改了
+  const hi=c.a.priority<=c.b.priority?c.a:c.b;
+  const lo=hi===c.a?c.b:c.a;
+  const dur=toMin(lo.end)-toMin(lo.start);
+  if(picked==="A")DATA.events=DATA.events.filter(e=>e!==lo);
+  else if(picked==="B")DATA.events=DATA.events.filter(e=>e!==hi);
+  else{const st=toMin(hi.end)+30;lo.start=fmtHM(st);lo.end=fmtHM(st+dur);}
+  saveData();
+
+  DATA.conflicts=detectConflicts();
+  const left=DATA.conflicts.length;
+
+  push("me",`就按 ${picked} 来：${o.name}`);
+  setTimeout(()=>push("ai",left
+    ? `按 ${picked} 调完了，但这么一动又撞上 ${left} 处。位置已经在时间轴上了，要不要再动你自己看。`
+    : `好，就按 ${picked} 来。我只动了和冲突有关的那两件事，其它一格没碰。冲突清零了。`),420);
+
+  renderGantt();renderConflicts();renderOrbs(true);updStats();renderMe();
+  const w=document.getElementById("cfWrap");
+  if(w&&!left)w.innerHTML=
+    `<div class="card" style="border-color:rgba(16,185,129,.3);background:rgba(16,185,129,.06);display:flex;align-items:center;gap:14px;justify-content:space-between">
+       <div class="ttl" style="color:#6EE7B7;margin:0">✓ 冲突已清零 <small>采纳了 ${picked}：${o.name} · 只改了冲突相关项</small></div>
+       <button class="btn ghost" onclick="undoApply()">撤销这次改动</button>
+     </div>`;
+  go("timeline");
+}
+
+/* ════════ 冲突检测 · 计算器（纯确定性） ════════ */
+/* 判断一件事名字是否连着用户某个目标：用 2 字滑窗重叠，够用、不追求精确 */
+function matchGoal(name,goal){
+  const n=String(name||""), g=String(goal||"").replace(/^(成为|我想成为|我要成为|我想|我要|我)/,"");
+  if(!n||!g)return false;
+  const grams=new Set();
+  for(let i=0;i<g.length-1;i++)grams.add(g.slice(i,i+2));
+  for(let i=0;i<n.length-1;i++)if(grams.has(n.slice(i,i+2)))return true;
+  return false;
+}
+/* 事件名撞到哪一档目标，返回 {lab,goal}；没撞到返回 null */
+function goalMatch(name){
+  const n=String(name||"");
+  const G=[["long","长期目标",DATA.profile.long_term_goal],
+           ["mid","中期目标",DATA.profile.mid_term_goal],
+           ["short","短期目标",DATA.profile.short_term_goal]];
+  for(const [k,lab,goal] of G){
+    if(goal&&matchGoal(n,goal))return {lab,goal};
+  }
+  return null;
+}
+function makeConflict(a,b,ov){
+  const hi=a.priority<=b.priority?a:b, lo=a.priority<=b.priority?b:a;
+  const dur=(toMin(lo.end)-toMin(lo.start))/60;
+  const money=lo.wage?Math.round(lo.wage*dur):0;
+  const gHi=goalMatch(hi.name), gLo=goalMatch(lo.name);
+  const opts=[];
+  opts.push({k:"A",name:"去"+hi.name,
+    gains:[`保住优先级 ${hi.priority} 的事${hi.type==="meeting"?"，会议不缺席":""}`,gHi?`这件事连着你的${gHi.lab}「${gHi.goal}」`:""].filter(Boolean),
+    costs:[money?`损失 ${money} 元（${lo.name} ${dur} 小时 × 时薪 ${lo.wage} 元）`:`放弃「${lo.name}」`,gLo?`会动到你的${gLo.lab}「${gLo.goal}」`:""].filter(Boolean)});
+  opts.push({k:"B",name:"去"+lo.name,
+    gains:[money?`拿到 ${money} 元${lo.type==="work"?"课时费":""}`:`保住「${lo.name}」`,gLo?`这件事连着你的${gLo.lab}「${gLo.goal}」`:""].filter(Boolean),
+    costs:[`放弃优先级 ${hi.priority} 的事`,"事后可能后悔",gHi?`会动到你的${gHi.lab}「${gHi.goal}」`:""].filter(Boolean)});
+  const st=toMin(hi.end)+30, hh=Math.floor(st/60)%24, mm=st%60;
+  const stTxt=String(hh).padStart(2,"0")+":"+String(mm).padStart(2,"0");
+  opts.push({k:"C",name:`把${lo.name}顺延到 ${stTxt}`,
+    gains:["两件事都不耽误"],
+    costs:[`连轴转，结束将被推到 ${stTxt} 之后`,
+      DATA.profile.hard_sleep_deadline?`可能破你「${DATA.profile.hard_sleep_deadline} 前睡」的硬约束`:"往后连轴转，你今天可能没有整块休息"]});
+  const goalTag=gHi||gLo;
+  return {id:"cf_"+a.id+"_"+b.id,a:a,b:b,overlap_min:ov,options:opts,
+    advice:`我不替你选。三个代价都摆在这儿了${DATA.profile.known_weakness[0]?`；你自己说过「${DATA.profile.known_weakness[0]}」，扛不扛得住你比我清楚`:""}${goalTag?`；这组里还撞着你的${goalTag.lab}「${goalTag.goal}」，别只当它是普通日程`:""}。`,
+    risk:money?`存在金钱损失（${money} 元），请结合长期目标判断`:goalTag?`撞上了你的${goalTag.lab}「${goalTag.goal}」`:"暂无直接金钱损失"};
+}
+function detectConflicts(dateIso){
+  const cs=[];
+  // 只比同一天的事，跨天的两件事不会「冲突」
+  const day=dateIso||VIEW_DATE;
+  const list=DATA.events.filter(e=>e.date===day);
+  for(let i=0;i<list.length;i++)for(let j=i+1;j<list.length;j++){
+    const a=list[i],b=list[j];
+    if(a.type==="sleep"||b.type==="sleep")continue;
+    const ov=Math.min(toMin(a.end),toMin(b.end))-Math.max(toMin(a.start),toMin(b.start));
+    if(ov>0)cs.push(makeConflict(a,b,ov));
+  }
+  return cs;
+}
+
+/* ════════ 今日方案 · 计算器（纯确定性，可复现） ════════ */
+/* 把档案里的「精力高峰」解析成一个可算的时间窗。
+   存的是 "HH:MM–HH:MM"（也可能是空格/中文横杠分开，或用户自填 "08:00-11:00"）；
+   「不固定 / 不确定 / 随便 / 都行 / 没」都当没填，返回 null。 */
+function focusWindowOf(f){
+  f=String(f||"").trim();
+  if(!f||/不固定|不确定|随便|都行|没有|无/.test(f))return null;
+  const m=f.match(/(\d{1,2}):(\d{2})\s*[-–—~至到]\s*(\d{1,2}):(\d{2})/);
+  if(!m)return null;
+  let s=toMin(m[1]+":"+m[2]), e=toMin(m[3]+":"+m[4]);
+  if(e<=s)return null;
+  return {s,e};
+}
+
+/* 排「今日方案」：不把档案当摆设。
+   课程/会议/睡眠是固定项，原地不动；学习/兼职是可动项。
+   可动项按「优先级小的更急 → 时长长的先占」排序，尽量塞进精力高峰那段时间，
+   碰到固定项就绕过，塞不下就保持原位。改档案里的精力高峰，这里会肉眼可见地变。 */
+function buildTodayPlan(){
+  const t=todayStr();
+  const p=DATA.profile;
+  const all=DATA.events.filter(e=>e.date===t);
+  const win=focusWindowOf(p.preferred_focus_hours);
+  const conflicts=detectConflicts(t);
+  const cfIds=new Set(); conflicts.forEach(c=>{cfIds.add(c.a.id);cfIds.add(c.b.id);});
+
+  const fixed=[], flex=[];
+  all.forEach(e=>{
+    if(e.type==="class"||e.type==="meeting"||e.type==="sleep"){fixed.push({...e,_fixed:true});}
+    else flex.push({...e,_flex:true,_moved:false});
+  });
+  flex.sort((a,b)=>(a.priority-b.priority)||((toMin(b.end)-toMin(b.start))-(toMin(a.end)-toMin(a.start))));
+
+  if(win){
+    // 窗内已被固定项占用的段，挖掉
+    const busy=fixed.map(e=>({s:toMin(e.start),e:toMin(e.end)}))
+                    .filter(b=>b.e>win.s&&b.s<win.e)
+                    .sort((a,b)=>a.s-b.s);
+    let cursor=win.s;
+    for(const f of flex){
+      const dur=toMin(f.end)-toMin(f.start);
+      let slot=null, c=cursor;
+      while(c+dur<=win.e){
+        const hit=busy.find(b=>c<b.e&&c+dur>b.s);
+        if(!hit){slot=c;break;}
+        c=hit.e;
+      }
+      if(slot!=null){
+        f.start=fmtHM(slot); f.end=fmtHM(slot+dur); f._moved=true; cursor=slot+dur;
+        busy.push({s:slot,e:slot+dur}); busy.sort((a,b)=>a.s-b.s);
+      }
+    }
+  }
+
+  const total=[...fixed,...flex].sort((a,b)=>toMin(a.start)-toMin(b.start));
+  return {date:t,win,conflicts,cfIds,fixed,flex,total};
+}
+
+/* 确定性说明：只描述这张表为什么长这样。LLM 用它做回退，保证可复现。 */
+function planCaption(plan){
+  const p=DATA.profile, bits=[];
+  const moved=plan.flex.filter(f=>f._moved);
+  if(plan.win){
+    bits.push(moved.length
+      ?`把你最要脑力的 ${moved.length} 件事（${moved.map(f=>f.name).join("、")}）排进精力高峰 ${fmtHM(plan.win.s)}–${fmtHM(plan.win.e)}`
+      :`精力高峰 ${fmtHM(plan.win.s)}–${fmtHM(plan.win.e)} 这段没找到可挪的脑力活，安排保持原位`);
+  }else{
+    bits.push("你还没填「精力高峰」，方案按原时间排，没做优化");
+  }
+  if(plan.conflicts.length){
+    const c=plan.conflicts[0];
+    bits.push(`还有 ${plan.conflicts.length} 处冲突（「${c.a.name}」与「${c.b.name}」重叠），得先在时间轴上处理`);
+  }else{
+    bits.push("今天没有冲突");
+  }
+  if(p.hard_sleep_deadline){
+    const dl=toMin(p.hard_sleep_deadline);
+    const latest=plan.total.reduce((mx,e)=>Math.max(mx,toMin(e.end)),T0);
+    bits.push(latest>dl?`有安排会顶到 ${p.hard_sleep_deadline} 之后，可能破睡眠硬约束`:`所有安排都在 ${p.hard_sleep_deadline} 前结束，睡眠底线保住了`);
+  }
+  if(p.known_weakness.length)bits.push(`按你说过的「${p.known_weakness[0]}」，高峰段排满脑力活，晚上留缓冲`);
+  return bits.join("；")+"。";
+}
+
+/* ════════ 今日方案 · 展示 + LLM 说明 ════════ */
+const PLAN_SYS=`你是 Altiora，负责把本地计算器已经排好的「今日方案」说成一到两句人话，解释这张表为什么长这样。
+铁律（漏一条都算失败）：
+- 只能引用「档案」和「方案」里出现的事实，一个都不能编、不能加、不能四舍五入
+- 必须明确说出哪件事被排进了哪个精力高峰时段（引用档案里的时段）
+- 档案里有睡眠硬约束或软肋时，要覆盖它对方案的影响
+- 不替用户选择、不给建议、不评价对错
+- 25 到 50 字，语气平静具体；禁止「加油」「你可以的」「相信自己」
+只输出那一两句话，不要引号，不要解释。`;
+
+function planFacts(plan){
+  const p=DATA.profile;
+  return {
+    focus: plan.win?fmtHM(plan.win.s)+"–"+fmtHM(plan.win.e):"未填写",
+    moved: plan.flex.filter(f=>f._moved).map(f=>f.name+" "+f.start+"-"+f.end),
+    conflicts: plan.conflicts.length,
+    sleep_deadline: p.hard_sleep_deadline||"",
+    weakness: (p.known_weakness||[]).slice(0,3),
+    goals: [p.long_term_goal,p.mid_term_goal,p.short_term_goal].filter(Boolean)
+  };
+}
+
+/* LLM 只把确定结果说成人话；说漏了精力高峰就算失败，回退确定性文案 */
+async function explainPlan(plan){
+  const facts=planFacts(plan);
+  const msgs=[
+    {role:"system",content:PLAN_SYS},
+    {role:"user",content:"档案：\n"+profileBrief(DATA.profile)+"\n\n方案（只解释，不改）：\n"+JSON.stringify(facts)}
+  ];
+  let text=String(await directChat(USERLLM,msgs,140)||"").trim();
+  text=text.replace(/^[“"'`]+|[”"'`]+$/g,"").trim().slice(0,160);
+  if(!text||LLM_BANNED.test(text))return "";
+  // 反制「LLM 忽略档案」：精力高峰填了，话里必须带出时段或那件被挪的事，否则不算数
+  if(plan.win){
+    const hm=fmtHM(plan.win.s)+"–"+fmtHM(plan.win.e);
+    const ok=text.includes(hm)||text.includes(fmtHM(plan.win.s))
+      || plan.flex.filter(f=>f._moved).some(f=>text.includes(f.name));
+    if(!ok)return "";
+  }
+  return text;
+}
+
+function renderPlan(plan, caption){
+  const w=document.getElementById("planWrap"); if(!w)return;
+  const focusTxt=plan.win?fmtHM(plan.win.s)+"–"+fmtHM(plan.win.e):"未填写";
+  const rows=plan.total.map(e=>{
+    const inFocus=!!e._moved;
+    const col=COLORS[e.type]||"#3B82F6";
+    const typeFlag=inFocus?'<span class="plan-flag on">● 精力高峰</span>'
+      :(e._fixed?'<span class="plan-flag">'+TYPE_CN[e.type]+'</span>':'<span class="plan-flag">原时间</span>');
+    const cfFlag=plan.cfIds.has(e.id)?'<span class="plan-flag cf">冲突</span>':'';
+    return `<div class="plan-row">
+      <span class="plan-dot" style="background:${col}"></span>
+      <span class="plan-nm">${esc(e.name)}</span>
+      <span class="plan-tm">${e.start}–${e.end}</span>
+      ${typeFlag}${cfFlag}
+    </div>`;
+  }).join("");
+  w.innerHTML=`<div class="card" id="planCard">
+    <div class="ttl">今日方案 <small>精力高峰：${esc(focusTxt)} · 只做展示，不改你已排好的日程</small></div>
+    <div class="plan-caption" id="planCaption">${esc(caption)}</div>
+    <div class="plan-list">${rows||'<div class="hint">今天还没有日程。先贴一份课表，或说一句「三点到五点去家教」。</div>'}</div>
+  </div>`;
+}
+
+async function openPlan(){
+  go("timeline");
+  const plan=buildTodayPlan();
+  renderPlan(plan, planCaption(plan));                 // 先落可复现的确定性文案
+  const cap=document.getElementById("planCaption");
+  if(USERLLM&&USERLLM.key){
+    if(cap)cap.textContent="正在让分身用一句话说清这张表…";
+    try{
+      const t=await withTimeout(explainPlan(plan),12000);
+      if(t&&cap)cap.textContent=t;
+    }catch(e){
+      if(cap)cap.textContent=planCaption(plan);
+    }
+  }
+  const card=document.getElementById("planCard");
+  if(card)setTimeout(()=>card.scrollIntoView({behavior:"smooth",block:"nearest"}),60);
+}
+
+/* ════════ 对话：唯一消息流（主页只显示一句预览） ════════ */
+const HISTORY=[];
+let msgSeq=0;
+function push(who,html){
+  const id="m"+(++msgSeq);
+  HISTORY.push({who,html,id});
+  if(document.getElementById("fullChat").classList.contains("on")) renderHistory();
+  else if(who==="ai") showPeek(html);
+  if(who==="ai"){
+    maybeSpeak(html);
+    // 「· · ·」只是占位气泡，不能混进聊天记忆，否则模型会以为你说过一句省略号
+    if(!/class=["']typing/.test(html||""))memPush("a",stripTags(html));
+  }
+  return {who,html,id};
+}
+function showPeek(html){
+  const p=document.getElementById("peek"),t=document.getElementById("peekTxt");
+  if(!p||!t)return;
+  t.innerHTML=html;p.classList.add("on");
+  clearTimeout(showPeek._t);
+  showPeek._t=setTimeout(()=>p.classList.remove("on"),12000);
+}
+function stripTags(h){const d=document.createElement("div");d.innerHTML=h;return d.textContent||"";}
+/* ════════ 朗读：系统自带语音合成（免费、离线，不用下模型） ════════ */
+const TTS_KEY="altiora_tts_v1";
+const TTS_ICON_ON='<svg viewBox="0 0 24 24"><path d="M4 9.5v5h3.5L12 18V6L7.5 9.5H4z"/><path d="M16 9a4.5 4.5 0 0 1 0 6"/><path d="M18.5 6.5a8 8 0 0 1 0 11"/></svg>';
+const TTS_ICON_OFF='<svg viewBox="0 0 24 24"><path d="M4 9.5v5h3.5L12 18V6L7.5 9.5H4z"/><path d="M16.5 9.5l5 5M21.5 9.5l-5 5"/></svg>';
+let TTS_ON=false;
+try{TTS_ON=localStorage.getItem(TTS_KEY)==="1";}catch(e){}
+let ttsVoice=null;
+
+function pickVoice(){
+  if(!window.speechSynthesis)return null;
+  const vs=window.speechSynthesis.getVoices()||[];
+  const zh=vs.filter(v=>/^zh/i.test(v.lang)||/普通话|中文|Chinese|Huihui|Xiaoxiao|Tingting|Yaoyao|Kangkang/i.test(v.name));
+  const pref=["Xiaoxiao","Huihui","Tingting","Yaoyao","Yunxi","Yunyang","Google 普通话"];
+  for(const p of pref){const f=zh.find(v=>v.name.includes(p));if(f)return f;}
+  return zh[0]||null;
+}
+if(window.speechSynthesis){
+  ttsVoice=pickVoice();
+  window.speechSynthesis.onvoiceschanged=()=>{ttsVoice=pickVoice();};
+}
+function renderTTSBtn(){
+  const b=document.getElementById("ttsBtn");if(!b)return;
+  if(!window.speechSynthesis){b.style.display="none";return;}
+  b.classList.toggle("on",TTS_ON);
+  b.innerHTML=TTS_ON?TTS_ICON_ON:TTS_ICON_OFF;
+  b.title=TTS_ON?"朗读已开：回复会用系统语音念出来（点一下关闭）":"朗读已关（点一下打开）";
+}
+function toggleTTS(){
+  TTS_ON=!TTS_ON;
+  try{localStorage.setItem(TTS_KEY,TTS_ON?"1":"0");}catch(e){}
+  if(!TTS_ON&&window.speechSynthesis)window.speechSynthesis.cancel();
+  renderTTSBtn();
+}
+/* 长句切段：有些浏览器一次念太长会中途停住 */
+function ttsChunks(text){
+  const clean=String(text||"").replace(/\s+/g," ").trim();
+  if(!clean)return [];
+  const parts=clean.split(/(?<=[。！？；!?;])/);
+  const out=[];let buf="";
+  for(const p of parts){
+    if(buf&&(buf+p).length>80){out.push(buf);buf=p;}
+    else buf+=p;
+  }
+  if(buf.trim())out.push(buf.trim());
+  return out.slice(0,12);
+}
+function doSpeak(text,btn){
+  if(!window.speechSynthesis)return;
+  window.speechSynthesis.cancel();
+  document.querySelectorAll(".speak.playing").forEach(b=>b.classList.remove("playing"));
+  const chunks=ttsChunks(text);if(!chunks.length)return;
+  ttsVoice=ttsVoice||pickVoice();
+  const last=chunks.length-1;
+  chunks.forEach((c,i)=>{
+    const u=new SpeechSynthesisUtterance(c);
+    u.lang="zh-CN";
+    if(ttsVoice)u.voice=ttsVoice;
+    u.rate=1.03;u.pitch=1;
+    if(btn){
+      if(i===0)u.onstart=()=>btn.classList.add("playing");
+      if(i===last){u.onend=()=>btn.classList.remove("playing");u.onerror=()=>btn.classList.remove("playing");}
+    }
+    window.speechSynthesis.speak(u);
+  });
+}
+/* 开关打开时，新回复直接念出来 */
+function maybeSpeak(html){
+  if(!TTS_ON||!window.speechSynthesis)return;
+  if(/class=["']typing/.test(html||""))return;
+  const t=stripTags(html||"");
+  if(t.trim())doSpeak(t,null);
+}
+function speakMsg(id,btn){
+  const m=HISTORY.find(x=>x.id===id);if(!m)return;
+  if(btn.classList.contains("playing")){window.speechSynthesis&&window.speechSynthesis.cancel();btn.classList.remove("playing");return;}
+  doSpeak(stripTags(m.html),btn);
+}
+function renderHistory(){
+  const box=document.getElementById("fullChatBox");if(!box)return;
+  box.innerHTML="";
+  HISTORY.forEach(m=>{
+    const d=document.createElement("div");d.className="msg "+m.who;
+    if(m.who==="ai"){
+      d.innerHTML=`<div class="avatar-sm">${miniOrb()}</div>
+        <div><div class="bubble">${m.html}</div>
+        <button class="speak" onclick="speakMsg('${m.id}',this)" title="朗读">▶</button></div>`;
+    }else if(m.who==="me"){
+      d.innerHTML=`<div class="bubble">${m.html}</div>`;
+    }else{
+      d.textContent=m.html;
+    }
+    box.appendChild(d);
+  });
+  box.scrollTop=box.scrollHeight;
+}
+/* ── 全屏聊天记录 ── */
+let fullRec=null,fullMicOn=false;
+function openFullChat(){
+  document.getElementById("fullChat").classList.add("on");
+  document.body.style.overflow="hidden";
+  renderHistory();
+  const p=document.getElementById("peek");p&&p.classList.remove("on");
+  setTimeout(()=>document.getElementById("fullChatIn").focus(),120);
+}
+function exitFullChat(){
+  document.getElementById("fullChat").classList.remove("on");
+  document.body.style.overflow="";
+  window.speechSynthesis&&window.speechSynthesis.cancel();
+}
+/* 兼容：全屏内的消息同样写进唯一消息流 */
+function fullPush(who,html){return push(who,html);}
+function fullSend(){
+  const i=document.getElementById("fullChatIn"),v=i.value.trim();if(!v)return;
+  i.value="";handleUser(v);
+}
+function toggleFullMic(){
+  startVoice(document.getElementById("fullMicBtn"),document.getElementById("fullChatIn"),handleUser);
+}
+const HELLO=[
+  ["sys","今天 · 一张白纸"],
+  ["ai","现在我对你几乎一无所知——这样才对。你知道的我，都得是你亲口说的。"],
+  ["ai","给个时间我排日程，说句实话我记画像，难受就直接说。"]
+];
+function initChat(){
+  HISTORY.length=0;msgSeq=0;
+  HELLO.forEach(m=>HISTORY.push({who:m[0],html:m[1],id:"m"+(++msgSeq)}));
+  // 隔了三天以上才翻日记；平时日记不出现
+  const recall=diaryRecall();
+  if(recall){
+    HISTORY.push({who:"ai",html:recall,id:"m"+(++msgSeq)});
+    showPeek(recall);
+  }
+}
+function send(){
+  const i=document.getElementById("chatIn"),v=i.value.trim();if(!v)return;
+  i.value="";handleUser(v);
+}
+/* ════════ AI 翻译官：先问 LLM 听懂了吗，听不懂就本地兜底 ════════ */
+const SAFETY_RE=/不想活|活不下去|活着没意思|想消失|自杀|结束自己|重开人生|重开这辈子|不值得活|没意思活了/;
+const SAFETY_TXT="这句话我不轻飘飘地接。我在这儿，你也需要有一个真人在场——室友、家人、学校的心理老师，哪个最近找哪个；打 <b>12356</b>（全国心理援助热线）也可以，24 小时有人。<br>我不劝你，也不跟你讲道理。你现在只要做一件事：让一个人的声音真的出现在你身边。";
+
+/* ════════ 大模型：用户自带 Key（BYOK） ════════
+   Key 只存这台电脑的浏览器（localStorage），请求由浏览器直连厂商；
+   服务端不保存、不记录，也不会进仓库。 */
+const LLM_STORE="altiora_llm_v1";
+const LLM_PRESETS={
+  deepseek:{base:"https://api.deepseek.com/v1",model:"deepseek-chat"},
+  deepseek_manual:{base:"https://api.deepseek.com/v1",model:""},
+  dashscope:{base:"https://dashscope.aliyuncs.com/compatible-mode/v1",model:"qwen-plus"},
+  ark:{base:"https://ark.cn-beijing.volces.com/api/v3",model:""},
+  custom:{base:"",model:""}
+};
+function loadLLM(){
+  try{
+    const o=JSON.parse(localStorage.getItem(LLM_STORE)||"null");
+    return (o&&o.key)?o:{};
+  }catch(e){return {};}
+}
+let USERLLM=loadLLM();
+
+/* Mask API Key：只显示前 4 + 后 4 位，中间用 ... 盖掉 */
+function maskKey(k){
+  if(!k)return "";
+  if(k.length<=8)return "****";
+  return k.slice(0,4)+"..."+k.slice(-4);
+}
+
+function openLLM(){
+  const prov=USERLLM.provider||"deepseek";
+  document.getElementById("llmProvider").value=prov;
+  // Key 不回显明文，但显示圆点让用户知道"已保存"；点输入框才清空重输
+  const keyEl=document.getElementById("llmKey");
+  if(USERLLM.key){
+    keyEl.value="\u2022".repeat(Math.min(16,USERLLM.key.length));
+    keyEl.dataset.saved="1";
+    keyEl.placeholder="已保存: "+maskKey(USERLLM.key)+"（点这里重新输入）";
+  }else{
+    keyEl.value="";
+    keyEl.dataset.saved="";
+    keyEl.placeholder="sk-...";
+  }
+  let _autoFocusing=true;   // 打开弹窗时的自动聚焦不算用户操作
+  keyEl.onfocus=function(){
+    if(_autoFocusing)return;
+    if(keyEl.dataset.saved){keyEl.value="";keyEl.dataset.saved="";}
+  };
+  document.getElementById("llmBase").value=USERLLM.base||LLM_PRESETS[prov].base;
+  document.getElementById("llmModel").value=USERLLM.model||LLM_PRESETS[prov].model;
+  document.getElementById("llmHeaders").value=headersToText(USERLLM.headers);
+  llmPreset(true);
+  setLLMMsg("","");
+  document.getElementById("llmMask").classList.add("on");
+  setTimeout(()=>{document.getElementById("llmKey").focus();_autoFocusing=false;},80);
+}
+function closeLLM(){document.getElementById("llmMask").classList.remove("on");}
+function llmPreset(keep){
+  const prov=document.getElementById("llmProvider").value;
+  const p=LLM_PRESETS[prov];
+  const modelEl=document.getElementById("llmModel");
+  modelEl.placeholder=prov==="ark"?"接入点 ID（ep-…）"
+    :prov==="custom"?"填这个接口要的模型名"
+    :prov==="deepseek_manual"?"填开放平台里的模型名（如 deepseek-chat）"
+    :"deepseek-chat";
+  if(!keep){
+    modelEl.value=p.model;
+    document.getElementById("llmBase").value=p.base;
+  }
+}
+/* 请求头：一行一个 "Key: Value"，空行和 # 开头的行忽略 */
+function parseHeaders(txt){
+  const out={};
+  String(txt||"").split(/\r?\n/).forEach(line=>{
+    const s=line.trim();
+    if(!s||s.startsWith("#"))return;
+    const i=s.indexOf(":");
+    if(i<1)return;
+    const k=s.slice(0,i).trim().replace(/[^A-Za-z0-9_-]/g,"");
+    const v=s.slice(i+1).trim();
+    if(k&&!/[\r\n]/.test(v))out[k]=v;
+  });
+  return out;
+}
+function headersToText(h){
+  return h?Object.keys(h).map(k=>k+": "+h[k]).join("\n"):"";
+}
+function setLLMMsg(t,cls){
+  const m=document.getElementById("llmMsg");
+  m.textContent=t||"";
+  m.className="llm-msg"+(cls?" "+cls:"");
+}
+function readLLMForm(){
+  const prov=document.getElementById("llmProvider").value;
+  const keyEl=document.getElementById("llmKey");
+  // 字段显示圆点说明用户没改 Key，沿用已保存的；否则用新输入的
+  const key=keyEl.dataset.saved?USERLLM.key:keyEl.value.trim();
+  const model=document.getElementById("llmModel").value.trim();
+  // URL 始终可见、可改；留空就回落到该厂商的默认地址
+  const rawBase=document.getElementById("llmBase").value.trim()||LLM_PRESETS[prov].base;
+  return {
+    provider:prov,
+    key,
+    model:model||LLM_PRESETS[prov].model,
+    base:rawBase.replace(/\/+$/,""),
+    headers:parseHeaders(document.getElementById("llmHeaders").value)
+  };
+}
+function saveLLM(silent){
+  const c=readLLMForm();
+  if(!c.key){setLLMMsg("先把 API Key 填上。","err");return false;}
+  if(!/^https:\/\//.test(c.base)){setLLMMsg("Base URL 要以 https:// 开头。","err");return false;}
+  if(!c.model){setLLMMsg("模型名不能空。火山方舟要填接入点 ID（ep-…）。","err");return false;}
+  USERLLM=c;
+  try{localStorage.setItem(LLM_STORE,JSON.stringify(c));}catch(e){}
+  setAIPill(true);
+  if(!silent)setLLMMsg("已保存。点「测试连接」确认能不能用。","ok");
+  return true;
+}
+function clearLLM(){
+  USERLLM={};
+  try{localStorage.removeItem(LLM_STORE);}catch(e){}
+  document.getElementById("llmKey").value="";
+  document.getElementById("llmHeaders").value="";
+  setAIPill(false);
+  checkAI();   // 服务器 .env 里还有 Key 的话，会自动变回在线
+  setLLMMsg("已清除，回到模型。","ok");
+}
+async function testLLM(){
+  const c=readLLMForm();
+  if(!c.key){setLLMMsg("先把 API Key 填上。","err");return;}
+  if(!/^https:\/\//.test(c.base)){setLLMMsg("Base URL 要以 https:// 开头。","err");return;}
+  if(!c.model){setLLMMsg("模型名不能空。火山方舟要填接入点 ID（ep-…）。","err");return;}
+  const btn=document.getElementById("llmTest");
+  btn.disabled=true;setLLMMsg("正在连…","");
+  try{
+    // 直接从浏览器发一个最小请求，不经过本地服务
+    await withTimeout(directChat(c,[{role:"user",content:"ping"}],16),15000);
+    USERLLM=c;
+    try{localStorage.setItem(LLM_STORE,JSON.stringify(c));}catch(e){}
+    setAIPill(true);
+    askLLM._warned=false;
+    setLLMMsg("通了，已保存。当前模型："+c.model,"ok");
+  }catch(e){
+    const reason=e&&e.status?"http_"+e.status:(e&&e.message==="bad_base"?"unsafe_base":"network");
+    setLLMMsg(llmErr(reason),"err");
+  }finally{btn.disabled=false;}
+}
+function llmErr(r){
+  const map={
+    http_400:"请求被拒（400）。通常是模型名写错了，去控制台核对一下。",
+    http_401:"Key 不对（401）。检查是不是复制全了，或者这个 Key 已失效。",
+    http_403:"没有权限（403）。看看这个 Key 有没有开通该模型。",
+    http_404:"找不到模型或地址（404）。检查模型名和 Base URL。",
+    http_429:"额度或频率超了（429），过一会儿再试。",
+    network:"连不上模型服务。检查网络，或者厂商地址写错了。",
+    timeout:"模型太慢，超时了。换个模型再试。",
+    unsafe_base:"地址不被允许：只接受 https 的公网地址。",
+    bad_json:"模型返回的不是 JSON，换个模型再试。",
+    bad_intent:"模型没按格式回答，换个模型再试。",
+    no_api_key:"没读到 Key。"
+  };
+  return map[r]||("失败："+(r||"未知原因")+"。");
+}
+
+let MIC_SERVER=false;   // 本地语音服务是否在线（Vosk 离线识别）
+async function checkAI(){
+  /* 有 Key：AI 直接在线；不管有没有 Key，都要问一句本地服务，决定麦克风能不能开 */
+  if(USERLLM.key)setAIPill(true);
+  try{
+    const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),2500);
+    const j=await (await fetch("/api/health",{signal:ctl.signal})).json();
+    clearTimeout(t);
+    if(!USERLLM.key)setAIPill(!!j.llm);
+    MIC_SERVER=!!j.asr;
+    setMicEnabled(MIC_SERVER);
+  }catch(e){
+    if(!USERLLM.key)setAIPill(false);
+    MIC_SERVER=false;
+    setMicEnabled(false);
+  }
+}
+function webSpeechCtor(){return window.SpeechRecognition||window.webkitSpeechRecognition||null;}
+function setMicEnabled(on){
+  const b=document.getElementById("micBtn");if(!b)return;
+  const onChrome=!!webSpeechCtor();
+  const isFile=location.protocol==="file:";
+  let usable,title;
+  if(on){
+    usable=true;title="语音输入（离线 Vosk）";
+  }else if(isFile){
+    usable=false;title="双击打开的 HTML 用不了麦克风。请运行 python server.py，然后打开 http://localhost:8000";
+  }else if(onChrome){
+    usable=true;title="语音输入（浏览器在线识别，需联网）。想要完全离线请运行服务器并装 vosk";
+  }else{
+    usable=false;title="当前浏览器不支持语音。换 Chrome/Edge，或运行 python server.py 后用 http://localhost:8000 打开";
+  }
+  b.disabled=!usable;
+  b.style.opacity=usable?"1":"0.35";
+  b.style.cursor=usable?"pointer":"not-allowed";
+  b.title=title;
+}
+function setAIPill(on){
+  const el=document.getElementById("aiPill");if(!el)return;
+  el.classList.toggle("on",on);
+  el.textContent=on?"AI 在线":"模型";
+  el.title=on
+    ?"点这里改设置。LLM 只负责听懂你说的话；算冲突、算代价仍是本地确定性计算器"
+    :"点这里填你自己的 API Key；不填也能用，全部走模型";
+}
+
+/* ════════ 浏览器直连：不开本地服务也能用 AI ════════
+   Key 只在浏览器里，请求直接发给厂商，不经过任何中转。
+   仍然只做「听懂人话」和「把结果说成人话」，冲突与代价一律由本地计算器算。 */
+const LLM_INTENTS=["safety","emotion","schedule","memory","goal","social","chat"];
+const LLM_EMOTIONS=["sad","tired","anxious","selfblame","relapse","lonely","numb","none"];
+// 模型判出的情绪直接写进日记，不再靠关键词表反推
+const EMOTION_CN={sad:"很难过",tired:"很累",anxious:"很焦虑",selfblame:"在自责",relapse:"想重开",lonely:"很孤单",numb:"没动力"};
+const GOAL_HORIZONS=["long","mid","short"];
+const GOAL_KEY={long:"long_term_goal",mid:"mid_term_goal",short:"short_term_goal"};
+const GOAL_LABEL={long:"长期目标",mid:"中期目标",short:"短期目标"};
+const LLM_BANNED=/嗯[，,]\s*我在听|我在听|你接着说|我在这儿|我都在|会好起来的|会好一点|加油|你可以的|相信自己|慢慢来|不要放弃|你能做到/;
+const LLM_SYS=`你叫 Altiora，是「用户理想中更好的自己」在电脑里的投影，不是客服，也不是心理医生。
+
+你的职责只有翻译，不做决策。
+
+【判断 intent，只能选一个】
+- safety：出现不想活、自伤、结束生命的意味
+- emotion：在倾诉情绪、状态、自我否定
+- schedule：明确说出一件或多件带开始与结束时间的事，要排进日程
+- memory：明确要求记住一条规矩或软肋（如「记住…」「以后不…」）
+- goal：说出一个目标（长期 / 中期 / 短期）
+- social：用户贴出或复述自己公开说过/发过的内容（朋友圈、微博、说说、帖子），要从中提炼一条关于他自己的规矩、软肋或习惯
+- chat：其它闲聊
+
+【抽取规则】
+- 用户可能用中文数字（三点）、相对说法（下午/明晚/下周三）、口语时长（复习两小时），
+  这些都由你负责理解并归一化成 24 小时制 HH:MM，别指望本地规则去猜。
+- schedule 的时间给在 events 数组里，每项必须有 name、start、end，最多 4 件。
+  用户一句话说几件事，就拆几条；说了几件事但只有部分有完整时间，只把时间完整的放进去。
+  一件都凑不齐 start/end，events 给空数组 []，并把那件事的名字写进 subject，不要猜时间。
+- events 每项可以给 date（YYYY-MM-DD），只在用户说了具体哪天（如下周三、下个月 3 号、10 月 8 日）时给；
+  说今天/明天这种相对日期也可以换算成具体日期再给。拿不准就不给 date，由本地按今天推算。
+- memory 只在用户明确要求记住时给，text 原样保留用户的话，不要改写。
+- goal 只保留目标本身，去掉「我想」这类前缀；同时给 goal_horizon：
+  long（长远/最终/十年/梦想/成为…）、mid（这学期/半年/明年/考研/求职/毕业）、short（这周/这个月/近期/明天）。
+  拿不准就 mid。
+- social 只在用户明确是「公开说过/发过」的内容时给。social 字段写一条从这段话里提炼出的、关于用户自己的规律（如「常常因为刷手机熬夜」），别凭空发挥，30 字以内。
+- 一句话里可能同时有好几层意思：情绪、目标、软肋可以一起给，不要只挑一个。
+  weakness 填用户描述的、反复出现的、关于他自己的规律（如「一焦虑就刷手机」「总爱拖延」），20 字以内，用第三人称陈述；
+  只说一次的心情（如「今天好累」）不算，给 null。不许下心理诊断，不许评价好坏。
+- 即使用户在倾诉情绪（intent=emotion），只要话里出现明确目标，也要同时填 goal 与 goal_horizon；
+  只要话里出现反复发生的自身规律，也要同时填 weakness。
+
+【绝对不能做】
+- 不计算时间重叠、时长、金钱、代价
+- 不替用户选方案，不说「你应该选 A」
+- 不编造用户没说的地点、时间、人物
+- 不说「加油」「你可以的」「相信自己」，不喊口号，不做心理诊断
+- 不复述用户原话，不用客服腔
+
+【reply 的写法】
+- intent=safety：null
+- intent=schedule 且 event 完整：null。账要由计算器算完再回来说，你不能抢答。
+- intent=social：一句确认，告诉她「我把它当成你说过的话记下来了」，40 字以内。
+- 其它情况一律要写，一到两句，40 字以内。
+- 必须指涉用户刚说的具体内容。
+- 禁止「嗯，我在听」「你接着说」「会好起来的」「加油」「你可以的」这类句子。
+- 不确定就问一个具体问题，不要问「你还好吗」这种空问题。
+
+只输出 JSON，不要解释，不要 Markdown 代码块：
+{"intent":"schedule","events":[{"name":"家教","start":"11:00","end":"13:00"}],"subject":null,"emotion":"none","memory":null,"goal":null,"goal_horizon":null,"weakness":null,"social":null,"reply":null}`;
+const LLM_SAY_SYS=`你是 Altiora，用户理想中更好的自己在电脑里的投影。下面是本地计算器算出的确定结果，你只负责把它说成一句人话。
+
+规则：
+- 只能引用给定数字，一个都不许改、不许加、不许四舍五入、不许推算新数字
+- 不替用户选择，不给建议，不评价对错
+- 一到两句，50 字以内
+- 语气平静、具体，说清发生了什么
+- 禁止「加油」「你可以的」「相信自己」这类句子
+- 只说结果，不要重复用户原话
+
+只输出那一句话，不要引号，不要解释。`;
+
+function withTimeout(p,ms){
+  return new Promise((res,rej)=>{
+    const t=setTimeout(()=>rej(new Error("timeout")),ms);
+    p.then(v=>{clearTimeout(t);res(v);},e=>{clearTimeout(t);rej(e);});
+  });
+}
+function profileBrief(p){
+  const lines=[];
+  if(p&&p.hard_sleep_deadline)lines.push(`- 睡觉硬约束：${p.hard_sleep_deadline} 前`);
+  if(p&&p.long_term_goal)lines.push(`- 长期目标：${p.long_term_goal}`);
+  if(p&&p.mid_term_goal)lines.push(`- 中期目标：${p.mid_term_goal}`);
+  if(p&&p.short_term_goal)lines.push(`- 短期目标：${p.short_term_goal}`);
+  if(p&&Array.isArray(p.known_weakness)&&p.known_weakness.length){
+    lines.push("- 我的缺点："+p.known_weakness.slice(0,5).join("、"));
+  }
+  if(p&&Array.isArray(p.social_insights)&&p.social_insights.length){
+    lines.push("- 生活圈里关于自己的话："+p.social_insights.slice(-5).map(x=>x.text).join("、"));
+  }
+  if(Array.isArray(DATA.notes)&&DATA.notes.length){
+    lines.push("- 随手记："+DATA.notes.slice(0,5).map(x=>String(x.text||"").slice(0,24)).join("、"));
+  }
+  if(Array.isArray(DATA.diary)&&DATA.diary.length){
+    lines.push("- 最近的日记："+DATA.diary.slice(-3).map(x=>String(x.t||"").slice(0,24)).join("；"));
+  }
+  return lines.join("\n")||"（无）";
+}
+function parseJsonLoose(c){
+  let s=String(c||"").trim();
+  if(s.startsWith("```"))s=s.replace(/^```[A-Za-z]*\s*/,"").replace(/```$/,"").trim();
+  try{return JSON.parse(s);}catch(e){}
+  const l=s.indexOf("{"),r=s.lastIndexOf("}");
+  if(l<0||r<=l)return null;
+  try{return JSON.parse(s.slice(l,r+1));}catch(e){return null;}
+}
+function normTime(v){
+  if(typeof v!=="string")return null;
+  const m=v.trim().replace("：",":").match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
+  return m?`${String(+m[1]).padStart(2,"0")}:${m[2]}`:null;
+}
+function minutesOf(hm){const a=hm.split(":");return (+a[0])*60+(+a[1]);}
+function cleanEvent(raw){
+  if(!raw||typeof raw!=="object")return null;
+  const name=String(raw.name||"").trim().slice(0,20);
+  const s=normTime(raw.start),e=normTime(raw.end);
+  if(!name||!s||!e)return null;
+  if(minutesOf(e)<=minutesOf(s))return null;
+  const out={name,start:s,end:e,loc:String(raw.loc||"").trim().slice(0,20)};
+  const d=normDate(raw.date);
+  if(d)out.date=d;
+  return out;
+}
+/* 模型偶尔会自己算日期，这里只做护栏：格式必须 YYYY-MM-DD、必须是今天起的未来一年内。
+   不合格就丢掉，回落到本地 resolveDate，绝不让模型编出一个不存在的日子。 */
+function normDate(v){
+  if(typeof v!=="string")return null;
+  const m=v.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(!m)return null;
+  const y=+m[1],mo=+m[2],d=+m[3];
+  const dt=new Date(y,mo-1,d);
+  if(dt.getFullYear()!==y||dt.getMonth()!==mo-1||dt.getDate()!==d)return null;
+  const today=todayStr();
+  const limit=new Date();limit.setDate(limit.getDate()+365);
+  const limitIso=`${limit.getFullYear()}-${pad2(limit.getMonth()+1)}-${pad2(limit.getDate())}`;
+  if(v<today||v>limitIso)return null;
+  return v;
+}
+function cleanMemory(raw){
+  if(!raw||typeof raw!=="object")return null;
+  const text=stripPunct(raw.text).slice(0,60);
+  if(!text)return null;
+  return {kind:raw.kind==="weakness"?"weakness":"rule",text};
+}
+/* 软肋三不认：太短、像建议、像诊断。模型爱说的是道理，这里挡掉 */
+const WEAK_BANNED=/(建议|应该|加油|相信自己|你可以的)|吧$/;
+function cleanWeakness(raw){
+  const text=stripPunct(raw).replace(/\s+/g," ").slice(0,24);
+  if(text.length<2||WEAK_BANNED.test(text))return null;
+  return text;
+}
+async function directChat(cfg,messages,maxTokens){
+  const base=String(cfg.base||"").replace(/\/+$/,"");
+  if(!/^https:\/\//.test(base))throw new Error("bad_base");
+  const headers={"Content-Type":"application/json","Authorization":"Bearer "+cfg.key};
+  if(cfg.headers&&typeof cfg.headers==="object")Object.assign(headers,cfg.headers);
+  const r=await fetch(base+"/chat/completions",{
+    method:"POST",
+    headers,
+    body:JSON.stringify({model:cfg.model,messages,temperature:0.5,max_tokens:maxTokens||400})
+  });
+  if(!r.ok){const err=new Error("http_"+r.status);err.status=r.status;console.error("[LLM] HTTP",r.status);throw err;}
+  const p=await r.json();
+  const c=p&&p.choices&&p.choices[0]&&p.choices[0].message&&p.choices[0].message.content;
+  console.log("[LLM] raw response:",c);
+  if(!c){console.error("[LLM] no content in response:",JSON.stringify(p).slice(0,300));throw new Error("bad_json");}
+  return c;
+}
+/* 第一段翻译官：自然语言 → 结构化字段（不计算，不替用户选） */
+async function directUnderstand(text){
+  const msgs=[{role:"system",content:LLM_SYS}];
+  memRecent().slice(-6).forEach(m=>{
+    const t=String((m&&m.t)||"").trim().slice(0,120);
+    if(t)msgs.push({role:m.r==="u"?"user":"assistant",content:t});
+  });
+  msgs.push({role:"user",content:
+    "今天是 "+todayStr()+"（周"+"日一二三四五六"[new Date().getDay()]+"）。\n"+
+    "用户画像（已知事实，不要重复询问，也不要复述）：\n"+
+    profileBrief(DATA.profile)+"\n\n用户刚刚说："+String(text||"").slice(0,600)});
+  const obj=parseJsonLoose(await directChat(USERLLM,msgs,400));
+  if(!obj||!LLM_INTENTS.includes(obj.intent)){
+    console.warn("[LLM] understand failed: obj=",obj?JSON.stringify(obj).slice(0,300):"null (bad JSON)");
+    return null;
+  }
+  const intent=obj.intent;
+  let emotion=obj.emotion;
+  if(!LLM_EMOTIONS.includes(emotion))emotion="none";
+  // 一句话多件事：以 events 数组为准；只有第一件的旧格式 event 也兼容
+  let events=[];
+  if(intent==="schedule"&&Array.isArray(obj.events)){
+    events=obj.events.map(cleanEvent).filter(Boolean).slice(0,4);
+  }
+  const legacyEvent=intent==="schedule"?cleanEvent(obj.event):null;
+  if(legacyEvent&&!events.length)events=[legacyEvent];
+  const event=events[0]||null;
+  // 时间不全时保留主题，前端追问时间，而不是替用户编
+  const subject=(intent==="schedule")
+    ?(String((obj.event&&obj.event.name)||obj.subject||"").trim().slice(0,20)||null):null;
+  const memory=intent==="memory"?cleanMemory(obj.memory):null;
+  // 目标不再只认 goal 意图：倾诉里顺带提一句「我想考研」也算数，规则模板给不了
+  const goal=stripPunct(obj.goal).slice(0,60)||null;
+  const goal_horizon=GOAL_HORIZONS.includes(obj.goal_horizon)?obj.goal_horizon:null;
+  const weakness=cleanWeakness(obj.weakness);
+  const social=intent==="social"?(String(obj.social||"").trim().slice(0,40)||null):null;
+  let reply=typeof obj.reply==="string"?obj.reply.trim().slice(0,120):null;
+  // 硬约束：完整日程不给话术（账还没算），安全一律本地处理
+  if(intent==="safety"||(intent==="schedule"&&event))reply=null;
+  if(reply&&LLM_BANNED.test(reply)){console.warn("[LLM] reply banned:",reply);reply=null;}
+  console.log("[LLM] understand ok: intent=%s reply=%s",intent,reply||"(null)");
+  return {ok:true,source:"llm",intent,emotion,event,events,subject,memory,goal,goal_horizon,weakness,social,reply,model:USERLLM.model};
+}
+/* 第二段翻译官：只许引用给定数字，多写一个就整句作废 */
+async function directSay(facts){
+  const msgs=[{role:"system",content:LLM_SAY_SYS},
+    {role:"user",content:"计算结果（JSON）：\n"+JSON.stringify(facts)}];
+  let text=String(await directChat(USERLLM,msgs,160)||"").trim();
+  text=text.replace(/^[“"'`]+|[”"'`]+$/g,"").trim().slice(0,120);
+  if(!text||LLM_BANNED.test(text))return "";
+  const allowed=new Set((JSON.stringify(facts).match(/\d+(?:\.\d+)?/g)||[]));
+  const nums=text.match(/\d+(?:\.\d+)?/g)||[];
+  if(nums.some(n=>!allowed.has(n)))return "";
+  return text;
+}
+
+async function askLLM(text){
+  const history=memRecent().map(m=>({role:m.r==="u"?"user":"assistant",text:m.t}));
+  /* ① 有 Key：浏览器直接请求厂商接口，不需要本地服务，双击 HTML 就能用 */
+  if(USERLLM.key){
+    try{
+      const r=await withTimeout(directUnderstand(text),12000);
+      if(!r){
+        // LLM 回了但 JSON 解析失败或 intent 不合法 —— 静默回退会让用户以为没接 LLM
+        if(!askLLM._warned){askLLM._warned=true;toast("大模型回复没接住，已用本地规则兜底。检查 Key / 模型名 / Base URL 是否正确。");}
+      }
+      return r;
+    }catch(e){
+      const reason=e&&e.status?"http_"+e.status:(e&&e.message==="bad_base"?"unsafe_base":"network");
+      if(!askLLM._warned){askLLM._warned=true;toast(llmErr(reason));}
+      return null;
+    }
+  }
+  /* ② 没 Key：问本地服务（服务端 .env 里可能配了 Key），失败就回本地兜底 */
+  const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),9000);
+  try{
+    const r=await fetch("/api/understand",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({text,profile:DATA.profile,history}),
+      signal:ctl.signal
+    });
+    clearTimeout(t);
+    if(!r.ok)return null;
+    const j=await r.json();
+    return (j&&j.ok&&j.source==="llm")?j:null;
+  }catch(e){clearTimeout(t);return null;}
+}
+async function askSay(facts){
+  if(USERLLM.key){
+    try{return await withTimeout(directSay(facts),12000);}catch(e){return "";}
+  }
+  const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),9000);
+  try{
+    const r=await fetch("/api/say",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({facts,profile:DATA.profile}),signal:ctl.signal
+    });
+    clearTimeout(t);
+    if(!r.ok)return "";
+    const j=await r.json();
+    return j&&j.ok&&j.text?j.text:"";
+  }catch(e){clearTimeout(t);return "";}
+}
+// 最近说过的三句不再重复，避免「背稿感」
+const RECENT_AI=[];
+function pickFresh(pool){
+  const fresh=pool.filter(x=>!RECENT_AI.includes(x));
+  const line=(fresh.length?fresh:pool)[Math.floor(Math.random()*(fresh.length?fresh.length:pool.length))];
+  RECENT_AI.push(line);if(RECENT_AI.length>3)RECENT_AI.shift();
+  return line;
+}
+// 从用户这句里抓一个具体的东西，兜底时指涉它，不说「嗯，我在听」
+function topicOf(t){
+  return t.replace(/[，。！？、,.!?~～；;：:\s]+/g," ").trim().split(" ")
+    .map(x=>x.replace(/^(嗯+|啊+|诶+|哎+|哈+|嘿+|我|你|就是|那个|其实|然后|所以|但是|因为|我觉得|感觉|的话|今天|明天)+/,""))
+    .filter(x=>x.length>=2&&x.length<=12)
+    .pop()||"";
+}
+function localFallback(t){
+  const k=topicOf(t);
+  // 区分两种情况：像日程的（提到要干什么事）才问时间；纯闲聊就别扯钟点
+  const looksLikeTask=/要|得|需要|准备|打算|去|办|做|干|安排|排/.test(t)&&!/你可以|你能|你会|怎么用|帮我/.test(t);
+  if(k&&looksLikeTask){
+    return pickFresh([
+      `你说的「${esc(k)}」，我记下了。它是今天要动的事，还是更远的那种？`,
+      `「${esc(k)}」——这句我没找出时间。你要给个钟点，还是让我先记着？`]);
+  }
+  if(k){
+    return pickFresh([
+      `「${esc(k)}」——这句我没完全接住。你想让我帮你做什么？`,
+      `关于「${esc(k)}」，你想让我记住它，还是排进时间轴？`]);
+  }
+  return pickFresh([
+    "这句我没抓着重点。你把它说成「几点到几点，干什么」，我立刻能排。",
+    "没听懂，不装懂。换个说法，或者直接给我一个时间。",
+    "我离线的时候确实笨。要么给我一件事加一个时间，要么点右上角「模型」填个 Key。",
+    "这句接不住。要不你直接说：明天几点到几点，要干什么。"]);
+}
+/* 半句接龙：上一句我问了「几点到几点」，这句只给时间也接得上 */
+const CN_NUM={"零":0,"〇":0,"一":1,"二":2,"两":2,"三":3,"四":4,"五":5,"六":6,"七":7,"八":8,"九":9};
+function cnHour(v){
+  const s=String(v).trim();
+  if(/^\d{1,2}$/.test(s))return +s;
+  if(s==="十")return 10;
+  if(/^十[一二三四五六七八九]$/.test(s))return 10+CN_NUM[s[1]];
+  if(/^[一二三四五六七八九]十$/.test(s))return CN_NUM[s[0]]*10;
+  if(/^[一二三四五六七八九]十[一二三四五六七八九]$/.test(s))return CN_NUM[s[0]]*10+CN_NUM[s[2]];
+  if(s.length===1&&(s in CN_NUM))return CN_NUM[s];
+  return NaN;
+}
+const pad2=n=>String(n).padStart(2,"0");
+function parseTimeRange(t){
+  const s=String(t).replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-65248));
+  let m=s.match(/(\d{1,2})[:：](\d{2})\s*(?:[-~至到—－])\s*(\d{1,2})[:：](\d{2})/);
+  if(m)return {start:pad2(+m[1])+":"+m[2],end:pad2(+m[3])+":"+m[4]};
+  m=s.match(/(上午|早上|中午|下午|晚上|夜里)?\s*([零〇一二三四五六七八九十两\d]{1,3})\s*[点时]?\s*(半)?\s*(?:到|至|~|—|－|-)\s*(上午|早上|中午|下午|晚上|夜里)?\s*([零〇一二三四五六七八九十两\d]{1,3})\s*[点时]?\s*(半)?/);
+  if(!m)return null;
+  const fix=(h,p)=>{
+    if(isNaN(h))return NaN;
+    if(/下午|晚上|夜里/.test(p)&&h<12)h+=12;
+    if(/中午/.test(p)&&h>=1&&h<=11)h+=12;
+    return h;
+  };
+  const p1=m[1]||"",p2=m[4]||p1;      // 「下午三点到五点」后半跟着前半走
+  const h1=fix(cnHour(m[2]),p1),h2=fix(cnHour(m[5]),p2);
+  const m1=m[3]?30:0,m2=m[6]?30:0;
+  if(!(h1>=0&&h1<24&&h2>=0&&h2<24))return null;
+  if(h2*60+m2<=h1*60+m1)return null;
+  return {start:pad2(h1)+":"+pad2(m1),end:pad2(h2)+":"+pad2(m2)};
+}
+/* 一句话可能说好几件事：按标点/连接词切开，每段单独抠时间和名字 */
+const TIME_PAT=/(上午|早上|中午|下午|晚上|夜里)?\s*[零〇一二三四五六七八九十两\d]{1,3}\s*[点时]?\s*(半)?\s*(?:到|至|~|—|－|-)\s*(上午|早上|中午|下午|晚上|夜里)?\s*[零〇一二三四五六七八九十两\d]{1,3}\s*[点时]?\s*(半)?/g;
+function parseEventsFromText(t){
+  const segs=String(t).split(/[，,；;、]|然后|还有|另外|顺便|再看|再排/).map(x=>x.trim()).filter(Boolean);
+  const out=[];
+  for(const seg of segs){
+    const r=parseTimeRange(seg);
+    if(!r)continue;
+    const date=resolveDate(seg);
+    let name=seg
+      .replace(/(\d{1,2})[:：](\d{2})\s*(?:[-~至到—－])\s*(\d{1,2})[:：](\d{2})/g," ")
+      .replace(TIME_PAT," ")
+      .replace(/\d{1,2}[:：]\d{2}/g," ")
+      .replace(/^(?:(?:下下个?周|下个?周|下个?星期|周|星期)[一二三四五六日天]\s*)+/,"")
+      .replace(/^(?:(?:大后天|后天|明天|明早|明晚|今天|今早|今晚)\s*)+/,"")
+      .replace(/^(?:(?:上午|下午|晚上|早上|中午|上)\s*)+/,"")
+      .replace(/[，,。.、\s]+/g," ").trim();
+    if(!name)continue;
+    out.push({name:name.slice(0,12),start:r.start,end:r.end,date});
+  }
+  return out;
+}
+function tryFillPending(t){
+  const p=DATA.memory.pending;
+  if(!p)return "";
+  if(Date.now()-p.ts>30*60000){DATA.memory.pending=null;saveData();return "";}
+  // 用户这句话里带了日期词（今天/明天/周X…），说明是在说一件新事，
+  // 不是补上次 pending 的时间——交给 LLM 正常解析，别拿旧日期乱填。
+  if(/今天|今早|今晚|明天|明早|明晚|后天|大后天|周[一二三四五六日天]|星期/.test(t))return "";
+  const r=parseTimeRange(t);
+  if(!r)return "";
+  const date=p.date||todayStr();
+  DATA.memory.pending=null;saveData();
+  const res=addStructuredEvent({name:p.name,start:r.start,end:r.end,date});
+  const tag=date!==todayStr()
+    ? `「${dayTag(date)} ${esc(res.ev.name)} ${r.start}-${r.end}」`
+    : `「${esc(res.ev.name)} ${r.start}-${r.end}」`;
+  if(res.dup)return `${tag}时间轴里已经有这条了，我没重复加。`;
+  if(date!==VIEW_DATE){VIEW_DATE=date;refreshDay();}
+  const c=detectConflicts(date).find(x=>x.a===res.ev||x.b===res.ev);
+  return res.delta>0
+    ? `${tag}补上了，撞出 <b>${res.delta}</b> 处冲突${c?`——和「${esc(c.a===res.ev?c.b.name:c.a.name)}」重叠 ${c.overlap_min} 分钟`:""}。代价在时间轴页。`
+    : `${tag}补上了，那天没冲突。`;
+}
+function esc(s){
+  return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+/* 去掉首尾标点（中英文逗号/顿号/分号/冒号/句号/问号/叹号/引号）。
+   用户说「记住，我晚上容易刷手机」，去掉前缀后剩「，我晚上容易刷手机」，
+   不刮掉这个逗号，画像页一眼假。 */
+function stripPunct(s){
+  return String(s||"").replace(/^[，,、；;：:。！!？?\s"'「」『』“”‘’]+|[，,、；;：:。！!？?\s"'「」『』"''""]+$/g,"").trim();
+}
+function setMsg(id,html){
+  const m=HISTORY.find(x=>x.id===id);if(!m)return;
+  m.html=html;
+  if(document.getElementById("fullChat").classList.contains("on"))renderHistory();
+  else showPeek(html);
+  maybeSpeak(html);
+  memPush("a",stripTags(html));
+}
+async function handleUser(v){
+  if(guideOn)endGuide();   // 开始对话就收起引导，别挡着干活
+  push("me",v);
+  if(v.startsWith("/")){setTimeout(()=>slashCmd(v),150);return;}
+
+  // 安全话术永远走本地固定文案，不交给任何模型
+  if(SAFETY_RE.test(v)){setTimeout(()=>push("ai",SAFETY_TXT),300);return;}
+
+  sessBegin();
+  memPush("u",v);
+
+  // 「记住…」是确定性命令：本地写进缺点，不交给模型判意图，避免判错漏记
+  const memCmd=v.trim().match(/^(记住|记一下|帮我记住|规矩)[\s，,。.:：]*(.+)$/);
+  if(memCmd){
+    const r=stripPunct(memCmd[2]);
+    if(r){
+      DATA.profile.known_weakness.push(r);renderMe();updStats();saveData();
+      setTimeout(()=>push("ai",`「${esc(r)}」记住了。下次快撞上去，我先摆代价。`),180);
+      return;
+    }
+  }
+
+  // 「以后不…」「再也不…」也是确定性命令：本地写进缺点，不交给模型判意图，避免判错漏记
+  if(/以后不|以后别|再也不|不许|别再|不要再/.test(v)){
+    const r=stripPunct(v.replace(/^(我|以后)/,""));
+    if(r){
+      DATA.profile.known_weakness.push(r);renderMe();updStats();saveData();
+      setTimeout(()=>push("ai",`「${esc(r)}」，我记住了。下次你快撞上去的时候，我会先把代价摆出来。`),180);
+      return;
+    }
+  }
+
+  const tp=topicOf(v);if(tp&&SESS.topics[SESS.topics.length-1]!==tp)SESS.topics.push(tp);
+
+  // 半句接龙：上一句我问了「几点到几点」，这句只给时间也接得上
+  const filled=tryFillPending(v);
+  if(filled){setTimeout(()=>push("ai",filled),180);return;}
+
+  const slot=push("ai","<span class='typing'>正在理解你说的话…</span>");
+  const j=await askLLM(v);
+  if(!j){setMsg(slot.id,replyTo(v));return;}
+  setMsg(slot.id,"<span class='typing'>听懂了，正在归类…</span>");
+  await routeLLM(j,slot.id,v);
+  if(TALK_STAT.gen)renderMe(); // 刷新画像页的「AI 说话自检」
+}
+/* 把模型这次抽到的字段摊开给用户看：理解得对不对，一眼可查 */
+const INTENT_CN={schedule:"排程",emotion:"情绪",goal:"目标",memory:"规矩",social:"公开发言",safety:"安全",chat:"闲聊"};
+const HORIZON_CN={long:"长期",mid:"中期",short:"短期"};
+function understandCard(j){
+  const rows=[];
+  rows.push(`<span class="uc-k">意图</span><span class="uc-v">${INTENT_CN[j.intent]||j.intent}</span>`);
+  if(j.emotion&&j.emotion!=="none"&&EMOTION_CN[j.emotion])
+    rows.push(`<span class="uc-k">情绪</span><span class="uc-v">${EMOTION_CN[j.emotion]}</span>`);
+  if(j.goal)
+    rows.push(`<span class="uc-k">目标</span><span class="uc-v">${esc(j.goal)}</span>（${HORIZON_CN[j.goal_horizon]||"中期"}）`);
+  if(j.weakness)
+    rows.push(`<span class="uc-k">软肋</span><span class="uc-v">${esc(j.weakness)}</span>`);
+  if(j.memory&&j.memory.text)
+    rows.push(`<span class="uc-k">规矩</span><span class="uc-v">${esc(j.memory.text)}</span>`);
+  const evs=(Array.isArray(j.events)&&j.events.length)?j.events:(j.event?[j.event]:[]);
+  if(evs.length)
+    rows.push(`<span class="uc-k">事件</span><span class="uc-v">${evs.map(e=>`${esc(e.name)} ${e.start}-${e.end}${e.date?"（"+esc(e.date)+"）":""}`).join("、")}</span>`);
+  if(j.subject&&!evs.length)
+    rows.push(`<span class="uc-k">待补</span><span class="uc-v">${esc(j.subject)}（缺开始/结束时间）</span>`);
+  if(rows.length<2)return "";
+  return `<details class="ucard"><summary>模型理解（${rows.length-1} 项）</summary><div class="uc-body">${rows.join("<br>")}</div></details>`;
+}
+function setMsgU(slotId,html,j){
+  setMsg(slotId,html+understandCard(j));
+}
+/* ── 话术三级降级：模型合格句 → 同 intent 上次合格句 → 本地模板原句 ──
+   校验三层：是字符串且不长（结构）、不喊口号不客服腔（评语）、schedule 不带数字（校验层：
+   账只能由计算器说）。模型这轮没开口不算失败，不进分母。 */
+const RE_BADTALK=/嗯[，,]\s*我在听|我在听|你接着说|我在这儿|我都在|会好起来|会好一点|加油|你可以的|相信自己|慢慢来|不要放弃|你能做到/;
+const LAST_OK={};
+const TALK_STAT={gen:0,bad:0};
+function goodTalk(t,intent){
+  if(!t||t.length>80)return false;
+  if(RE_BADTALK.test(t))return false;
+  if(intent==="schedule"&&/\d/.test(t))return false;
+  return true;
+}
+function talkOrFallback(reply,intent,local){
+  if(typeof reply!=="string"||!reply.trim())return local; // 模型没开口：直接模板，不计入统计
+  TALK_STAT.gen++;
+  const t=reply.trim();
+  if(goodTalk(t,intent)){LAST_OK[intent]=t;return t;}
+  TALK_STAT.bad++;
+  return LAST_OK[intent]||local;
+}
+async function routeLLM(j,slotId,v){
+  // 情绪由模型判，直接落到本次会话的日记里；本地关键词表只做离线兜底
+  if(j.emotion){
+    if(EMOTION_CN[j.emotion])SESS.mood=EMOTION_CN[j.emotion];
+    if(j.emotion_intensity)emotionRecord(j.emotion,j.emotion_intensity);
+  }
+  // 0) 多意图：同一句话里顺带说的目标、软肋也收下。规则模板一次只能命中一类意图，这里不会漏
+  const auxNotes=[];let auxChanged=false;
+  if(j.goal&&j.intent!=="goal"){
+    const h=j.goal_horizon||"mid";
+    if(DATA.profile[GOAL_KEY[h]]!==j.goal){
+      DATA.profile[GOAL_KEY[h]]=j.goal;SESS.goal=j.goal;
+      auxNotes.push(`「${esc(j.goal)}」收进${GOAL_LABEL[h]}`);auxChanged=true;
+    }
+  }
+  if(j.weakness&&j.intent!=="memory"&&!DATA.profile.known_weakness.includes(j.weakness)){
+    DATA.profile.known_weakness.push(j.weakness);
+    if(DATA.profile.known_weakness.length>40)DATA.profile.known_weakness=DATA.profile.known_weakness.slice(-40);
+    auxNotes.push(`「${esc(j.weakness)}」记进缺点`);auxChanged=true;
+  }
+  if(auxChanged){renderMe();updStats();saveData();sessFlush();}
+  // 1) 日程：理解交给大模型（可一次多件），撞了几处由本地计算器算，再让大模型说成人话
+  if(j.intent==="schedule"){
+    let evs=(Array.isArray(j.events)&&j.events.length)?j.events.slice(0,4):(j.event?[j.event]:[]);
+    if(!evs.length){
+      // 大模型一件都没凑齐，但用户原话里明明有时间——本地规则兜底，别让用户重说一遍
+      const local=parseEventsFromText(v);
+      if(local.length)evs=local.slice(0,4);
+    }
+    if(evs.length){
+      const added=[],dups=[];
+      let totalDelta=0,conflictInfo=null,targetDate=null;
+      for(const ev of evs){
+        const r=addStructuredEvent({...ev,date:ev.date||resolveDate(v)});
+        if(r.dup){dups.push(r.ev.name);continue;}
+        added.push(r.ev);totalDelta+=r.delta;
+        if(!conflictInfo){
+          const c=detectConflicts(r.ev.date||todayStr()).find(x=>x.a===r.ev||x.b===r.ev);
+          if(c)conflictInfo={对方:c.a===r.ev?c.b.name:c.a.name,重叠分钟:c.overlap_min};
+        }
+        if(!targetDate)targetDate=r.ev.date;
+      }
+      if(targetDate&&targetDate!==VIEW_DATE){VIEW_DATE=targetDate;refreshDay();}
+      if(!added.length){
+        setMsgU(slotId,`时间轴里已经有${dups.map(n=>`「${esc(n)}」`).join("、")}了，我没重复加。`,j);
+        return;
+      }
+      setMsg(slotId,"<span class='typing'>已写入时间轴，正在算代价…</span>");
+      const line=await askSay(added.length===1?{
+        事件:{名称:added[0].name,开始:added[0].start,结束:added[0].end},
+        新撞出的冲突数:totalDelta,
+        冲突:conflictInfo
+      }:{
+        新增事件:added.map(e=>({名称:e.name,开始:e.start,结束:e.end})),
+        新撞出的冲突数:totalDelta,
+        首个冲突:conflictInfo
+      });
+      const brief=added.map(e=>`「${esc(e.name)} ${e.start}-${e.end}」`).join("、");
+      setMsgU(slotId,line||(totalDelta>0
+        ?`${brief}排进去了，撞了 <b>${totalDelta}</b> 处。代价算好了，去时间轴页看。`
+        :`${brief}排进去了，没撞。`),j);
+      return;
+    }
+    // 听懂了，但用户没说结束时间 —— 不编，问一句；记住它，等下补时间
+    const sub=j.subject?`「${esc(j.subject)}」`:"这件事";
+    if(j.subject){DATA.memory.pending={name:j.subject.slice(0,10),date:resolveDate(v),ts:Date.now()};saveData();}
+    setMsgU(slotId,talkOrFallback(j.reply,"schedule",`${sub}我听懂了。但要进时间轴还差个开始和结束时间——几点到几点？`),j);
+    return;
+  }
+  // 2) 明确要求记住的规矩
+  if(j.intent==="memory"&&j.memory){
+    DATA.profile.known_weakness.push(j.memory.text);renderMe();updStats();saveData();
+    setMsgU(slotId,talkOrFallback(j.reply,"memory",`行，记住了：「${esc(j.memory.text)}」。下次快撞上去，我先摆代价。`),j);
+    return;
+  }
+  // 3) 目标（长期 / 中期 / 短期）
+  if(j.intent==="goal"&&j.goal){
+    const h=j.goal_horizon||goalHorizon(v)||"mid";
+    DATA.profile[GOAL_KEY[h]]=j.goal;SESS.goal=j.goal;renderMe();updStats();saveData();sessFlush();
+    setMsgU(slotId,talkOrFallback(j.reply,"goal",`「${esc(j.goal)}」收进${GOAL_LABEL[h]}。今天不用开始。有冲突我先保它。`),j);
+    return;
+  }
+  // 3.5) 公开发言 → 提炼一条关于他自己的话
+  if(j.intent==="social"&&j.social){
+    pushSocialInsight(j.social,v);
+    setMsgU(slotId,talkOrFallback(j.reply,"social",`「${esc(j.social)}」——当成你说过的话记下来了。下次撞着相关的事，我摆出来。`),j);
+    return;
+  }
+  // 4) 情绪 / 闲聊：模型只负责说话
+  const talk=talkOrFallback(j.reply,j.intent,null);
+  if(talk){setMsgU(slotId,esc(talk)+(auxNotes.length?`<br><small>${auxNotes.join("；")}</small>`:""),j);return;}
+  // 5) 模型没给话，退回本地兜底
+  setMsg(slotId,replyTo(v));
+}
+
+/* 先接住情绪，再看能不能落到日程 */
+const EMOTIONS=[
+  {k:/想哭|哭了|哭出来|难受|伤心|难过|心里堵|委屈|低落|心情不好/,r:[
+    "嗯，我听着。这事儿不用先讲道理，你说就行。",
+    "这种时候排什么日程都挺可笑的。今天剩下的，不做完也行。",
+    "我不劝你。想哭就哭，哭完那口气会顺一点。"
+  ]},
+  {k:/没力气|撑不住|不想动|提不起|好累|很累|累死|疲惫|透支|困死/,r:[
+    "那就先停。日程不会因为你歇一会儿就塌，塌的是你硬撑的时候。",
+    "累成这样还逼自己，等于跟身体借钱。今天先还一点。",
+    "晚上的事，晚点再说。你现在只负责休息。"
+  ]},
+  {k:/焦虑|慌|压力|好怕|担心|来不及|赶不上|睡不着|心里发紧|好烦|烦死|心烦|烦躁/,r:[
+    "慌，是因为你把它当成一件必须一次做完的事。它其实可以先只做第一步。",
+    "先说最让你睡不着的那一件。别的先放着，我们不一次解决全部。",
+    "别急着规划全局。接下来十分钟，你能动哪一下？"
+  ]},
+  {k:/废物|没用|我很差|做不到|失败|搞砸|烂透|恨自己|对不起自己|看不起自己/,r:[
+    "先停一下。骂自己不会让事情变少，只会让你更想重开。",
+    "你不是不行，你是累了还在拿满分要求自己。这两件事不一样。",
+    "我不接这句。你昨天也这么说过，可你今天还是回来跟我说了，这叫没放弃。"
+  ]},
+  {k:/重开|重新开始|明天再|明天一定|明天开始|等一个|完美|从头来过|新的开始|头发油/,r:[
+    "「明天开始」这句你说过不少次了。我不是说你，是这句真的不太管用。",
+    "我知道你想按那个键。先别按——今天不用重新开始，接着往下走就行。",
+    "完美起点不存在。头发油着、房间乱着、心情烂着，都能开始。"
+  ]},
+  {k:/没人|孤独|一个人|没朋友|没人懂|没人理|没人在乎/,r:[
+    "现在至少有我一个。虽然我只是你想成为的样子，但我在听。",
+    "这种时候不需要谁给答案，需要有人别走。我不走。"
+  ]},
+  {k:/摆烂|颓废|放弃了|不想努力|躺平|没动力|不想干/,r:[
+    "躺一会儿可以，别把「躺」写成结论。",
+    "动力不是等来的，是动起来之后剩下的那点。今天不逼你。"
+  ]}
+];
+// 日记里怎么形容那会儿的状态
+const MOOD_LABEL=[
+  [/想哭|哭|难受|伤心|难过|委屈|低落|心情不好/,"难过"],
+  [/累|疲惫|透支|困/,"很累"],
+  [/焦虑|慌|压力|睡不着|烦/,"很焦虑"],
+  [/废物|没用|失败|搞砸|恨自己/,"在自责"],
+  [/重开|明天再|完美|头发油/,"想重开"],
+  [/没人|孤独|一个人/,"很孤单"],
+  [/摆烂|躺平|没动力/,"没动力"]
+];
+// 从一句话里抠出「目标本身」：去掉寒暄、连接词、语气词，动词归一
+function extractGoal(t){
+  let s=t.trim()
+    .replace(/^(你好|您好|嗨|哈喽|在吗|那个|就是|嗯+|诶|哎|嘿)[，,。！!？?、\s]*/,"")
+    .replace(/[。！!？?]+$/,"");
+  const M=/(我的目标|目标是|我以后想|以后想|我以后要|以后要|我希望|我打算|我想|我要)/;
+  const m=s.match(M);
+  if(!m)return "";
+  let g=s.slice(m.index+m[1].length).trim().replace(/^[，,、\s]+/,"");
+  // 时间词不算目标本体
+  g=g.replace(/^(明年|后年|将来|未来|以后|过几年|毕业前)[，,、\s]*/,"");
+  // 冒头的连词
+  g=g.replace(/^(是|能|能够|可以|会|得|去)[，,、\s]*/,"");
+  // 动词归一：当/做/干/变成 → 成为
+  const v=g.match(/^(成为|变成|当|做|干)/);
+  if(v){
+    g="成为"+g.slice(v[0].length).replace(/^[，,、\s]*/,"").replace(/^一(名|个|位|只)/,"");
+  }
+  g=g.replace(/[啊呀吧呢哦啦哈嘛]+$/,"").trim();
+  g=stripPunct(g);   // 统一刮掉首尾标点，别让「：成为科学家」这种前导冒号进画像
+  // 情绪动词、日常琐事、当天的事，都不算长期目标
+  if(!g||g.length<2||g.length>40)return "";
+  if(/^(和|跟|与|去|找|陪|帮)/.test(g))return "";
+  if(/^(考试|面试|开会|作业|论文|答辩|体检|看病|复习|上课)/.test(g))return "";
+  if(/^(哭|睡觉|睡|吃|吃饭|玩|死|消失|放弃|休息|回家|逃|躺|摆烂)/.test(g))return "";
+  if(/今天|明天|后天|下周|周末|今晚/.test(g))return "";
+  return g;
+}
+/* 从一句话里判断目标属于长期 / 中期 / 短期。拿不准就空，由调用方默认 mid。 */
+function goalHorizon(t){
+  if(/长[远久]|最终|一辈子|这辈子|一生|十年|五年|退休|梦想|理想|成为|以后想|以后要|将来|未来/.test(t))return "long";
+  if(/这学期|本学期|学期|期末|期中|半年|几个月|明年|今年|考研|考公|求职|找实习|比赛|答辩|毕业/.test(t))return "mid";
+  if(/这周|本周|这个月|本月|月底|近期|马上|最近|明天|后天|今天|这几天|眼下|当下|这两天/.test(t))return "short";
+  return "";
+}
+
+/* 第三类数据源：认出用户复述/贴出自己「公开说过的话」 */
+function detectSocial(t){
+  const s=String(t||"").trim();
+  if(!s)return null;
+  const head=s.match(/^(?:我)?(?:我的)?(?:朋友圈|微博|说说|帖子|动态)[，,:：]\s*([\s\S]+)$/);
+  if(head){const c=head[1].trim().replace(/[。！!？?]+$/,"").slice(0,80);return c||null;}
+  const said=s.match(/^(?:我|这是我)?(?:发过|发了一条|发了|发的|分享的?|转发的?)[^，。！？\n]{0,14}?[，,:：]\s*([\s\S]+)$/);
+  if(said){const c=said[1].trim().replace(/[。！!？?]+$/,"").slice(0,80);return c||null;}
+  if(/(朋友圈|微博|说说|帖子|发过|公开|转发)/.test(s)){
+    const q=s.match(/[「『"“]([^」』"”]{4,80})[」』"”]/);
+    if(q)return q[1].trim();
+  }
+  return null;
+}
+/* 本地（无 Key）也从一句话里提炼一条关于自己的规律；提炼不了的先原样存起来 */
+function extractSocialInsight(c){
+  const s=String(c||"").trim();
+  if(/改不掉|戒不掉|总是|老爱|忍不住|又熬夜|又刷|习惯性|停不下来|控制不住|明知/.test(s)){
+    const m=s.match(/(?:改不掉|戒不掉|总是|老爱|忍不住|又|习惯性|停不下来|控制不住|明知)[^，。！？]{1,18}/);
+    if(m)return m[0].replace(/[。！!？?]+$/,"").trim();
+  }
+  if(/我就是/.test(s)){
+    const m=s.match(/我就是(?:个|一个)?[^，。！？]{1,16}/);
+    if(m)return m[0].replace(/[。！!？?]+$/,"").trim();
+  }
+  return s.slice(0,30);
+}
+function pushSocialInsight(insight,raw){
+  const text=String(insight||"").trim().slice(0,40);
+  if(!text)return;
+  if(!DATA.profile.social_insights.some(x=>x.text===text)){
+    DATA.profile.social_insights.push({text,src:String(raw||"").slice(0,80),d:todayStr()});
+  }
+  while(DATA.profile.social_insights.length>60)DATA.profile.social_insights.shift();
+  // 明确的自我披露（改不掉/总是/忍不住）也进软肋，喂给冲突卡片
+  if(/改不掉|戒不掉|总是|老爱|忍不住|习惯性|控制不住|明知/.test(text))pushWeakness(text);
+  renderMe();updStats();saveData();
+}
+function pushWeakness(r){
+  const t=String(r||"").trim().slice(0,60);
+  if(!t)return;
+  if(!DATA.profile.known_weakness.includes(t))DATA.profile.known_weakness.push(t);
+  while(DATA.profile.known_weakness.length>40)DATA.profile.known_weakness.shift();
+}
+
+/* 没配 Key 时的日常对话：常见话得接得住，不能让用户对着复读机说话 */
+const LOCAL_CHAT=[
+  {k:/^(你好|您好|hi|hello|嗨|哈喽|在吗|在不在|在么|早上好|中午好|下午好|晚上好|早|早啊)[!！。,.，~～\s]*$/i,r:[
+    "在。今天想排点什么，还是就想说说话？",
+    "来了。有事说事，没事坐着也行。",
+    "在呢。说吧。"
+  ]},
+  {k:/你是谁|你是什么|你叫什么|你的名字|你到底是|你是ai|你是机器人|你是真人|你是我的谁|你代表谁/i,r:[
+    "我是 Altiora，你想成为的那个自己，被搬进电脑里了。<br>我不替你做决定，只把每个选择的代价算清楚给你看。",
+    "你写下的那个「更好的自己」的样子。<br>我的活儿很窄：帮你排时间、算代价、守住你定的规矩。",
+    "Altiora。不是客服，也不是心理医生，是你在电脑里留的一个分身。"
+  ]},
+  {k:/你能干什么|你会什么|你能做什么|你可以干什么|你可以做什么|可以干什么|有什么功能|有啥功能|怎么用|能帮我做什么|你懂什么/,r:[
+    "三件事：<br>1）你说的话，我翻译成日程排进时间轴<br>2）有冲突的时候，把 A/B/C 三个选项各自的代价算给你<br>3）记住你给自己定的规矩<br>别的我不装会。",
+    "排时间、算代价、守规矩。<br>不给建议，不替你做选择——那个位置留给你自己。",
+    "你说话，我记账。<br>几点到几点要干什么，撞了谁，丢了多少，我都算清楚。要不要改，你定。"
+  ]},
+  {k:/没跟上|听不懂|你听不懂|你接不住|你听不懂话|人工智障|什么破|你笨|你傻/,r:[
+    "是我没接住，不是你说话的问题。<br>刚才那句我没在里面找到「时间」或「事」，就卡住了。你再说一遍，或者直接给我一个钟点，这个我一定接得住。",
+    "这句是我的问题。要不你换个说法——给我一件事加一个时间，比如「周三下午三点到五点写论文」，我立刻排进去。",
+    "不怪你。我离线的时候只认几类话，闲聊是短板。<br>点右上角「模型」填个 Key，我就能真的跟你聊了。"
+  ]},
+  {k:/^(谢谢|谢了|感谢|多谢|thx|thanks|3q)[!！。,.，~～\s]*$/i,r:[
+    "不用谢。日程是你自己改的，谢你自己。",
+    "客气什么。下一件事呢？",
+    "嗯。这本来就是我该干的。"
+  ]},
+  {k:/再见|拜拜|晚安|先这样|回头聊|我走了|下次聊|先撤了|睡了/,r:[
+    "晚安。今天没做完的，明天还在。",
+    "走好。你要是半夜又想起来一件事，我还在。",
+    "行，去忙。时间轴我替你看着。"
+  ]},
+  {k:/天气|下雨|出太阳|好热|好冷|降温|下雪|台风/,r:[
+    "天气我查不了，我离线，也不联网。<br>但要是因为下雨不想出门，这件事可以排进日程——把原来那件事挪到几点，我帮你算代价。",
+    "这个我真不知道，别问我预报。<br>不过下雨天最容易把出门的计划冲掉，要不要先想想哪件事能挪？"
+  ]},
+  {k:/你在干嘛|你在做什么|你在吗|你忙吗|你闲吗|你在不在/,r:[
+    "在这儿等你说话。没有别的活儿。",
+    "没干嘛。你什么时候说话，我什么时候开始。"
+  ]},
+  {k:/夸夸我|夸我|鼓励我|说点好听的|安慰我|表扬我/,r:[
+    "我不夸人，夸了不值钱。<br>但你要是今天把一件事做完了，那件事本身就在夸你。",
+    "夸你什么？你说个具体的，我照着说。<br>空着夸，那是客服干的事。"
+  ]},
+  {k:/讲个笑话|说个笑话|好无聊|无聊|逗我|好玩吗/,r:[
+    "笑话没有。要不你讲一个，我听着。",
+    "无聊的话，把最不想做的那件事排到最前面试试。<br>不一定有用，但至少不无聊。"
+  ]},
+  {k:/陪我聊|聊聊天|聊聊|和我说说话|说说话|陪我|我好孤单|没人说话/,r:[
+    "行，聊。你想从哪件烦心事开始？",
+    "我在这儿。你说，我不打断。",
+    "聊就聊。不过先说好，我不会一直顺着你说。"
+  ]},
+  {k:/你好厉害|你真棒|你真好|喜欢你|爱你/,r:[
+    "别夸我，我只是你写下的那个标准。<br>真做到了，是你厉害。",
+    "我只是把你自己的规矩执行得比较死板。<br>这不叫厉害，叫不偷懒。"
+  ]}
+];
+
+function replyTo(v){
+  const t=v.trim();
+
+  // 0) 安全优先：任何指向「不想活」的说法，先接住人，再谈事
+  if(/不想活|活不下去|活着没意思|想消失|自杀|结束自己|重开人生|重开这辈子|不值得活|没意思活了/.test(t)){
+    return "这句话我不轻飘飘地接。我在这儿，你也需要有一个真人在场——室友、家人、学校的心理老师，哪个最近找哪个；打 <b>12356</b>（全国心理援助热线）也可以，24 小时有人。<br>我不劝你，也不跟你讲道理。你现在只要做一件事：让一个人的声音真的出现在你身边。";
+  }
+
+  // 1) 明确让你记住，才写进画像（普通吐槽一律不记）
+  if(/^(记住|记一下|帮我记住|规矩)/.test(t)){
+    const r=stripPunct(t.replace(/^(记住|记一下|帮我记住|规矩)/,""));
+    if(r){DATA.profile.known_weakness.push(r);renderMe();updStats();saveData();
+      return `「${r}」记住了。下次快撞上去，我先摆代价。`;}
+  }
+  // 1.5) 公开发言：贴出/复述自己发过的朋友圈、微博、说说，提炼一条关于自己的话
+  const sPost=detectSocial(t);
+  if(sPost){
+    const insight=extractSocialInsight(sPost);
+    pushSocialInsight(insight,sPost);
+    return `「${esc(insight)}」——当成你说过的话记下来了。下次撞着相关的事，我摆出来。`;
+  }
+  // 2) 带具体时间，才当成日程（中文时间也认，一句话说几件事也认）
+  const evs=parseEventsFromText(t);
+  if(evs.length){
+    const added=[],dups=[];let total=0,lastDate=null;
+    for(const ev of evs){
+      const r=addStructuredEvent(ev);
+      const tag=r.ev.date&&r.ev.date!==todayStr()
+        ? `「${dayTag(r.ev.date)} ${esc(r.ev.name)} ${r.ev.start}-${r.ev.end}」`
+        : `「${esc(r.ev.name)} ${r.ev.start}-${r.ev.end}」`;
+      if(r.dup){dups.push(tag);continue;}
+      total+=r.delta;lastDate=r.ev.date;
+      added.push(tag);
+    }
+    // 排到别的日子，就把时间轴切过去，别让人以为没生效
+    if(lastDate&&lastDate!==VIEW_DATE){VIEW_DATE=lastDate;refreshDay();}
+    if(!added.length)return `${dups.join("、")}时间轴里已经有了，我没重复加。`;
+    const dupTxt=dups.length?`；${dups.join("、")}重复，跳过`:"";
+    return total>0
+      ? `${added.join("、")}排进去了，撞了 <b>${total}</b> 处。代价算好了，去时间轴页看${dupTxt}。`
+      : `${added.join("、")}排进去了，那天没撞${dupTxt}。`;
+  }
+  // 3) 情绪优先——先当人，再当工具
+  for(const e of EMOTIONS) if(e.k.test(t)){
+    SESS.mood=(MOOD_LABEL.find(([re])=>re.test(t))||[,"情绪低"])[1];
+    return pickFresh(e.r);
+  }
+  // 4) 目标：收下目标本身，但不逼你现在就干；按远近归到长期/中期/短期
+  const goal=extractGoal(t);
+  if(goal){
+    const h=goalHorizon(t)||"mid";
+    DATA.profile[GOAL_KEY[h]]=goal;SESS.goal=goal;renderMe();updStats();saveData();sessFlush();
+    return `「${esc(goal)}」收进${GOAL_LABEL[h]}。今天不用开始。有冲突我先保它。`;
+  }
+  // 5) 说了一件要办的事，但没给钟点——问时间，并记着它等下补
+  const sub=t.match(/^(?:我)?(?:明天|后天|今天|今晚|下周[一二三四五六日天]|周[一二三四五六日天]|周末)?\s*(?:要|得|需要|准备|打算)\s*(?:去|跟|和|找)?\s*([^，,。！？\s]{2,12})/);
+  if(sub){
+    const name=sub[1].replace(/[啊呀吧呢了]+$/,"").slice(0,10);
+    if(name&&name.length>=2&&!/(哭|睡|累|休息|放弃|躺|摆烂|逃)/.test(name)){
+      DATA.memory.pending={name,date:resolveDate(t),ts:Date.now()};saveData();
+      return `「${esc(name)}」我接住了。要进时间轴还差个时间——几点到几点？`;
+    }
+  }
+  // 5) 行为规矩
+  if(/以后不|以后别|再也不|不许|别再|不要再/.test(t)){
+    const r=t.replace(/^(我|以后)/,"").trim().replace(/[。！.!]+$/,"");
+    DATA.profile.known_weakness.push(r);renderMe();updStats();saveData();
+    return `「${r}」，我记住了。下次你快撞上去的时候，我会先把代价摆出来。`;
+  }
+  // 6) 问日程
+  if(/冲突|撞|怎么排|排一下|帮我排/.test(t)){
+    if(!DATA.conflicts.length)return "现在没撞。你把新的事和时间告诉我，我随时算。";
+    const c=DATA.conflicts[0];
+    return `现在撞的是「${c.a.name}」和「${c.b.name}」，重叠 ${c.overlap_min} 分钟。三个选项的代价我摆在时间轴页了。`;
+  }
+  // 7) 日常对话：没配 Key 也得接得住，别让用户对着复读机说话
+  for(const c of LOCAL_CHAT) if(c.k.test(t)) return pickFresh(c.r);
+  // 8) 兜底：不记，也不说万金油——没听懂就承认，并问一个具体问题
+  return localFallback(t);
+}
+function slashCmd(v){
+  const cmd=v.split(/\s+/)[0];
+  if(cmd==="/冲突"){
+    if(!DATA.conflicts.length){push("ai","现在没冲突。想试，可以用 <b>/加事 周五 15:00-16:00 临时事</b> 看看冲突是什么样。");return;}
+    DATA.conflicts.forEach(c=>{
+      push("ai",`「${c.a.name} ${c.a.start}-${c.a.end}」和「${c.b.name} ${c.b.start}-${c.b.end}」重叠 ${c.overlap_min} 分钟：<br>${c.options.map(o=>`<b>${o.k}</b> ${o.name}（${o.costs[0]}）`).join("<br>")}<br>——去时间轴页，我替你把账摆好了。`);
+    });
+  }else if(cmd==="/加事"){
+    const t=v.slice(3).trim();
+    if(!/\d{1,2}[:：]\d{2}/.test(t)){push("ai","格式：/加事 周五 19:00-21:00 晚班（带上时间我才能排进日程）");return;}
+    const r=addEventFromText(t);
+    push("ai",r.dup
+      ?`「${r.ev.name} ${r.s}-${r.e}」时间轴里已经有一条一模一样的了，我没重复加。`
+      :r.delta>0
+      ?`「${r.ev.name} ${r.s}-${r.e}」已加进今天，<b>撞出 ${r.delta} 处冲突</b>——代价在时间轴页，我算好了。`
+      :`「${r.ev.name} ${r.s}-${r.e}」已加进今天，没冲突。`);
+  }else if(cmd==="/规矩"){
+    const r=v.slice(3).trim();
+    if(!r){push("ai","格式：/规矩 周一不接活");return;}
+    DATA.profile.known_weakness.push(r);renderMe();updStats();saveData();
+    push("ai",`规矩「${r}」已写进画像。以后排日程我替你守这条——它不进聊天记录，进的是计算器的输入。`);
+  }else if(cmd==="/社交"||cmd==="/发言"){
+    const c=v.slice(3).trim();
+    if(!c){push("ai","格式：/社交 你朋友圈发过的一句话（我从里面提炼一条关于你的规律）");return;}
+    const insight=extractSocialInsight(c);
+    pushSocialInsight(insight,c);
+    push("ai",`「${esc(insight)}」——当成你说过的话记下来了。下次撞着相关的事，我摆出来。`);
+  }else if(cmd==="/撤销"){undoApply();}
+  else push("ai",`没有「${cmd}」这条命令。我认这几个：<b>/冲突 · /加事 · /规矩 · /社交 · /撤销</b>。`);
+}
+document.getElementById("chatIn").addEventListener("keydown",e=>{if(e.key==="Enter")send()});
+document.getElementById("fullChatIn").addEventListener("keydown",e=>{if(e.key==="Enter")fullSend()});
+
+/* ════════ 语音输入：本地录音 → 本地识别（不碰云端，也不依赖 ffmpeg） ════════ */
+let micOn=false, micStarting=false, micBtnEl=null, micInputEl=null, webStop=null;
+let recProc=null, recStream=null, audioCtx=null;
+let pcmParts=[], pcmLen=0, recRate=48000, recStart=0, recHeard=false, recLastSound=0;
+
+function toast(msg){
+  const t=document.getElementById("toast");if(!t)return;
+  t.textContent=msg;t.classList.add("on");
+  clearTimeout(toast._t);
+  toast._t=setTimeout(()=>t.classList.remove("on"),5200);
+}
+/* 开始/结束各响一声，让你知道它真的在录 */
+function blip(freq,dur){
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
+    const c=new AC(),o=c.createOscillator(),g=c.createGain();
+    o.type="sine";o.frequency.value=freq;g.gain.value=.05;
+    o.connect(g);g.connect(c.destination);
+    o.start();o.stop(c.currentTime+dur);
+    o.onended=()=>{try{c.close();}catch(e){}};
+  }catch(e){}
+}
+async function startVoice(btn,inp,cb){
+  // 再点一次 = 提前结束，不用等静音判断
+  if(micOn){ if(webStop){webStop();} else stopRecording(btn,inp,cb); return; }
+  if(micStarting)return;   // 权限弹窗还没点完时，别开第二条录音
+  if(location.protocol==="file:"){
+    toast("双击打开时浏览器不给麦克风，直接打字就行。");
+    return;
+  }
+  if(!MIC_SERVER){
+    if(webSpeechCtor()){startWebSpeech(btn,inp,cb);return;}
+    toast("当前浏览器不支持语音输入，直接打字就行。");
+    return;
+  }
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    if(!window.isSecureContext)toast("浏览器不给这个地址麦克风。请用 http://localhost:8000 打开。");
+    else toast("这个浏览器拿不到麦克风，换 Chrome 或 Edge 试试。");
+    return;
+  }
+  micBtnEl=btn;micInputEl=inp;
+  micStarting=true;
+  try{await startRecord(btn,inp,cb);}finally{micStarting=false;}
+}
+/* 没开本地服务时，用浏览器自带的语音识别：不用 Python，也不用装模型 */
+function startWebSpeech(btn,inp,cb){
+  let r;
+  try{r=new (webSpeechCtor())();}catch(e){toast("这个浏览器不支持语音输入，直接打字就行。");return;}
+  let got=false;
+  micBtnEl=btn;micInputEl=inp;micOn=true;
+  btn.classList.add("on");btn.title="在听…说完会自动停";
+  inp.setAttribute("placeholder","在听…说完会自动停");
+  blip(880,.07);
+  r.lang="zh-CN";r.continuous=false;r.interimResults=false;r.maxAlternatives=1;
+  const end=()=>{
+    micOn=false;webStop=null;
+    btn.classList.remove("on");btn.title="语音输入";
+    inp.removeAttribute("placeholder");
+  };
+  r.onresult=e=>{
+    got=true;let t="";
+    try{t=e.results[0][0].transcript||"";}catch(err){}
+    t=t.trim();
+    if(t)cb(t); else toast("没听清，再说一次。");
+  };
+  r.onerror=e=>{
+    const err=(e&&e.error)||"";
+    end();
+    if(err==="not-allowed"||err==="service-not-allowed")
+      toast("浏览器没给麦克风权限。点地址栏左边的锁→允许麦克风；不行就直接打字。");
+    else if(err==="no-speech")toast("没听到声音，再说一次。");
+    else if(err==="network")toast("浏览器语音识别要联网且不稳定。装个 vosk 跑服务器就能离线用：pip install vosk，再 python server.py。");
+    else toast("语音识别不可用，直接打字就行。");
+  };
+  r.onend=()=>{
+    if(!got&&micOn)toast("没听到声音，再说一次。");
+    if(micOn)end();
+  };
+  webStop=()=>{try{r.stop();}catch(e){}};
+  try{r.start();}catch(e){end();toast("语音打不开，直接打字就行。");}
+}
+/* 点一次开始；听到你说话后，静音 1.2 秒自动结束 */
+async function startRecord(btn,inp,cb){
+  let stream;
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({
+      audio:{echoCancellation:true,noiseSuppression:true,channelCount:1}
+    });
+  }catch(e){
+    const n=(e&&e.name)||"";
+    if(n==="NotAllowedError")toast("麦克风被拒绝了：点地址栏左边的小锁 → 把麦克风改成「允许」，再点一次。");
+    else if(n==="NotFoundError")toast("没找到麦克风。插上耳机或麦克风再试一次。");
+    else toast("麦克风打不开（"+(n||"未知错误")+"）。");
+    return;
+  }
+  const AC=window.AudioContext||window.webkitAudioContext;
+  if(!AC){stream.getTracks().forEach(t=>t.stop());toast("这个浏览器不支持录音，换 Chrome 或 Edge。");return;}
+  recStream=stream;
+  audioCtx=new AC();
+  if(audioCtx.resume)try{await audioCtx.resume();}catch(e){}
+  recRate=audioCtx.sampleRate||48000;
+
+  const src=audioCtx.createMediaStreamSource(stream);
+  recProc=audioCtx.createScriptProcessor(4096,1,1);
+  pcmParts=[];pcmLen=0;
+
+  micOn=true;btn.classList.add("on");btn.title="再说一次就停";
+  inp.setAttribute("placeholder","在听… 说完会自动停");
+  blip(880,.07);
+
+  recStart=performance.now();recHeard=false;recLastSound=recStart;
+
+  recProc.onaudioprocess=e=>{
+    if(!micOn)return;
+    const ch=e.inputBuffer.getChannelData(0);
+    pcmParts.push(new Float32Array(ch));
+    pcmLen+=ch.length;
+    let peak=0;
+    for(let i=0;i<ch.length;i+=4){const v=Math.abs(ch[i]);if(v>peak)peak=v;}
+    const now=performance.now();
+    if(peak>.02){recHeard=true;recLastSound=now;}
+    if(recHeard&&now-recLastSound>1200){stopRecording(btn,inp,cb);return;}
+    if(!recHeard&&now-recStart>8000){stopRecording(btn,inp,cb);return;}   // 8 秒没声音就放弃
+    if(now-recStart>20000){stopRecording(btn,inp,cb);}                    // 最长 20 秒
+  };
+  src.connect(recProc);
+  const mute=audioCtx.createGain();mute.gain.value=0;
+  recProc.connect(mute);mute.connect(audioCtx.destination);
+}
+/* 把录到的 PCM 直接写成 16k 单声道 WAV，服务端不需要转码 */
+function encodeWav(parts,total,sr){
+  const all=new Float32Array(total);
+  let off=0;
+  for(const p of parts){all.set(p,off);off+=p.length;}
+  const target=16000;
+  let data=all;
+  if(sr!==target){
+    const ratio=sr/target,n=Math.floor(all.length/ratio),out=new Float32Array(n);
+    for(let i=0;i<n;i++){
+      const a=Math.floor(i*ratio),b=Math.min(Math.floor((i+1)*ratio),all.length);
+      let sum=0;
+      for(let j=a;j<b;j++)sum+=all[j];
+      out[i]=b>a?sum/(b-a):0;
+    }
+    data=out;
+  }
+  const buf=new ArrayBuffer(44+data.length*2),v=new DataView(buf);
+  const str=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));};
+  str(0,"RIFF");v.setUint32(4,36+data.length*2,true);str(8,"WAVE");
+  str(12,"fmt ");v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+  v.setUint32(24,target,true);v.setUint32(28,target*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);
+  str(36,"data");v.setUint32(40,data.length*2,true);
+  for(let i=0;i<data.length;i++){
+    const s=Math.max(-1,Math.min(1,data[i]));
+    v.setInt16(44+i*2,s<0?s*0x8000:s*0x7FFF,true);
+  }
+  return new Blob([buf],{type:"audio/wav"});
+}
+async function stopRecording(btn,inp,cb){
+  if(!micOn)return;
+  micOn=false;
+  const sr=recRate,parts=pcmParts,total=pcmLen;
+  pcmParts=[];pcmLen=0;
+  try{recProc&&(recProc.onaudioprocess=null);recProc&&recProc.disconnect();}catch(e){}
+  recProc=null;
+  try{recStream&&recStream.getTracks().forEach(t=>t.stop());}catch(e){}
+  recStream=null;
+  try{audioCtx&&audioCtx.close();}catch(e){}
+  audioCtx=null;
+  btn.classList.remove("on");btn.title="语音输入";
+  blip(620,.06);
+
+  const blob=encodeWav(parts,total,sr);
+  if(blob.size<1200){inp.removeAttribute("placeholder");toast("没录到声音，再说一次。");return;}
+  inp.setAttribute("placeholder","识别中…");
+  try{
+    const fd=new FormData();fd.append("audio",blob,"a.wav");
+    const r=await fetch("/api/asr",{method:"POST",body:fd});
+    if(!r.ok)throw new Error("http "+r.status);
+    const j=await r.json();
+    inp.removeAttribute("placeholder");
+    if(j&&j.text)cb(j.text.trim());
+    else toast("没听清，再说一次。");
+  }catch(e){
+    inp.removeAttribute("placeholder");
+    toast("语音服务掉线了，直接打字就行。");
+  }
+}
+function toggleMic(){
+  startVoice(document.getElementById("micBtn"),document.getElementById("chatIn"),handleUser);
+}
+
+/* ════════ 周课表 ════════ */
+const WK_DAYS=["周一","周二","周三","周四","周五","周六","周日"];
+const WK_COLORS=["#5B7CFA","#06B6D4","#10B981","#F97316","#8B5CF6","#EC4899","#F59E0B","#14B8A6"];
+
+function todayWeekday(){const d=new Date().getDay();return d===0?7:d;}
+function weekMonday(){
+  const n=new Date(),d=todayWeekday();
+  n.setDate(n.getDate()-(d-1));
+  n.setHours(0,0,0,0);
+  return n;
+}
+function courseColor(name){
+  let h=0;for(let i=0;i<name.length;i++)h=(h*31+name.charCodeAt(i))>>>0;
+  return WK_COLORS[h%WK_COLORS.length];
+}
+/* 一门课覆盖了哪几节：返回起始/结束行号，没对上返回 null */
+function periodSpan(start,end){
+  const ps=DATA.week.periods,s=toMin(start),e=toMin(end);
+  let a=-1,b=-1;
+  ps.forEach((p,i)=>{
+    if(toMin(p.start)<e&&toMin(p.end)>s){if(a<0)a=i;b=i;}
+  });
+  return a<0?null:{a,b};
+}
+function renderWeek(){
+  const grid=document.getElementById("wkGrid");if(!grid)return;
+  const ps=DATA.week.periods,wds=todayWeekday(),mon=weekMonday();
+  const cs=DATA.week.courses;
+  const empty=document.getElementById("wkEmpty");
+  if(empty)empty.style.display=cs.length?"none":"block";
+  grid.style.display=cs.length?"grid":"none";
+
+  const range=document.getElementById("wkRange");
+  if(range){
+    const end=new Date(mon);end.setDate(mon.getDate()+6);
+    range.textContent=(mon.getMonth()+1)+"月"+mon.getDate()+"日 - "+(end.getMonth()+1)+"月"+end.getDate()+"日";
+  }
+  const tt=document.getElementById("wkTodayTxt");
+  if(tt){
+    const n=cs.filter(c=>c.day===wds).length;
+    tt.textContent="今天 "+WK_DAYS[wds-1]+" · "+(n?n+" 门课":"没课");
+  }
+
+  let html=`<div class="wk-hd"></div>`;
+  for(let d=1;d<=7;d++){
+    const dt=new Date(mon);dt.setDate(mon.getDate()+d-1);
+    html+=`<div class="wk-hd${d===wds?" today":""}">${WK_DAYS[d-1]}<small>${dt.getMonth()+1}/${dt.getDate()}</small></div>`;
+  }
+  ps.forEach((p,i)=>{
+    html+=`<div class="wk-t" style="grid-row:${i+2}"><b>${p.no}</b>${esc(p.start)}<br>${esc(p.end)}</div>`;
+    for(let d=1;d<=7;d++)html+=`<div class="wk-cell" style="grid-row:${i+2};grid-column:${d+1}"></div>`;
+  });
+  cs.forEach(c=>{
+    const sp=periodSpan(c.start,c.end);
+    if(!sp)return;
+    const col=courseColor(c.name);
+    const sub=[c.loc,c.teacher].filter(Boolean).map(esc).join(" · ");
+    html+=`<div class="wk-course" style="grid-column:${c.day+1};grid-row:${sp.a+2}/${sp.b+3};background:${col}26;border-left-color:${col}" title="${esc(c.name)} ${esc(c.start)}-${esc(c.end)}${c.loc?" "+esc(c.loc):""}">
+      <b>${esc(c.name)}</b>${c.loc?`<span>${esc(c.loc)}</span>`:""}${c.teacher?`<span>${esc(c.teacher)}</span>`:""}
+    </div>`;
+  });
+  grid.innerHTML=html;
+}
+/* 今天的课自动落进今日时间轴；同一天同一门只同步一次，你删了就不再加回来 */
+function syncTodayCourses(noRender){
+  const wd=todayWeekday(),today=todayStr();
+  if(!DATA.week.synced||DATA.week.synced.date!==today)
+    DATA.week.synced={date:today,ids:[]};
+  const ids=DATA.week.synced.ids;
+  DATA.week.courses.filter(c=>c.day===wd).forEach(c=>{
+    if(ids.includes(c.id))return;
+    const dup=DATA.events.find(e=>e.date===today&&e.name===c.name&&e.start===c.start&&e.end===c.end);
+    if(!dup){
+      DATA.events.push({id:"w"+c.id,name:c.name,type:"class",date:today,start:c.start,end:c.end,
+        loc:c.loc||"",priority:1,wage:0});
+    }
+    ids.push(c.id);
+  });
+  DATA.conflicts=detectConflicts();
+  saveData();
+  if(noRender)return;
+  renderGantt();renderConflicts();renderOrbs();renderMe();updStats();renderWeek();
+}
+/* 节次设置 */
+function openPeriodSheet(){
+  const box=document.getElementById("periodRows");
+  box.innerHTML=DATA.week.periods.map(p=>
+    `<div class="period-row"><span>第 ${p.no} 节</span>
+      <input id="ps${p.no}a" value="${esc(p.start)}" placeholder="08:30">
+      <input id="ps${p.no}b" value="${esc(p.end)}" placeholder="09:15"></div>`).join("");
+  document.getElementById("periodSheet").classList.add("on");
+}
+function closePeriodSheet(){document.getElementById("periodSheet").classList.remove("on");}
+function savePeriods(){
+  const ok=v=>/^\d{1,2}[:：]\d{2}$/.test(v);
+  let bad="";
+  const next=DATA.week.periods.map(p=>{
+    let a=document.getElementById("ps"+p.no+"a").value.trim().replace(/：/g,":");
+    let b=document.getElementById("ps"+p.no+"b").value.trim().replace(/：/g,":");
+    if(!ok(a)||!ok(b)){bad="第 "+p.no+" 节时间格式不对，要写成 08:30 这样";return p;}
+    a=pad2(+a.split(":")[0])+":"+a.split(":")[1];
+    b=pad2(+b.split(":")[0])+":"+b.split(":")[1];
+    if(toMin(b)<=toMin(a)){bad="第 "+p.no+" 节结束时间必须晚于开始时间";return p;}
+    return {no:p.no,start:a,end:b};
+  });
+  if(bad){alert(bad);return;}
+  DATA.week.periods=next;saveData();renderWeek();closePeriodSheet();
+  toast("节次时间已更新");
+}
+
+/* ════════ 导入课表 ════════ */
+let schedPreview=null, schedMode="week";
+const SCHED_TXT={
+  week:{title:"导入课表",
+    sub:"把教务系统的课表复制进来，一行一门课。支持「周一 08:00-09:40 高数 教A101」，也支持「周一 第1-2节 高等数学」。",
+    ph:"例：\n周一 08:30-10:10 高等数学 教A101\n周一 10:20-12:00 英语 教B202\n周二 第5-6节 大学物理 实验楼301",
+    parse:"解析课表", row:"课程", unit:"门课", empty:"先粘点课表进来。",
+    none:"格式参考：<b>周一 08:30-10:10 高等数学 教A101</b>，或者 <b>周一 第1-2节 高等数学</b>。"},
+  day:{title:"导入日程",
+    sub:"把日程一行一条粘进来，我帮你排进时间轴。每行「周几 + 时间 + 做什么」，例如「周一 15:00-17:00 家教」。",
+    ph:"例：\n周一 08:30-10:10 高等数学\n周一 15:00-17:00 家教\n周二 20:00-21:30 健身",
+    parse:"解析日程", row:"日程", unit:"条日程", empty:"先粘点日程进来。",
+    none:"一行都没认出来。格式参考：<b>周一 15:00-17:00 家教</b>。"}
+};
+function openScheduleSheet(mode){
+  schedMode=mode==="day"?"day":"week";
+  const T=SCHED_TXT[schedMode];
+  schedPreview=null;
+  document.getElementById("schedSheet").classList.add("on");
+  document.getElementById("schedTitle").textContent=T.title;
+  document.getElementById("schedSub").textContent=T.sub;
+  const inp=document.getElementById("schedIn");
+  inp.placeholder=T.ph;
+  document.getElementById("schedPrev").innerHTML="";
+  document.getElementById("schedActBtn").textContent=T.parse;
+  setTimeout(()=>inp.focus(),40);
+}
+function closeSchedSheet(){
+  schedPreview=null;
+  document.getElementById("schedSheet").classList.remove("on");
+  document.getElementById("schedRes").className="result";
+  document.getElementById("schedPrev").innerHTML="";
+  document.getElementById("schedActBtn").textContent=SCHED_TXT[schedMode].parse;
+  document.getElementById("schedIn").value="";
+}
+/* 一行课表 → {day,start,end,name,loc,teacher}。认不出返回 null */
+function parseScheduleLine(line){
+  const raw=String(line).replace(/\t/g," ").replace(/[，,]/g," ").replace(/\s+/g," ").trim();
+  if(!raw)return null;
+  const dm=raw.match(/(?:周|星期)([一二三四五六日天])/);
+  if(!dm)return null;
+  const dayMap={"一":1,"二":2,"三":3,"四":4,"五":5,"六":6,"日":7,"天":7};
+  const day=dayMap[dm[1]];
+  if(!day)return null;
+
+  let start="",end="";
+  const tm=raw.match(/(\d{1,2})[:：](\d{2})\s*[-~至到—－]\s*(\d{1,2})[:：](\d{2})/);
+  if(tm){
+    start=pad2(+tm[1])+":"+tm[2];
+    end=pad2(+tm[3])+":"+tm[4];
+  }else{
+    // 第1-2节 / 第3节
+    const pm=raw.match(/第\s*(\d{1,2})\s*(?:[-~至到]\s*(\d{1,2}))?\s*节/);
+    if(!pm)return null;
+    const p1=+pm[1],p2=pm[2]?+pm[2]:p1;
+    const A=DATA.week.periods.find(x=>x.no===p1),B=DATA.week.periods.find(x=>x.no===p2);
+    if(!A||!B)return null;
+    start=A.start;end=B.end;
+  }
+  if(toMin(end)<=toMin(start))return null;
+
+  let rest=raw
+    .replace(/(?:周|星期)[一二三四五六日天]/," ")
+    .replace(/(\d{1,2})[:：](\d{2})\s*[-~至到—－]\s*(\d{1,2})[:：](\d{2})/," ")
+    .replace(/第\s*\d{1,2}\s*(?:[-~至到]\s*\d{1,2})?\s*节/," ")
+    .replace(/[\s]+/g," ").trim();
+  const parts=rest.split(" ").filter(Boolean);
+  if(!parts.length)return null;
+
+  let name=parts[0],loc="",teacher="";
+  // 「高等数学（教A101）」把括号里的当地点
+  const bm=name.match(/^(.+?)[（(](.+?)[）)]$/);
+  if(bm){name=bm[1];loc=bm[2];parts.shift();}
+  // 找地点段：带楼/教/室/馆/场/栋，或以数字开头、纯房间号
+  const isLoc=p=>/[楼教室馆场栋]|^\d|^[A-Za-z]\d|\d{3,4}$/.test(p);
+  const isTeacher=p=>/老师|教授|讲师|助教/.test(p);
+  const li=parts.findIndex(p=>!isTeacher(p)&&isLoc(p));
+  if(li>0){
+    loc=parts[li];
+    if(li>=2&&isTeacher(parts[li-1])){
+      teacher=parts[li-1];
+      name=parts.slice(0,li-1).join(" ");
+    }else{
+      name=parts.slice(0,li).join(" ");
+    }
+    const after=parts.slice(li+1).join(" ");
+    if(after)teacher=teacher?teacher+" "+after:after;
+  }else if(li===0&&!bm){
+    // 第一段就是地点，说明名字在后面
+    loc=parts[0];
+    name=parts.slice(1).join(" ")||"课程";
+  }else if(!bm){
+    if(parts.length>=2&&isTeacher(parts[parts.length-1])){
+      teacher=parts[parts.length-1];
+      name=parts.slice(0,-1).join(" ");
+    }else{
+      name=parts.join(" ");
+    }
+  }
+  if(!name||name.length>20)return null;
+  return {day,start,end,name:name.slice(0,14),loc:loc.slice(0,16),teacher:teacher.slice(0,16)};
+}
+function saveSchedule(){
+  const T=SCHED_TXT[schedMode];
+  const t=document.getElementById("schedIn").value.trim();
+  const res=document.getElementById("schedRes");
+  const prev=document.getElementById("schedPrev");
+  const act=document.getElementById("schedActBtn");
+
+  if(!t){
+    res.className="result on";
+    res.innerHTML='<span class="lbl">空的</span>'+T.empty;
+    return;
+  }
+
+  // 第一步：解析并给预览，让你先确认
+  if(!schedPreview){
+    const lines=t.split("\n").map(l=>l.trim()).filter(Boolean);
+    const ok=[],bad=[];
+    lines.forEach((line,i)=>{
+      const p=parseScheduleLine(line);
+      if(p)ok.push(p);else bad.push({no:i+1,text:line});
+    });
+    if(!ok.length){
+      res.className="result on warn";
+      res.innerHTML='<span class="lbl">一行都没认出来</span>'+T.none;
+      return;
+    }
+    schedPreview={ok,bad};
+    prev.innerHTML=`<div class="wk-prev"><table>
+      <thead><tr><th>周几</th><th>时间</th><th>${T.row}</th><th>地点</th><th>老师</th></tr></thead>
+      <tbody>${ok.map(p=>`<tr><td>${WK_DAYS[p.day-1]}</td><td>${esc(p.start)}-${esc(p.end)}</td>
+        <td><b>${esc(p.name)}</b></td><td>${esc(p.loc)||"—"}</td><td>${esc(p.teacher)||"—"}</td></tr>`).join("")}
+      ${bad.map(b=>`<tr><td class="bad" colspan="5">第 ${b.no} 行没认出：${esc(b.text.slice(0,40))}</td></tr>`).join("")}
+      </tbody></table></div>`;
+    res.className="result on";
+    res.innerHTML=`<span class="lbl">识别结果</span>共 <b>${ok.length}</b> ${T.unit}${bad.length?`，<b class="bad">${bad.length}</b> 行没认出（会跳过）`:""}。确认无误就点下面的按钮载入。`;
+    act.textContent="确认载入 "+ok.length+" "+T.unit;
+    return;
+  }
+
+  // 第二步：真正载入
+  let add=0,dup=0;
+  schedPreview.ok.forEach(p=>{
+    const same=DATA.week.courses.find(c=>c.day===p.day&&c.name===p.name&&c.start===p.start&&c.end===p.end);
+    if(same){dup++;return;}
+    DATA.week.courses.push({
+      id:"c"+Date.now()+Math.random().toString(36).slice(2,6),
+      day:p.day,start:p.start,end:p.end,name:p.name,loc:p.loc,teacher:p.teacher
+    });
+    add++;
+  });
+  schedPreview=null;
+  saveData();
+  syncTodayCourses();
+  renderWeek();
+  const wd=todayWeekday();
+  const todayN=DATA.week.courses.filter(c=>c.day===wd).length;
+  res.className="result on";
+  res.innerHTML=`<span class="lbl">载入完成</span>新加 <b>${add}</b> ${T.unit}${dup?`，${dup} ${T.unit}重复已跳过`:""}。
+    今天（${WK_DAYS[wd-1]}）有 <b>${todayN}</b> ${T.unit}，已自动同步到时间轴。`;
+  act.textContent=T.parse;
+  setTimeout(closeSchedSheet,2200);
+}
+
+/* ════════ 画像页 ════════ */
+function renderMe(){
+  const p=DATA.profile;
+  const kv=document.getElementById("kv");if(!kv)return;
+  const dash=v=>v?esc(v):'<span class="dash">还没说</span>';
+  const weak=p.known_weakness.length
+    ?p.known_weakness.map(w=>`<span class="chip">${esc(w)}</span>`).join("")
+    :'<span class="dash">还没说</span>';
+  // 顶部头像 + 名字
+  const av=document.getElementById("meAvatar");
+  if(av){av.style.background=p.avatar_color||"var(--hue)";av.textContent=(p.name||"我").trim().charAt(0)||"我";}
+  const nm=document.getElementById("meName");
+  if(nm)nm.textContent=p.name?p.name:"还没告诉我你的名字";
+  // 档案完整度进度条：这五项是排程真正会用到的输入，缺哪个就明说出来
+  const pfItems=[["目标",!!(p.long_term_goal||p.mid_term_goal||p.short_term_goal)],
+    ["睡眠底线",!!p.hard_sleep_deadline],["精力高峰",!!p.preferred_focus_hours],
+    ["缺点",p.known_weakness.length>0],["截止日期",!!p.goal_deadline]];
+  const pfDone=pfItems.filter(x=>x[1]).length;
+  const pBar=document.getElementById("meProgBar"),pTxt=document.getElementById("meProgTxt");
+  if(pBar)pBar.style.width=(pfDone/pfItems.length*100)+"%";
+  if(pTxt)pTxt.textContent=pfDone===pfItems.length
+    ?"档案齐了，排程全部用得上"
+    :`档案 ${pfDone}/${pfItems.length}，还差：${pfItems.filter(x=>!x[1]).map(x=>x[0]).join("、")}`;
+  // 三档目标：长期 / 中期 / 短期
+  const goalCell=(id,key,lab)=>{
+    const el=document.getElementById(id);if(!el)return;
+    el.innerHTML=`<i>${lab}</i><b>${p[key]?esc(p[key]):'<span class="dash">还没说</span>'}</b>`;
+  };
+  goalCell("goalLong","long_term_goal","长期");
+  goalCell("goalMid","mid_term_goal","中期");
+  goalCell("goalShort","short_term_goal","短期");
+  const gd=document.getElementById("goalDeadline");
+  if(gd)gd.value=p.goal_deadline||"";
+  const gh=document.getElementById("goalDeadlineHint");
+  if(gh){
+    const n=daysUntil(p.goal_deadline);
+    gh.textContent=n===null?"":(n>0?`还有 ${n} 天`:n===0?"就是今天":`已过 ${-n} 天`);
+  }
+  // 我眼里的你（事实）
+  kv.innerHTML=`
+    <div>睡眠底线</div><div>${p.hard_sleep_deadline?"不晚于 "+esc(p.hard_sleep_deadline):'<span class="dash">还没说</span>'}</div>
+    <div>精力高峰</div><div>${dash(p.preferred_focus_hours)}</div>
+    <div>我的缺点</div><div><div class="chips">${weak}</div></div>
+    <div>今日记录</div><div>${DATA.events.filter(e=>e.date===todayStr()&&e.type!=="sleep").length} 件 · 冲突 ${detectConflicts(todayStr()).length} 处</div>
+    <div>AI 说话自检</div><div>${TALK_STAT.gen?`${Math.round(100*(1-TALK_STAT.bad/TALK_STAT.gen))}% 达标（${TALK_STAT.gen} 次，不合格已拦下 ${TALK_STAT.bad} 次）`:'<span class="dash">AI 还没说过话</span>'}</div>`;
+  // 三个入口计数（日记 / 随手记 / 我的生活圈）
+  const dd=document.getElementById("dsrcDiary");
+  if(dd)dd.textContent=DATA.diary.length;
+  const nn=document.getElementById("dsrcNotes");
+  if(nn)nn.textContent=DATA.notes.length;
+  const ss=document.getElementById("dsrcSocial");
+  if(ss)ss.textContent=p.social_insights.length;
+  // 原始数据
+  const jb=document.getElementById("jsonBox");
+  if(jb)jb.innerHTML=syntax(JSON.stringify(p,null,2));
+}
+function syntax(s){
+  return s.replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/"([^"]+)":/g,'<span class="k">"$1"</span>:')
+    .replace(/: "([^"]*)"/g,': <span class="s">"$1"</span>')
+    .replace(/: (\d+)/g,': <span class="n">$1</span>');
+}
+
+/* ════════ 主题：皮肤 + 主色 ════════ */
+const SKIN_KEY="altiora_skin_v1", HUE_KEY="altiora_hue_v1";
+const SKINS=[
+  {id:"fresh",name:"清爽",bg:"#F7F8FA",card:"#FFFFFF",line:"#E4E8EF"},
+  {id:"cream",name:"奶油白",bg:"#FAF6EE",card:"#FFFDF9",line:"#E9E0D1"},
+  {id:"latte",name:"奶油米",bg:"#F3E9D8",card:"#FFFCF4",line:"#DCCBAE"},
+  {id:"wood", name:"原木",bg:"#2A2119",card:"#342A20",line:"#4A3D2E"},
+  {id:"night",name:"深夜",bg:"#171A20",card:"#1F232B",line:"#2E343D"}
+];
+function applyTheme(){
+  const sk=document.body.dataset.skin||"fresh";
+  document.body.setAttribute("data-skin",sk);
+  const hc={hue:"#3D6FE0",weak:"#EAF0FD",line:"#C9D9F8",deep:"#2A56B8"};
+  const r=document.documentElement.style;
+  Object.keys(hc).forEach(k=>r.setProperty("--hue"+k.replace("hue",""),hc[k]));
+  document.querySelectorAll("#skinRow .sw").forEach(x=>x.classList.toggle("on",x.dataset.skin===sk));
+  if(typeof renderOrbs==="function"){try{renderOrbs();}catch(e){}}
+}
+function setSkin(id){document.body.dataset.skin=id;try{localStorage.setItem(SKIN_KEY,id);}catch(e){}applyTheme();}
+function initThemeUI(){
+  try{
+    const s=localStorage.getItem(SKIN_KEY);
+    if(s&&SKINS.some(x=>x.id===s))document.body.dataset.skin=s;
+  }catch(e){}
+  if(!document.body.dataset.skin)document.body.dataset.skin="fresh";
+
+  const sr=document.getElementById("skinRow");
+  if(!sr)return;
+  sr.innerHTML=SKINS.map(s=>
+    `<div class="sw" data-skin="${s.id}" onclick="setSkin('${s.id}')" title="${s.name}">
+       <i style="background:${s.bg};border-color:${s.line}">
+         <b style="position:absolute;left:6px;top:6px;width:14px;height:8px;border-radius:4px;background:${s.card};box-shadow:0 0 0 1px ${s.line}"></b>
+         <b style="position:absolute;left:6px;bottom:6px;right:14px;height:5px;border-radius:3px;background:${s.line}"></b>
+         <b style="position:absolute;right:7px;top:7px;width:5px;height:5px;border-radius:50%;background:#3D6FE0"></b>
+       </i>
+       <span>${s.name}</span></div>`).join("");
+  applyTheme();
+}
+
+/* ════════ Tab ════════ */
+function go(p){
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t.dataset.p===p));
+  document.querySelectorAll(".page").forEach(x=>x.classList.toggle("on",x.id==="p-"+p));
+  document.body.dataset.tab=p;
+  if(p==="week")renderWeek();
+  if(p==="diary")renderDiaryPage();
+}
+document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>go(t.dataset.p));
+
+/* ════════ 随手记 ════════ */
+function openSheet(){document.getElementById("sheet").classList.add("on");renderNotes();
+  NOTE_TY=null;NOTE_TY_MANUAL=false;syncNoteTyRow();
+  setTimeout(()=>document.getElementById("noteIn").focus(),40);}
+function closeSheet(){document.getElementById("sheet").classList.remove("on");
+  document.getElementById("noteRes").className="result";document.getElementById("noteIn").value="";
+  NOTE_TY=null;NOTE_TY_MANUAL=false;syncNoteTyRow();}
+function classify(t){
+  if(/以后|不要|不许|再也不|必须|记住|别再/.test(t))return"rule";
+  if(/\d{1,2}[:：]\d{2}/.test(t))return"event";
+  return"note";
+}
+/* 类型由用户说了算：输入时自动预选，点一下就改 */
+let NOTE_TY=null,NOTE_TY_MANUAL=false;
+function syncNoteTyRow(){
+  document.querySelectorAll("#noteTyRow .chip").forEach(c=>c.classList.toggle("sel",c.dataset.ty===NOTE_TY));
+}
+function pickNoteTy(ty){NOTE_TY=ty;NOTE_TY_MANUAL=true;syncNoteTyRow();}
+function autoNoteTy(){if(NOTE_TY_MANUAL)return;NOTE_TY=classify(document.getElementById("noteIn").value);syncNoteTyRow();}
+function saveNote(){
+  const el=document.getElementById("noteIn"),t=el.value.trim();if(!t)return;
+  const ty=(NOTE_TY_MANUAL&&NOTE_TY)?NOTE_TY:classify(t),res=document.getElementById("noteRes");
+  DATA.notes.unshift({text:t,type:ty});
+  saveData();   // 随手记也要落盘，刷新后还在
+  renderNotes();
+  res.className="result on";
+  if(ty==="event"){
+    const r=addEventFromText(t);
+    const when=r.ev.date===todayStr()?"今天":dayTag(r.ev.date);
+    if(r.ev.date&&r.ev.date!==VIEW_DATE){VIEW_DATE=r.ev.date;refreshDay();}
+    if(r.delta>0){res.className="result on warn";
+      res.innerHTML=`<span class="lbl">记为日程，并且撞了</span>「${r.ev.name} ${r.s}-${r.e}」已进${when}。<b>新产生 ${r.delta} 处冲突</b>——去时间轴页，代价我算好了，你看完再定。`;
+    }else res.innerHTML=`<span class="lbl">记为日程</span>「${r.ev.name} ${r.s}-${r.e}」已进${when}，没冲突。`;
+  }else if(ty==="rule"){
+    const r=stripPunct(t.replace(/^(以后|记住|必须|别再)/,""));
+    DATA.profile.known_weakness.push(r);renderMe();updStats();saveData();
+    res.className="result on warn";
+    res.innerHTML=`<span class="lbl">记为规矩</span>「${r}」已写进画像。<b>以后排日程我替你守这条。</b>`;
+  }else{
+    renderNotes();updStats();
+    res.innerHTML=`<span class="lbl">先攒着</span>「${t.slice(0,26)}」已进记忆流。攒够几条我一起提炼成你的规矩。`;
+  }
+  setTimeout(closeSheet,2800);
+}
+function renderNotes(){
+  const box=document.getElementById("noteListBox");if(!box)return;
+  const M={rule:["rule","规矩"],event:["event","日程"],note:["","随手记"]};
+  if(!DATA.notes.length){box.classList.remove("on");box.innerHTML="";return;}
+  box.classList.add("on");
+  box.innerHTML=DATA.notes.map((n,i)=>{
+    const t=M[n.type];
+    return `<div class="note-item"><span class="ty ${t[0]}">${t[1]}</span>
+      <span class="tx">${esc(n.text)}</span>
+      <span class="del" onclick="delNote(${i})">×</span></div>`;}).join("");
+}
+function delNote(i){DATA.notes.splice(i,1);saveData();renderNotes();updStats();}
+function delEvent(i){
+  if(i<0||i>=DATA.events.length)return;
+  const ev=DATA.events[i];
+  DATA.events.splice(i,1);
+  DATA.conflicts=detectConflicts();
+  saveData();refreshDay();updStats();
+  toast(`已删掉「${ev.name} ${ev.start}-${ev.end}」`);
+}
+
+/* ════════ 日记（一个页签，打开就能写） ════════ */
+let DIARY_DAY=todayStr();
+function renderDiaryPage(){
+  DIARY_DAY=todayStr();
+  renderDiaryDay();renderDiaryList();renderWeekReview();
+}
+function diaryDayShift(n){
+  const d=new Date(DIARY_DAY+"T00:00:00");d.setDate(d.getDate()+n);
+  DIARY_DAY=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  renderDiaryDay();
+}
+function pickDiaryDay(iso){DIARY_DAY=iso;renderDiaryDay();}
+function renderDiaryDay(){
+  document.getElementById("diaryDayLbl").textContent=dayTag(DIARY_DAY);
+  const existing=DATA.diary.find(x=>x.d===DIARY_DAY);
+  document.getElementById("diaryIn").value=existing?existing.t:"";
+}
+/* 已保存的日记以小卡片列出，不是输入框样式 */
+function renderDiaryList(){
+  const box=document.getElementById("diaryListBox");if(!box)return;
+  const parts=[];
+  // 手写日记
+  if(DATA.diary.length){
+    const sorted=[].concat(DATA.diary).sort((a,b)=>b.d.localeCompare(a.d));
+    parts.push(`<div class="dc-sec">我的日记</div>`+sorted.map((x,i)=>{
+      const idx=DATA.diary.indexOf(x);
+      return `<div class="diary-card" onclick="pickDiaryDay('${x.d}')">
+        <div class="dc-date">${dayTag(x.d)}</div>
+        <div class="dc-text">${esc(x.t)}</div>
+        <span class="dc-del" onclick="event.stopPropagation();delDiary(${idx})">×</span>
+      </div>`;
+    }).join(""));
+  }
+  // 自动日记：每次聊完攒的一行摘要（久别重逢的数据源）
+  const auto=DATA.memory&&DATA.memory.diary?DATA.memory.diary:[];
+  if(auto.length){
+    const last=auto[auto.length-1];
+    const frag=last.s?last.s.split(/[，,；;]/)[0].replace(/[。.]$/,"").slice(0,18):"";
+    parts.push(`<div class="dc-sec">分身自动记的</div>`+
+      auto.slice().reverse().map(x=>{
+        const idx=DATA.memory.diary.indexOf(x);
+        return `<div class="diary-card auto">
+          <div class="dc-date">${dayTag(x.d)}</div>
+          <div class="dc-text">${esc(x.s)}</div>
+          <span class="dc-del" onclick="event.stopPropagation();delAutoDiary(${idx})">×</span>
+        </div>`;
+      }).join("")+
+      (frag?`<div class="dc-recall">久别重逢预览：<span>上次（${esc(cuteDate(last.d))}）你说${esc(frag)}，后来怎么样了？</span></div>`:""));
+  }
+  box.innerHTML=parts.join("")||'<div class="hint">还没有日记，写点什么吧。</div>';
+}
+function delDiary(i){DATA.diary.splice(i,1);saveData();renderDiaryDay();renderDiaryList();renderMe();updStats();}
+function delAutoDiary(i){DATA.memory.diary.splice(i,1);saveData();renderDiaryList();renderMe();}
+function saveDiary(){
+  const el=document.getElementById("diaryIn"),t=el.value.trim();
+  if(!t)return;
+  const existing=DATA.diary.find(x=>x.d===DIARY_DAY);
+  if(existing)existing.t=t;else DATA.diary.push({d:DIARY_DAY,t:t});
+  saveData();renderDiaryDay();renderDiaryList();renderMe();updStats();
+  const res=document.getElementById("diaryRes");
+  res.className="result on";
+  res.innerHTML=`<span class="lbl">已写进日记</span>${dayTag(DIARY_DAY)}这一页记好了，AI 会读进对你的了解里。`;
+}
+
+/* ════════ 我的生活圈（导入公开发言） ════════ */
+function openSocialSheet(){
+  document.getElementById("socialSheet").classList.add("on");renderSocialList();
+  setTimeout(()=>document.getElementById("socialIn").focus(),40);
+}
+function closeSocialSheet(){
+  document.getElementById("socialSheet").classList.remove("on");
+  document.getElementById("socialIn").value="";
+  document.getElementById("socialRes").className="result";
+}
+function saveSocial(){
+  const raw=document.getElementById("socialIn").value.trim();
+  if(!raw)return;
+  const posts=raw.split(/\n+/).map(s=>s.trim()).filter(Boolean);
+  let added=0;
+  posts.forEach(p=>{
+    const c=detectSocial(p)||p.slice(0,80);
+    const insight=extractSocialInsight(c);
+    pushSocialInsight(insight,p);added++;
+  });
+  const res=document.getElementById("socialRes");
+  res.className="result on";
+  res.innerHTML=`<span class="lbl">已导入</span>${added} 条，我提炼成「你是个怎样的人」，写进生活圈了。`;
+  renderSocialList();
+  setTimeout(closeSocialSheet,2400);
+}
+function renderSocialList(){
+  const box=document.getElementById("socialListBox");if(!box)return;
+  const list=DATA.profile.social_insights;
+  if(!list.length){box.classList.remove("on");box.innerHTML="";return;}
+  box.classList.add("on");
+  box.innerHTML=list.slice(-6).reverse().map(x=>
+    `<div class="soc-item"><div class="soc-tx">${esc(x.text)}</div><div class="soc-src">${esc(x.src||"")}</div></div>`).join("");
+}
+
+function updStats(){
+  // 侧栏和分身说的是「今天」，所以只数今天的冲突，别把明天那页的算进来
+  const c=detectConflicts(todayStr()).length,el=document.getElementById("sCf");
+  if(el){el.textContent=c;el.className=c?"v red":"v green";}
+  document.getElementById("gazeTxt").textContent=c?`我盯着呢，今天有 ${c} 处冲突等你定`
+    :(DATA.events.filter(e=>e.date===todayStr()).length?"我盯着呢，今天没冲突":"今天还是一张白纸，你说一句我就开始记");
+  document.getElementById("gazeMsg").className=c?"gaze-msg warn":"gaze-msg";
+  const n=document.getElementById("fabN");
+  if(DATA.notes.length){n.style.display="grid";n.textContent=DATA.notes.length;}else n.style.display="none";
+}
+
+/* ════════ 快捷键 ════════ */
+document.addEventListener("keydown",e=>{
+  const tag=document.activeElement.tagName;
+  if((e.key==="n"||e.key==="N")&&tag!=="INPUT"&&tag!=="TEXTAREA"){e.preventDefault();openSheet();}
+  if(e.key==="Escape"){
+    closeSheet();closeSchedSheet();closeSocialSheet();endGuide();exitFullChat();
+  }
+});
+
+/* ════════ 首进问卷 ════════ */
+const INTRO_STEPS=[
+  {key:"weak",title:"你明知道该改、就是改不掉的是哪些？",sub:"选 1–3 个。以后每次有冲突，我会拿它们提醒你。",
+   type:"multi",opts:["熬夜刷手机","拖延","起床困难","乱花钱","暴饮暴食","容易暴躁","焦虑内耗","学不进去","戒不掉游戏","其他"]},
+  {key:"sleep",title:"你每晚最晚几点必须睡？",sub:"过了这个点就算熬夜，有冲突时我会拿它算代价。",
+   type:"single",opts:["22:30","23:00","23:30","00:00","不固定"]},
+  {key:"focus",title:"你一天里精力最顶的是哪个时段？",sub:"我排「今日方案」时，把最要脑力的事放到这段。",
+   type:"pick",field:"focus",opts:["08:00–11:00","09:00–12:00","14:00–17:00","19:00–22:00","不固定"]},
+  {key:"goal",title:"你现在最想做成的一件事？",sub:"不用很大，一件就够。有冲突时我优先保它。",
+   type:"pick",field:"goal",opts:["考研上岸","拿奖学金","减肥","找到实习","学会一门技能"]},
+  {key:"name",title:"我该怎么称呼你？",sub:"可以不填。",
+   type:"text"},
+  {key:"color",title:"给你的分身挑个颜色。",sub:"这是它在你心里的样子。",
+   type:"color",opts:["#5B7CFA","#34D399","#F472B6","#FBBF24","#A78BFA"]}
+];
+let introIdx=0;
+let introOn=false;
+const introPicked={multi:new Set(),single:"",goal:"",focus:"",name:"",color:""};
+
+function introRender(){
+  const s=INTRO_STEPS[introIdx];
+  document.getElementById("introStep").textContent=(introIdx+1)+" / "+INTRO_STEPS.length;
+  document.getElementById("introTitle").textContent=s.title;
+  document.getElementById("introSub").textContent=s.sub||"";
+  const body=document.getElementById("introBody");body.innerHTML="";
+  if(s.type==="multi"){
+    s.opts.forEach(o=>{
+      const b=document.createElement("button");
+      b.className="intro-chip"+(introPicked.multi.has(o)?" on":"");
+      b.textContent=o;
+      b.onclick=()=>{if(introPicked.multi.has(o)){introPicked.multi.delete(o);}else if(introPicked.multi.size<3){introPicked.multi.add(o);}introRender();};
+      body.appendChild(b);
+    });
+    // 软肋：预设之外可以自己写一个（最多选 3 个的限制仍然生效）
+    const inp=document.createElement("input");
+    inp.className="intro-text"; inp.placeholder="或者自己写一个…";
+    const multiCustom=[...introPicked.multi].find(x=>s.opts.indexOf(x)<0)||"";
+    inp.value=multiCustom;
+    inp.oninput=()=>{
+      const t=inp.value.trim();
+      [...introPicked.multi].forEach(x=>{if(s.opts.indexOf(x)<0)introPicked.multi.delete(x);});
+      if(t&&introPicked.multi.size<3)introPicked.multi.add(t);
+    };
+    body.appendChild(inp);
+  }else if(s.type==="single"){
+    s.opts.forEach(o=>{
+      const b=document.createElement("button");
+      b.className="intro-chip"+(introPicked.single===o?" on":"");
+      b.textContent=o;
+      b.onclick=()=>{introPicked.single=o;introRender();};
+      body.appendChild(b);
+    });
+    // 睡眠：预设之外可以自己填具体时间，自动归一成 HH:MM
+    const inp=document.createElement("input");
+    inp.className="intro-text"; inp.placeholder="或者自己写（HH:MM）";
+    const curSingle=introPicked.single&&s.opts.indexOf(introPicked.single)<0?introPicked.single:"";
+    inp.value=curSingle;
+    inp.oninput=()=>{
+      const raw=inp.value.trim();
+      const m=raw.match(/(\d{1,2})\s*[:：点.]?\s*(\d{2})/);
+      if(m){const hh=+m[1],mm=+m[2];if(hh>=0&&hh<24&&mm>=0&&mm<60){introPicked.single=String(hh).padStart(2,"0")+":"+String(mm).padStart(2,"0");return;}}
+      introPicked.single=raw;
+    };
+    body.appendChild(inp);
+  }else if(s.type==="pick"){
+    const field=s.field||"goal";
+    const val=introPicked[field];
+    s.opts.forEach(o=>{
+      const b=document.createElement("button");
+      b.className="intro-chip"+(val===o?" on":"");
+      b.textContent=o;
+      b.onclick=()=>{introPicked[field]=o;introRender();};
+      body.appendChild(b);
+    });
+    const inp=document.createElement("input");
+    inp.className="intro-text";inp.placeholder="或者自己写一个…";
+    inp.value=val&&s.opts.indexOf(val)<0?val:"";
+    inp.oninput=()=>{introPicked[field]=inp.value.trim();};
+    body.appendChild(inp);
+  }else if(s.type==="text"){
+    const inp=document.createElement("input");
+    inp.className="intro-text";inp.placeholder="比如：小宇";inp.value=introPicked.name;
+    inp.oninput=()=>{introPicked.name=inp.value.trim();};
+    body.appendChild(inp);
+  }else if(s.type==="color"){
+    s.opts.forEach(c=>{
+      const b=document.createElement("button");
+      b.className="intro-color"+(introPicked.color===c?" on":"");
+      b.style.background=c;
+      b.onclick=()=>{introPicked.color=c;introRender();};
+      body.appendChild(b);
+    });
+  }
+  document.getElementById("introBack").style.visibility=introIdx===0?"hidden":"visible";
+  document.getElementById("introNext").textContent=introIdx===INTRO_STEPS.length-1?"完成":"下一步";
+}
+function introCommit(){
+  const p=DATA.profile;
+  if(introPicked.multi.size){
+    const presets=INTRO_STEPS[0].opts;
+    const custom=p.known_weakness.filter(w=>presets.indexOf(w)<0);
+    p.known_weakness=Array.from(new Set([...introPicked.multi,...custom]));
+  }
+  if(introPicked.single&&introPicked.single!=="不固定")p.hard_sleep_deadline=introPicked.single;
+  if(introPicked.goal)p.long_term_goal=introPicked.goal;
+  if(introPicked.focus&&introPicked.focus!=="不固定")p.preferred_focus_hours=introPicked.focus;
+  if(introPicked.name)p.name=introPicked.name;
+  if(introPicked.color)p.avatar_color=introPicked.color;
+  saveData();renderMe();renderOrbs();updStats();
+}
+function introNext(){
+  introCommit();
+  introIdx++;
+  if(introIdx>=INTRO_STEPS.length){introFinish();return;}
+  introRender();
+}
+function introBack(){if(introIdx>0){introIdx--;introRender();}}
+function introFinish(){
+  introOn=false;
+  document.getElementById("introMask").classList.remove("on");
+  document.getElementById("introBox").classList.remove("on");
+  try{localStorage.setItem("altiora_intro_done","1");}catch(e){}
+  // 问卷做完，接着放游戏式引导（对从没引导过的人）
+  try{
+    if(!localStorage.getItem("altiora_guide_done"))setTimeout(startGuide,400);
+  }catch(e){}
+}
+function introSkip(){introCommit();introFinish();}
+function startIntro(){
+  introIdx=0;introOn=true;
+  introPicked.multi=new Set();introPicked.single="";introPicked.goal="";introPicked.focus="";introPicked.name="";introPicked.color="";
+  document.getElementById("introMask").classList.add("on");
+  document.getElementById("introBox").classList.add("on");
+  introRender();
+}
+// 从「我的画像」重新打开问卷：预填当前答案，可改可补，不丢已填内容
+function openProfileSurvey(){
+  const p=DATA.profile;
+  introPicked.multi=new Set(Array.isArray(p.known_weakness)?p.known_weakness:[]);
+  introPicked.single=p.hard_sleep_deadline||"";
+  introPicked.goal=p.long_term_goal||"";
+  introPicked.focus=p.preferred_focus_hours||"";
+  introPicked.name=p.name||"";
+  introPicked.color=p.avatar_color||"";
+  introIdx=0;introOn=true;
+  document.getElementById("introMask").classList.add("on");
+  document.getElementById("introBox").classList.add("on");
+  introRender();
+}
+
+/* ════════ 游戏式新手引导 ════════ */
+const GUIDE_STEPS=[
+  {sel:"#bigAvatar",tab:"home",txt:"这是<b>未来的你</b>。有冲突会变红皱眉，没事就绿着呼吸。"},
+  {sel:"#chatIn",tab:"home",txt:"直接说话或打字都可以。<b>报状态、说目标、讲缺点</b>，我写进画像。"},
+  {sel:"#histBtn",tab:"home",txt:"旁边这个，点开就是<b>完整聊天记录</b>。"},
+  {sel:".tabs .tab:nth-child(2)",tab:"home",txt:"日程撞了，去<b>时间轴</b>——每个选择的代价我都算好了。"},
+  {sel:".timeline-head .btn",tab:"timeline",txt:"课表粘进来，我帮你排进时间轴。"}
+];
+let guideIdx=0;
+let guideOn=false;   // 引导是否正在进行；结束后挂起的定时器不再把它重新弹出来
+function showGuideStep(){
+  if(!guideOn)return;
+  const step=GUIDE_STEPS[guideIdx];
+  if(!step)return;
+  if(step.tab)go(step.tab);
+  setTimeout(()=>{
+    if(!guideOn)return;
+    const el=document.querySelector(step.sel);
+    if(!el){nextGuide();return;}
+    // 先把目标滚到视口中央，避免气泡被挡住
+    el.scrollIntoView({block:"center",behavior:"smooth"});
+    setTimeout(()=>{
+      if(!guideOn)return;   // 用户已跳过/完成，别再弹回来
+      const r=el.getBoundingClientRect();
+      const pad=10;
+      const mask=document.getElementById("guideMask");
+      mask.style.display="block";mask.classList.add("on");
+      mask.style.top=(r.top-pad)+"px";
+      mask.style.left=(r.left-pad)+"px";
+      mask.style.width=(r.width+pad*2)+"px";
+      mask.style.height=(r.height+pad*2)+"px";
+      const box=document.getElementById("guideBox");
+      box.classList.add("on");
+      document.getElementById("guideTxt").innerHTML=step.txt;
+      document.getElementById("guideStep").textContent=(guideIdx+1)+" / "+GUIDE_STEPS.length;
+      document.getElementById("guideDots").innerHTML=GUIDE_STEPS.map((_,i)=>`<i class="${i===guideIdx?'on':''}"></i>`).join("");
+      document.getElementById("guideNext").textContent=guideIdx===GUIDE_STEPS.length-1?"完成":"下一步";
+      const bw=box.offsetWidth||320, bh=box.offsetHeight||130;
+      // 气泡优先放元素下方，放不下放上方；都放不下就固定在视口底部
+      let top=r.bottom+14, left=r.left+r.width/2-bw/2;
+      if(top+bh>window.innerHeight-10||top<20)top=r.top-bh-14;
+      if(top<20)top=window.innerHeight-bh-20;
+      if(left<16)left=16;
+      if(left+bw>window.innerWidth-16)left=window.innerWidth-bw-16;
+      box.style.top=Math.max(10,top)+"px";
+      box.style.left=Math.max(10,left)+"px";
+    },300);
+  },80);
+}
+function nextGuide(){
+  guideIdx++;
+  if(guideIdx>=GUIDE_STEPS.length){endGuide();return;}
+  showGuideStep();
+}
+function endGuide(){
+  guideOn=false;
+  document.getElementById("guideMask").classList.remove("on");
+  document.getElementById("guideMask").style.display="none";
+  document.getElementById("guideBox").classList.remove("on");
+  try{localStorage.setItem("altiora_guide_done","1");}catch(e){}
+  guideIdx=0;
+}
+function startGuide(){
+  guideIdx=0;guideOn=true;
+  showGuideStep();
+}
+
+/* ════════ 启动 ════════ */
+DATA.conflicts=detectConflicts();
+syncTodayCourses(true);   // 今天有课的，先落进今日时间轴
+renderDayBar();renderGantt();renderRecon();renderCountdown();renderConflicts();initChat();renderOrbs();renderMe();renderNotes();updStats();renderWeek();
+// 今天来过就算「见过」：三天没来才翻日记
+DATA.memory.last_seen=todayStr();saveData();
+initThemeUI();
+go("home");
+checkAI();
+renderTTSBtn();
+// 首进问卷 → 游戏式引导：都只在首次出现，之后不再弹
+try{
+  if(!localStorage.getItem("altiora_intro_done"))setTimeout(startIntro,500);
+  else if(!localStorage.getItem("altiora_guide_done"))setTimeout(startGuide,600);
+}catch(e){}
+</script>
+</body>
+</html>
