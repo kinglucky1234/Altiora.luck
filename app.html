@@ -1235,13 +1235,13 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 <div class="sheet" id="sheet" onclick="if(event.target===this)closeSheet()">
   <div class="sheet-box">
     <h3>随手记</h3>
+    <div class="chips-row" id="noteTyRow" style="margin:0 0 10px">
+      <span class="chip" data-ty="event" onclick="pickNoteTy('event')">记日程</span>
+      <span class="chip" data-ty="rule" onclick="pickNoteTy('rule')">记规矩</span>
+      <span class="chip g" data-ty="note" onclick="pickNoteTy('note')">其他</span>
+    </div>
     <div class="note-list" id="noteListBox"></div>
     <textarea id="noteIn" placeholder="例：周五晚班 19:00-21:00" oninput="autoNoteTy()"></textarea>
-    <div class="chips-row" id="noteTyRow">
-      <span class="chip" data-ty="event" onclick="pickNoteTy('event')">日程</span>
-      <span class="chip" data-ty="rule" onclick="pickNoteTy('rule')">规矩</span>
-      <span class="chip g" data-ty="note" onclick="pickNoteTy('note')">随手记</span>
-    </div>
     <div class="result" id="noteRes"></div>
     <div class="sheet-act">
       <button class="btn" onclick="saveNote()">记下</button>
