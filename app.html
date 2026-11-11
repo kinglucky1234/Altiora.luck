@@ -330,6 +330,13 @@ pre.json .n{color:#FDBA74}
   background:rgba(255,255,255,.03);color:var(--t1);font-size:13px;font-family:inherit;
   outline:none;resize:vertical;line-height:1.65;margin-top:4px}
 #p-diary textarea:focus{border-color:rgba(59,130,246,.5)}
+.sn-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.sn-item{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px 6px;text-align:center;cursor:pointer;transition:border-color .15s}
+.sn-item:hover{border-color:var(--hue)}
+.sn-item b{display:block;font-size:22px;margin-bottom:2px}
+.sn-item span{font-size:13px;color:var(--t2)}
+.sn-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.diary-read{white-space:pre-wrap;font-size:14px;line-height:1.8;padding:6px 2px}
 .sheet-act{display:flex;gap:10px;align-items:center;margin-top:14px}
 .result{
   margin-top:14px;padding:13px 15px;border-radius:10px;font-size:12.5px;line-height:1.7;
@@ -1149,35 +1156,66 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
     </div>
   </div>
 
-  <!-- ═══ 生活碎碎念：三个板块，点进去再写 ═══ -->
+  <!-- ═══ 生活碎碎念：三个板块横排，点进去是子页面，‹ 返回 ═══ -->
   <div class="page" id="p-diary">
-    <div class="card">
-      <div class="dsrc-grid">
-        <div class="dsrc" onclick="toggleDiaryEditor()">
-          <b id="dsrcDiary">0</b><span>日记</span><em>点进去写</em>
-        </div>
-        <div class="dsrc" onclick="openSheet()">
-          <b id="dsrcNotes">0</b><span>随手记</span><em>想到就写</em>
-        </div>
-        <div class="dsrc" onclick="openSocialSheet()">
-          <b id="dsrcSocial">0</b><span>我的生活圈</span><em>导入发言</em>
-        </div>
+    <div id="snMenu">
+      <div class="sn-grid">
+        <div class="sn-item" onclick="showSnack('snDiary')"><b id="dsrcDiary">0</b><span>日记</span></div>
+        <div class="sn-item" onclick="showSnack('snNotes')"><b id="dsrcNotes">0</b><span>随手记</span></div>
+        <div class="sn-item" onclick="showSnack('snSocial')"><b id="dsrcSocial">0</b><span>我的生活圈</span></div>
       </div>
     </div>
-    <div id="diaryEditor" style="display:none">
+
+    <div id="snDiary" style="display:none">
       <div class="card">
-        <div class="cal-head">
-          <button class="btn ghost" onclick="diaryDayShift(-1)">‹</button>
-          <div class="cal-m" id="diaryDayLbl"></div>
-          <button class="btn ghost" onclick="diaryDayShift(1)">›</button>
+        <div class="sn-head">
+          <button class="btn ghost" onclick="showSnack('snMenu')">‹ 返回</button>
+          <div class="cal-m"><button class="btn ghost" style="padding:2px 10px" onclick="diaryMonthShift(-1)">‹</button> <span id="diaryMonth"></span> <button class="btn ghost" style="padding:2px 10px" onclick="diaryMonthShift(1)">›</button></div>
+          <span style="width:58px"></span>
         </div>
-        <textarea id="diaryIn" placeholder="这一天过得怎么样？写点什么…"></textarea>
+        <div class="cal-grid" id="diaryCal"></div>
+        <div class="cal-day" id="diaryDayLbl"></div>
+        <div id="diaryViewBox"></div>
         <div class="result" id="diaryRes"></div>
-        <div class="sheet-act">
-          <button class="btn" onclick="saveDiary()">保存</button>
-        </div>
       </div>
       <div class="diary-list" id="diaryListBox" style="border-top:none;padding-top:0"></div>
+    </div>
+
+    <div id="snNotes" style="display:none">
+      <div class="card">
+        <div class="sn-head">
+          <button class="btn ghost" onclick="showSnack('snMenu')">‹ 返回</button>
+          <div class="cal-m">随手记</div>
+          <span style="width:58px"></span>
+        </div>
+        <div class="chips-row" id="noteTyRow" style="margin:0 0 10px">
+          <span class="chip" data-ty="event" onclick="pickNoteTy('event')">记日程</span>
+          <span class="chip" data-ty="rule" onclick="pickNoteTy('rule')">记规矩</span>
+          <span class="chip g" data-ty="note" onclick="pickNoteTy('note')">其他</span>
+        </div>
+        <textarea id="noteIn" placeholder="例：周五晚班 19:00-21:00" oninput="autoNoteTy()"></textarea>
+        <div class="result" id="noteRes"></div>
+        <div class="sheet-act">
+          <button class="btn" onclick="saveNote()">记下</button>
+        </div>
+      </div>
+      <div class="note-list" id="noteListBox"></div>
+    </div>
+
+    <div id="snSocial" style="display:none">
+      <div class="card">
+        <div class="sn-head">
+          <button class="btn ghost" onclick="showSnack('snMenu')">‹ 返回</button>
+          <div class="cal-m">我的生活圈</div>
+          <span style="width:58px"></span>
+        </div>
+        <textarea id="socialIn" placeholder="例：我总是忍不住熬夜刷手机"></textarea>
+        <div class="result" id="socialRes"></div>
+        <div class="sheet-act">
+          <button class="btn" onclick="saveSocial()">导入并提炼</button>
+        </div>
+      </div>
+      <div class="soc-list" id="socialListBox" style="margin-top:14px"></div>
     </div>
   </div>
 
@@ -1229,40 +1267,6 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 </div>
 
 <button class="fab" onclick="openSheet()" title="随手记一笔">+<span class="n" id="fabN" style="display:none">0</span></button>
-
-<!-- 随手记弹窗 -->
-<div class="sheet" id="sheet" onclick="if(event.target===this)closeSheet()">
-  <div class="sheet-box">
-    <h3>随手记</h3>
-    <div class="chips-row" id="noteTyRow" style="margin:0 0 10px">
-      <span class="chip" data-ty="event" onclick="pickNoteTy('event')">记日程</span>
-      <span class="chip" data-ty="rule" onclick="pickNoteTy('rule')">记规矩</span>
-      <span class="chip g" data-ty="note" onclick="pickNoteTy('note')">其他</span>
-    </div>
-    <div class="note-list" id="noteListBox"></div>
-    <textarea id="noteIn" placeholder="例：周五晚班 19:00-21:00" oninput="autoNoteTy()"></textarea>
-    <div class="result" id="noteRes"></div>
-    <div class="sheet-act">
-      <button class="btn" onclick="saveNote()">记下</button>
-      <button class="btn ghost" onclick="closeSheet()">取消</button>
-    </div>
-  </div>
-</div>
-
-<!-- 我的生活圈弹窗 -->
-<div class="sheet" id="socialSheet" onclick="if(event.target===this)closeSocialSheet()">
-  <div class="sheet-box">
-    <h3>我的生活圈</h3>
-    <div class="sub">贴你公开发过的内容，一行一条，只存在这台电脑。</div>
-    <textarea id="socialIn" placeholder="例：我总是忍不住熬夜刷手机"></textarea>
-    <div class="result" id="socialRes"></div>
-    <div class="soc-list" id="socialListBox" style="margin-top:14px"></div>
-    <div class="sheet-act">
-      <button class="btn" onclick="saveSocial()">导入并提炼</button>
-      <button class="btn ghost" onclick="closeSocialSheet()">关闭</button>
-    </div>
-  </div>
-</div>
 
 <!-- 添加课表弹窗 -->
 <div class="sheet" id="schedSheet" onclick="if(event.target===this)closeSchedSheet()">
@@ -3959,17 +3963,23 @@ function go(p){
   document.querySelectorAll(".page").forEach(x=>x.classList.toggle("on",x.id==="p-"+p));
   document.body.dataset.tab=p;
   if(p==="week")renderWeek();
-  if(p==="diary")renderDiaryPage();
+  if(p==="diary"){showSnack("snMenu");updStats();}
 }
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>go(t.dataset.p));
 
-/* ════════ 随手记 ════════ */
-function openSheet(){document.getElementById("sheet").classList.add("on");renderNotes();
-  NOTE_TY=null;NOTE_TY_MANUAL=false;syncNoteTyRow();
-  setTimeout(()=>document.getElementById("noteIn").focus(),40);}
-function closeSheet(){document.getElementById("sheet").classList.remove("on");
-  document.getElementById("noteRes").className="result";document.getElementById("noteIn").value="";
-  NOTE_TY=null;NOTE_TY_MANUAL=false;syncNoteTyRow();}
+/* ════════ 碎碎念：菜单 ↔ 子页面 ════════ */
+function showSnack(id){
+  ["snMenu","snDiary","snNotes","snSocial"].forEach(x=>{
+    const el=document.getElementById(x);if(el)el.style.display=x===id?"":"none";
+  });
+  if(id==="snDiary"){DIARY_EDITING=false;renderDiaryCal();renderDiaryView();renderDiaryList();}
+  if(id==="snNotes"){NOTE_TY=null;NOTE_TY_MANUAL=false;syncNoteTyRow();renderNotes();
+    setTimeout(()=>document.getElementById("noteIn").focus(),60);}
+  if(id==="snSocial"){renderSocialList();
+    setTimeout(()=>document.getElementById("socialIn").focus(),60);}
+  window.scrollTo({top:0});
+}
+function openSheet(){go("diary");showSnack("snNotes");}
 function classify(t){
   if(/以后|不要|不许|再也不|必须|记住|别再/.test(t))return"rule";
   if(/\d{1,2}[:：]\d{2}/.test(t))return"event";
@@ -4005,7 +4015,7 @@ function saveNote(){
     renderNotes();updStats();
     res.innerHTML=`<span class="lbl">先攒着</span>「${t.slice(0,26)}」已进记忆流。攒够几条我一起提炼成你的规矩。`;
   }
-  setTimeout(closeSheet,2800);
+  el.value="";NOTE_TY=null;NOTE_TY_MANUAL=false;syncNoteTyRow();
 }
 function renderNotes(){
   const box=document.getElementById("noteListBox");if(!box)return;
@@ -4028,31 +4038,47 @@ function delEvent(i){
   toast(`已删掉「${ev.name} ${ev.start}-${ev.end}」`);
 }
 
-/* ════════ 日记（一个页签，打开就能写） ════════ */
-let DIARY_DAY=todayStr();
-function renderDiaryPage(){
-  DIARY_DAY=todayStr();
-  renderDiaryDay();renderDiaryList();updStats();
+/* ════════ 日记：日历点日子 → 写过只读带编辑，没写过直接写 ════════ */
+let DIARY_DAY=todayStr(),DIARY_MONTH=todayStr().slice(0,7),DIARY_EDITING=false;
+function diaryMonthShift(n){
+  const y=+DIARY_MONTH.slice(0,4),m=+DIARY_MONTH.slice(5);
+  const d=new Date(y,m-1+n,1);
+  DIARY_MONTH=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
+  renderDiaryCal();
 }
-/* 日记板块默认收着，点「日记」才展开写 */
-function toggleDiaryEditor(){
-  const ed=document.getElementById("diaryEditor");
-  const show=ed.style.display==="none";
-  ed.style.display=show?"":"none";
-  if(show){renderDiaryDay();renderDiaryList();
-    setTimeout(()=>document.getElementById("diaryIn").focus(),60);}
+function pickDiaryDay(iso){DIARY_DAY=iso;DIARY_EDITING=false;renderDiaryCal();renderDiaryView();}
+function renderDiaryCal(){
+  const box=document.getElementById("diaryCal");if(!box)return;
+  document.getElementById("diaryMonth").textContent=DIARY_MONTH.slice(0,4)+" 年 "+DIARY_MONTH.slice(5)+" 月";
+  const y=+DIARY_MONTH.slice(0,4),m=+DIARY_MONTH.slice(5);
+  const first=new Date(y,m-1,1).getDay(),days=new Date(y,m,0).getDate(),today=todayStr();
+  const set=new Set(DATA.diary.map(x=>x.d));
+  const cells=[];
+  for(let i=0;i<first;i++)cells.push('<span class="dc pad"></span>');
+  for(let d=1;d<=days;d++){
+    const iso=`${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    const cls=["dc"];
+    if(iso===DIARY_DAY)cls.push("sel");
+    if(iso===today)cls.push("today");
+    if(set.has(iso))cls.push("mark");
+    cells.push(`<span class="${cls.join(" ")}" onclick="pickDiaryDay('${iso}')">${d}</span>`);
+  }
+  box.innerHTML=cells.join("");
 }
-function diaryDayShift(n){
-  const d=new Date(DIARY_DAY+"T00:00:00");d.setDate(d.getDate()+n);
-  DIARY_DAY=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
-  renderDiaryDay();
-}
-function pickDiaryDay(iso){DIARY_DAY=iso;renderDiaryDay();}
-function renderDiaryDay(){
+function renderDiaryView(){
   document.getElementById("diaryDayLbl").textContent=dayTag(DIARY_DAY);
+  const box=document.getElementById("diaryViewBox");if(!box)return;
   const existing=DATA.diary.find(x=>x.d===DIARY_DAY);
-  document.getElementById("diaryIn").value=existing?existing.t:"";
+  if(existing&&!DIARY_EDITING){
+    box.innerHTML=`<div class="diary-read">${esc(existing.t)}</div>
+      <div class="sheet-act"><button class="btn ghost" onclick="diaryEdit()">编辑</button></div>`;
+  }else{
+    box.innerHTML=`<textarea id="diaryIn" placeholder="这一天过得怎么样？写点什么…">${existing?esc(existing.t):""}</textarea>
+      <div class="sheet-act"><button class="btn" onclick="saveDiary()">保存</button></div>`;
+  }
 }
+function diaryEdit(){DIARY_EDITING=true;renderDiaryView();
+  setTimeout(()=>{const el=document.getElementById("diaryIn");if(el)el.focus();},60);}
 /* 已保存的日记以小卡片列出，不是输入框样式 */
 function renderDiaryList(){
   const box=document.getElementById("diaryListBox");if(!box)return;
@@ -4087,29 +4113,21 @@ function renderDiaryList(){
   }
   box.innerHTML=parts.join("")||'<div class="hint">还没有日记，写点什么吧。</div>';
 }
-function delDiary(i){DATA.diary.splice(i,1);saveData();renderDiaryDay();renderDiaryList();renderMe();updStats();}
+function delDiary(i){DATA.diary.splice(i,1);DIARY_EDITING=false;saveData();renderDiaryCal();renderDiaryView();renderDiaryList();renderMe();updStats();}
 function delAutoDiary(i){DATA.memory.diary.splice(i,1);saveData();renderDiaryList();renderMe();}
 function saveDiary(){
   const el=document.getElementById("diaryIn"),t=el.value.trim();
   if(!t)return;
   const existing=DATA.diary.find(x=>x.d===DIARY_DAY);
   if(existing)existing.t=t;else DATA.diary.push({d:DIARY_DAY,t:t});
-  saveData();renderDiaryDay();renderDiaryList();renderMe();updStats();
+  DIARY_EDITING=false;
+  saveData();renderDiaryCal();renderDiaryView();renderDiaryList();renderMe();updStats();
   const res=document.getElementById("diaryRes");
   res.className="result on";
   res.innerHTML=`<span class="lbl">已写进日记</span>${dayTag(DIARY_DAY)}这一页记好了，AI 会读进对你的了解里。`;
 }
 
 /* ════════ 我的生活圈（导入公开发言） ════════ */
-function openSocialSheet(){
-  document.getElementById("socialSheet").classList.add("on");renderSocialList();
-  setTimeout(()=>document.getElementById("socialIn").focus(),40);
-}
-function closeSocialSheet(){
-  document.getElementById("socialSheet").classList.remove("on");
-  document.getElementById("socialIn").value="";
-  document.getElementById("socialRes").className="result";
-}
 function saveSocial(){
   const raw=document.getElementById("socialIn").value.trim();
   if(!raw)return;
@@ -4124,7 +4142,7 @@ function saveSocial(){
   res.className="result on";
   res.innerHTML=`<span class="lbl">已导入</span>${added} 条，我提炼成「你是个怎样的人」，写进生活圈了。`;
   renderSocialList();
-  setTimeout(closeSocialSheet,2400);
+  document.getElementById("socialIn").value="";
 }
 function renderSocialList(){
   const box=document.getElementById("socialListBox");if(!box)return;
@@ -4152,7 +4170,7 @@ document.addEventListener("keydown",e=>{
   const tag=document.activeElement.tagName;
   if((e.key==="n"||e.key==="N")&&tag!=="INPUT"&&tag!=="TEXTAREA"){e.preventDefault();openSheet();}
   if(e.key==="Escape"){
-    closeSheet();closeSchedSheet();closeSocialSheet();endGuide();exitFullChat();
+    closeSchedSheet();endGuide();exitFullChat();
   }
 });
 
