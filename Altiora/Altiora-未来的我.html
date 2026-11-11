@@ -2987,6 +2987,33 @@ async function handleUser(v){
   sessBegin();
   memPush("u",v);
 
+  // 「每天两个半小时」：这不是一条日程，是目标的节奏。本地算、直接摆时段，绝不再反问「几点到几点」
+  const pace=paceIntent(v);
+  if(pace&&!pace.key&&pace.goal){
+    // 还没记过目标：这句话本身就带了目标（「六级每天两个半小时」），先收下再算节奏
+    DATA.profile.mid_term_goal=pace.goal;pace.key="mid_term_goal";renderMe();
+  }
+  if(pace&&pace.key){
+    DATA.profile.goal_freq=DATA.profile.goal_freq||{};
+    DATA.profile.goal_freq[pace.key]="daily";
+    DATA.profile.goal_min=DATA.profile.goal_min||{};
+    DATA.profile.goal_min[pace.key]=pace.min;
+    const dl=deadlineFromText(v);
+    if(dl)DATA.profile.goal_deadline=dl;
+    renderMe();updStats();saveData();
+    const name=pace.goal.slice(0,12);
+    const slot=proposeSlot(pace.min);
+    if(slot){
+      DATA.care=DATA.care||{};
+      DATA.care.pending={date:todayStr(),goal:name,start:slot.start,end:slot.end};
+      DATA.care.date=todayStr();saveData();
+      setTimeout(()=>push("ai",`记住了：${esc(name)}，每天 ${fmtDur(pace.min)}。今天 ${slot.start} 到 ${slot.end} 空着，就定这儿？回一句「行」我就排进去。`),200);
+    }else{
+      setTimeout(()=>push("ai",`记住了：${esc(name)}，每天 ${fmtDur(pace.min)}。今天排满了，明天我提前给你留一段。`),200);
+    }
+    return;
+  }
+
   // 「记住…」是确定性命令：本地写进缺点，不交给模型判意图，避免判错漏记
   const memCmd=v.trim().match(/^(记住|记一下|帮我记住|规矩)[\s，,。.:：]*(.+)$/);
   if(memCmd){
@@ -4119,19 +4146,75 @@ function setGoalMin(key,m){
   DATA.profile.goal_min[key]=m;saveData();renderMe();
   toast("好，每次给它 "+m+" 分钟。");
 }
+/* 从原话里读出「一次多久」，认不全就返回 0（宁可不猜，也不编一个数） */
+function parseDuration(text){
+  const t=String(text||"");
+  /* 「两个半小时」里含「半小时」，必须先认大的，否则会算成 30 分钟 */
+  if(/两个半|2\.5\s*个?小时|150\s*分钟/.test(t))return 150;
+  if(/三个半|3\.5\s*个?小时|210\s*分钟/.test(t))return 210;
+  if(/一个半|1\.5\s*个?小时|90\s*分钟/.test(t))return 90;
+  if(/半小时|30\s*分钟/.test(t))return 30;
+  const nh=t.match(/(\d+(?:\.\d+)?)\s*个?\s*小时/);
+  if(nh)return Math.round(parseFloat(nh[1])*60);
+  const cn={一:60,二:120,两:120,三:180,四:240,五:300};
+  const ch=t.match(/([一二两三四五])\s*个?\s*小时/);
+  if(ch)return cn[ch[1]];
+  const nm=t.match(/(\d+)\s*分钟/);
+  if(nm)return parseInt(nm[1],10);
+  return 0;
+}
+function fmtDur(m){return m<60?`${m} 分钟`:((m/60)%1?`${m/60} 小时`:`${m/60} 小时`);}
+/* 从「六级每天两个半小时」里把「六级」抠出来：先走现成的目标抽取，抽不出就把节奏词去掉 */
+function goalFromText(text){
+  const raw=extractGoal(text);
+  if(raw)return cleanGoalName(raw);
+  const s=String(text||"").replace(/每天|天天|每日|每晚|每周|一个半|两个半|三个半|半小时|\d+(?:\.\d+)?\s*个?\s*小时|[一二两三四五]\s*个?\s*小时|\d+\s*分钟|小时|分钟|钟头|学习|复习|练习|练|背|做|的|[，,。！？!?\s]/g,"").trim();
+  return s.length>=2?cleanGoalName(s.slice(0,12)):"";
+}
+/* 目标名里不该带日期和「考」：把「12月19号考」这类尾巴切掉 */
+function cleanGoalName(s){
+  return String(s||"").replace(/\d{1,2}\s*月\s*\d{1,2}\s*[日号]\s*考?/g,"").replace(/[，,。！？!?\s]/g,"").replace(/^过/,"").trim();
+}
+/* 每天/每周 + 时长，但没说钟点：这是目标的节奏，不是一条日程，本地直接算并提议时段 */
+function paceIntent(text){
+  const t=String(text||"");
+  if(!/每天|天天|每日|每晚|每周/.test(t))return null;
+  if(/\d{1,2}\s*[:：]\s*\d{2}/.test(t))return null;
+  const min=parseDuration(t);
+  if(!min)return null;
+  const pool=[["short_term_goal",DATA.profile.short_term_goal],["mid_term_goal",DATA.profile.mid_term_goal],["long_term_goal",DATA.profile.long_term_goal]].filter(x=>x[1]);
+  const hit=pool.find(([,g])=>matchGoal(t,g));
+  if(hit)return {key:hit[0],goal:hit[1],min};
+  const g=goalFromText(t);
+  if(g)return {key:null,goal:g,min};
+  /* 只记了一个目标、话里没点名：那就是它，不用反问 */
+  if(pool.length===1)return {key:pool[0][0],goal:pool[0][1],min};
+  return {key:null,goal:null,min};
+}
+/* 从原话里认出「12 月 19 号」这种死期限，认不出就返回空，不猜 */
+function deadlineFromText(text){
+  const m=String(text||"").match(/(\d{1,2})\s*月\s*(\d{1,2})\s*[日号]/);
+  if(!m)return "";
+  const mo=parseInt(m[1],10),dd=parseInt(m[2],10);
+  if(mo<1||mo>12||dd<1||dd>31)return "";
+  const now=new Date();let d=new Date(now.getFullYear(),mo-1,dd);
+  const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  if(d<today)d=new Date(now.getFullYear()+1,mo-1,dd);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
 /* 从用户原话里读出节奏和每次时长（「每天一小时」「每周两次」），只在目标场景用 */
 function applyGoalPace(key,text){
   const t=String(text||"");
   if(!/每天|天天|每日|每晚|每周/.test(t))return;
   DATA.profile.goal_freq=DATA.profile.goal_freq||{};
   DATA.profile.goal_freq[key]="daily";
-  DATA.profile.goal_min=DATA.profile.goal_min||{};
-  let m=60;
-  if(/半小时|30\s*分钟/.test(t))m=30;
-  else if(/一个半|1\.5\s*个?小时|90\s*分钟/.test(t))m=90;
-  else if(/两\s*个?小时|2\s*个?小时|120\s*分钟/.test(t))m=120;
-  else if(/一\s*个?小时|1\s*个?小时|60\s*分钟/.test(t))m=60;
-  DATA.profile.goal_min[key]=m;
+  const m=parseDuration(t);
+  if(m){
+    DATA.profile.goal_min=DATA.profile.goal_min||{};
+    DATA.profile.goal_min[key]=m;
+  }
+  const dl=deadlineFromText(t);
+  if(dl)DATA.profile.goal_deadline=dl;
 }
 /* 今天 8:00-22:00 之间 >=90 分钟的空当，给主动关心的话术用 */
 function todayFreeGap(need){
