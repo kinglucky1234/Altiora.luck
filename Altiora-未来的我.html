@@ -1551,6 +1551,15 @@ try{
   }
 }catch(e){}
 
+/* 旧版本把「425分过线」一起吞进目标名（存成「六级425」）。读档时洗一次，
+   否则计划标题会一直带着那个分数，说多少遍都改不掉 */
+["long_term_goal","mid_term_goal","short_term_goal"].forEach(k=>{
+  const v=DATA.profile[k];
+  if(typeof v!=="string"||!v)return;
+  const c=v.replace(/\d{2,3}\s*分?过线?$/,"").replace(/(^|\D)\d{2,3}$/,"$1").trim();
+  if(c.length>=2&&c!==v)DATA.profile[k]=c;
+});
+
 /* ════════ 记忆三层 ════════ */
 function todayStr(d){
   d=d||new Date();
