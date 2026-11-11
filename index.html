@@ -3020,17 +3020,20 @@ async function handleUser(v){
     const dl=deadlineFromText(v);
     if(dl)DATA.profile.goal_deadline=dl;
     renderMe();updStats();saveData();
-    const name=pace.goal.slice(0,12);
-    const slot=proposeSlot(pace.min);
-    if(slot){
-      DATA.care=DATA.care||{};
-      DATA.care.pending={date:todayStr(),goal:name,start:slot.start,end:slot.end};
-      DATA.care.date=todayStr();saveData();
-      setTimeout(()=>push("ai",`记住了：${esc(name)}，每天 ${fmtDur(pace.min)}。今天 ${slot.start} 到 ${slot.end} 空着，就定这儿？回一句「行」我就排进去。`),200);
-    }else{
-      setTimeout(()=>push("ai",`记住了：${esc(name)}，每天 ${fmtDur(pace.min)}。今天排满了，明天我提前给你留一段。`),200);
+    /* 同一句里还带了「排计划」：记下节奏就够，继续走下面的排计划分支，别只丢一个时段给他 */
+    if(!/(排|做|定|出|安排).{0,12}计划|计划.{0,4}(排|做|定)|排到考前|到考前/.test(v)){
+      const name=pace.goal.slice(0,12);
+      const slot=proposeSlot(pace.min);
+      if(slot){
+        DATA.care=DATA.care||{};
+        DATA.care.pending={date:todayStr(),goal:name,start:slot.start,end:slot.end};
+        DATA.care.date=todayStr();saveData();
+        setTimeout(()=>push("ai",`记住了：${esc(name)}，每天 ${fmtDur(pace.min)}。今天 ${slot.start} 到 ${slot.end} 空着，就定这儿？回一句「行」我就排进去。`),200);
+      }else{
+        setTimeout(()=>push("ai",`记住了：${esc(name)}，每天 ${fmtDur(pace.min)}。今天排满了，明天我提前给你留一段。`),200);
+      }
+      return;
     }
-    return;
   }
 
   // 「记住…」是确定性命令：本地写进缺点，不交给模型判意图，避免判错漏记
@@ -3088,7 +3091,7 @@ async function handleUser(v){
   }
 
   // 「帮我排计划 / 排到这周 / 排到考前」：范围按你说的算；练什么交给模型拆（没 Key 用模板），时段永远本地算
-  if(!(DATA.care&&DATA.care.pending)&&/(排|做|出|定|安排).{0,8}(计划|安排)|计划.{0,2}(排|做|定)/.test(v)){
+  if(/(排|做|出|定|安排).{0,12}(计划|安排)|计划.{0,2}(排|做|定)/.test(v)){
     const pool=[["mid_term_goal",DATA.profile.mid_term_goal],["short_term_goal",DATA.profile.short_term_goal],["long_term_goal",DATA.profile.long_term_goal]].filter(x=>x[1]);
     const hit=pool.find(([,g])=>matchGoal(v,g));
     const gn=hit?hit[1]:(pool.length===1?pool[0][1]:"");
@@ -3111,7 +3114,7 @@ async function handleUser(v){
   }
 
   // 「帮我排六级」：不用等分身开口，立刻按目标的时长找空当，摆出时段等你一句「行」
-  if(!(DATA.care&&DATA.care.pending)&&/(排|安排)/.test(v)){
+  if(/(排|安排)/.test(v)){
     for(const [k,gn] of [["mid_term_goal",DATA.profile.mid_term_goal],["short_term_goal",DATA.profile.short_term_goal],["long_term_goal",DATA.profile.long_term_goal]]){
       if(!gn||!matchGoal(v,gn))continue;
       const need=(DATA.profile.goal_min||{})[k]||60;
@@ -4225,12 +4228,18 @@ function fmtDur(m){return m<60?`${m} 分钟`:((m/60)%1?`${m/60} 小时`:`${m/60}
 function goalFromText(text){
   const raw=extractGoal(text);
   if(raw)return cleanGoalName(raw);
-  const s=String(text||"").replace(/每天|天天|每日|每晚|每周|一个半|两个半|三个半|半小时|\d+(?:\.\d+)?\s*个?\s*小时|[一二两三四五]\s*个?\s*小时|\d+\s*分钟|小时|分钟|钟头|学习|复习|练习|练|背|做|的|[，,。！？!?\s]/g,"").trim();
+  /* 「六级每天两个半小时，帮我排计划」：目标就是节奏词前面那一截 */
+  const pre=String(text||"").match(/^(.{1,12}?)(?:每天|天天|每日|每晚|每周)/);
+  if(pre){const g=cleanGoalName(pre[1]);if(g)return g;}
+  /* 一句话里塞了「记住…」两件事时，目标只取最前面那段，别把后面的脾气、弱项一起吞进来 */
+  const head=String(text||"").split(/记住|帮我记住|记一下|规矩|：|:/)[0];
+  const s=head.replace(/每天|天天|每日|每晚|每周|一个半|两个半|三个半|半小时|\d+(?:\.\d+)?\s*个?\s*小时|[一二两三四五]\s*个?\s*小时|\d+\s*分钟|小时|分钟|钟头|学习|复习|练习|练|背|做|的|[，,。！？!?\s]/g,"").trim();
   return s.length>=2?cleanGoalName(s.slice(0,12)):"";
 }
 /* 目标名里不该带日期和「考」：把「12月19号考」这类尾巴切掉 */
 function cleanGoalName(s){
   const t=String(s||"").replace(/\d{1,2}\s*月\s*\d{1,2}\s*[日号]\s*考?/g,"")
+    .replace(/\d+\s*分(?:过线|以上)?|过线|及格|分以上/g,"")
     .replace(/[，,。！？!?\s]/g,"")
     .replace(/^(能|可以|想|要|打算|帮我|给我)/,"")
     .replace(/^过/,"").replace(/开始$/,"").trim();
@@ -4320,16 +4329,20 @@ function busyOn(date){
 }
 function freeSlotOn(date,need,from){
   const raw=Math.max(0,Math.min(60,DATA.profile.buffer_min||10));
+  /* 用户自己点了「晚上8点开始」，就按他说的钟点落，别再往后加缓冲把人推到 20:10 */
   const tryGap=(s,e)=>{
-    const buf=s>480?raw:0;
+    const buf=(from||s<=480)?0:raw;
     return (e-s)>=need+buf?{start:fmtHM(s+buf),end:fmtHM(s+buf+need)}:null;
   };
-  let cur=from?Math.max(360,from):480;
+  const cur0=from?Math.max(360,from):480;
+  /* 说了 8 点开始、要 2.5 小时，就得到 22:30，不能被 22:00 的收工线卡死（用户原话优先） */
+  const endCap=from?Math.min(1440,Math.max(1320,cur0+need)):1320;
+  let cur=cur0;
   for(const b of busyOn(date)){
     const r=tryGap(cur,b.s);if(r)return r;
     cur=Math.max(cur,b.e);
   }
-  return tryGap(cur,1320);
+  return tryGap(cur,endCap);
 }
 const PLAN_TPL=[
   [/六级|四级|雅思|托福|英语/,["单词 30 分 + 听力 1 篇","阅读真题 1 篇 + 精读","写作 1 篇 + 改错","翻译 1 段 + 复盘","整套真题 限时"]],
@@ -4371,7 +4384,8 @@ async function buildPlan(goal,need,scope,from){
   if(scope==="week"){for(let i=0;i<7;i++)dates.push(addDays(t,i));}
   else if(scope==="exam"&&DATA.profile.goal_deadline){
     const end=DATA.profile.goal_deadline;
-    for(let i=0;i<14;i++){const d=addDays(t,i);if(d>end)break;dates.push(d);}
+    /* 排到考试前一天为止（最长 60 天），不是只排两周就断在半路 */
+    for(let i=0;i<60;i++){const d=addDays(t,i);if(d>=end)break;dates.push(d);}
   }else dates.push(t);
   const topics=await planTopics(goal,dates.length);
   const items=[],days=[];
@@ -4412,9 +4426,14 @@ function dateLabel(d){
   return d.slice(5).replace("-","/");
 }
 function planText(goal,days){
+  /* 38 天全铺进气泡会刷屏：先给前 7 天看节奏，剩下的说明一起排进去 */
+  const show=days.slice(0,7);
+  const more=days.length-show.length;
   const head=`按空档排了 ${days.length} 天，${goal}：`;
-  const lines=days.map(it=>`${dateLabel(it.date)} ${it.start}-${it.end} ${esc(it.topic)}`);
-  return esc(head)+"<br>"+lines.join("<br>")+"<br>回一句「行」全部排进去，不想就说「算了」。";
+  const lines=show.map(it=>`${dateLabel(it.date)} ${it.start}-${it.end} ${esc(it.topic)}`);
+  return esc(head)+"<br>"+lines.join("<br>")
+    +(more?`<br>…还有 ${more} 天，一起排进去`:"")
+    +"<br>回一句「行」全部排进去，不想就说「算了」。";
 }
 function proactiveCare(){
   const t=todayStr();
