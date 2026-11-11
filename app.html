@@ -326,7 +326,8 @@ pre.json .n{color:#FDBA74}
 .sheet-box textarea:focus{border-color:rgba(59,130,246,.5);background:rgba(59,130,246,.05)}
 #noteTyRow .chip{cursor:pointer}
 .cal-grid .dc.tlm{display:flex;flex-direction:column;align-items:center;gap:1px;cursor:pointer}
-.cal-grid .dc.tlm i{font-style:normal;font-size:9px;color:var(--t3)}
+.cal-grid .dc.tlm i{font-style:normal;font-size:9px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;display:block}
+.cal-grid.tlm-big .dc{min-height:48px;padding:6px 2px;font-size:14px}
 .cal-grid .dc.tlm.goal b{color:var(--red)}
 .cal-grid .dc.tlm.goal{box-shadow:inset 0 0 0 1px var(--red)}
 #noteTyRow .chip.sel{background:rgba(59,130,246,.18);border-color:rgba(59,130,246,.55);color:#93C5FD}
@@ -1166,20 +1167,11 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
     </div>
 
     <div class="card" id="tlvMonth" style="display:none">
-      <div class="sn-head">
-        <button class="btn ghost" onclick="tlMonthShift(-1)">‹</button>
-        <div class="cal-m" id="tlMonthLbl"></div>
-        <button class="btn ghost" onclick="tlMonthShift(1)">›</button>
+      <div class="wk-tools">
+        <div class="cal-m" style="margin:0"><button class="btn ghost" style="padding:2px 10px" onclick="tlMonthShift(-1)">‹</button> <span id="tlMonthLbl"></span> <button class="btn ghost" style="padding:2px 10px" onclick="tlMonthShift(1)">›</button></div>
+        <button class="btn" onclick="openDayAdd()" title="记个日子">＋</button>
       </div>
-      <div class="cal-grid" id="tlMonthCal"></div>
-      <div class="chips-row" style="margin:12px 0 0">
-        <input type="date" id="dayDate" style="font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--t1)">
-        <input id="dayTxt" placeholder="什么日子？生日、纪念、备忘…" style="flex:1;min-width:120px;font:inherit;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--t1)">
-        <label style="font-size:12px;color:var(--t3);display:flex;align-items:center;gap:4px;white-space:nowrap"><input type="checkbox" id="dayYearly">每年</label>
-        <button class="btn" onclick="saveDay()">记下</button>
-      </div>
-      <div id="dayList"></div>
-      <div class="band-lbl" style="margin-top:10px"><span>点一天，跳到那天的日视图</span><span></span></div>
+      <div class="cal-grid tlm-big" id="tlMonthCal"></div>
     </div>
   </div>
 
@@ -1295,6 +1287,30 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 <button class="fab" onclick="openSheet()" title="随手记一笔">+<span class="n" id="fabN" style="display:none">0</span></button>
 
 <!-- 添加课表弹窗 -->
+<div class="sheet" id="daySheet" onclick="if(event.target===this)closeDaySheet()">
+  <div class="sheet-box">
+    <div class="ttl">记个日子 <small>生日、纪念、备忘都行</small></div>
+    <div class="chips-row" style="margin:0 0 10px">
+      <input type="date" id="dayDate" style="font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--t1)">
+      <label style="font-size:12px;color:var(--t3);display:flex;align-items:center;gap:4px;white-space:nowrap"><input type="checkbox" id="dayYearly">每年都来（生日勾这个）</label>
+    </div>
+    <textarea id="dayTxt" placeholder="什么日子？" style="min-height:44px"></textarea>
+    <div class="sheet-act">
+      <button class="btn" onclick="saveDay()">记下</button>
+      <button class="btn ghost" onclick="closeDaySheet()">取消</button>
+    </div>
+  </div>
+</div>
+<div class="sheet" id="dayView" onclick="if(event.target===this)closeDayView()">
+  <div class="sheet-box">
+    <div class="ttl" id="dayViewTitle">这一天</div>
+    <div id="dayViewList"></div>
+    <div class="sheet-act">
+      <button class="btn" onclick="var d=DAY_VIEW_ISO;closeDayView();if(d){VIEW_DATE=d;refreshDay();setTLView('day');}">看这天的安排</button>
+      <button class="btn ghost" onclick="closeDayView()">关上</button>
+    </div>
+  </div>
+</div>
 <div class="sheet" id="schedSheet" onclick="if(event.target===this)closeSchedSheet()">
   <div class="sheet-box">
     <h3 id="schedTitle">导入课表</h3>
@@ -3636,7 +3652,7 @@ function setTLView(v){
   document.getElementById("tlvWeek").style.display=v==="week"?"":"none";
   document.getElementById("tlvMonth").style.display=v==="month"?"":"none";
   if(v==="week")renderWeek();
-  if(v==="month"){renderTLMonth();renderDayList();}
+  if(v==="month")renderTLMonth();
 }
 function tlMonthShift(n){
   const y=+TL_MONTH.slice(0,4),m=+TL_MONTH.slice(5);
@@ -3663,9 +3679,11 @@ function renderTLMonth(){
     const dayMarks=DATA.days.filter(x=>x.yearly?x.d.slice(5)===iso.slice(5):x.d===iso);
     const marks=[];
     if(isGoal)marks.push("目标日");
-    dayMarks.forEach(x=>marks.push(x.text.slice(0,6)));
-    if(nC)marks.push(nC+" 节课");
-    if(nE)marks.push(nE+" 件事");
+    else if(dayMarks.length)marks.push(dayMarks[0].text.slice(0,4));
+    else{
+      if(nC)marks.push(nC+"课");
+      if(nE)marks.push(nE+"事");
+    }
     const cls=["dc","tlm"];
     if(iso===today)cls.push("today");
     if(marks.length)cls.push("mark");
@@ -3675,30 +3693,42 @@ function renderTLMonth(){
   box.innerHTML=cells.join("");
 }
 function tlPickDay(iso){
+  if(daysOn(iso).length||DATA.profile.goal_deadline===iso){openDayView(iso);return;}
   VIEW_DATE=iso;refreshDay();setTLView("day");
 }
-/* ═══ 月视图：重要日子与备忘 ═══ */
+/* ═══ 月视图：重要日子与备忘（加号弹出，点有日子的格子查看） ═══ */
+let DAY_VIEW_ISO="";
+function daysOn(iso){return DATA.days.map((x,i)=>({d:x.d,text:x.text,yearly:x.yearly,i:i})).filter(x=>x.yearly?x.d.slice(5)===iso.slice(5):x.d===iso);}
+function openDayAdd(){
+  document.getElementById("dayDate").value=TL_MONTH===todayStr().slice(0,7)?todayStr():TL_MONTH+"-01";
+  document.getElementById("dayTxt").value="";
+  document.getElementById("dayYearly").checked=false;
+  document.getElementById("daySheet").classList.add("on");
+  setTimeout(()=>document.getElementById("dayTxt").focus(),60);
+}
+function closeDaySheet(){document.getElementById("daySheet").classList.remove("on");}
 function saveDay(){
   const d=document.getElementById("dayDate").value;
   const t=document.getElementById("dayTxt").value.trim();
   if(!d||!t){toast("日子和名字都要填");return;}
   DATA.days.push({d:d,text:t.slice(0,20),yearly:document.getElementById("dayYearly").checked});
-  saveData();
-  document.getElementById("dayTxt").value="";
-  TL_MONTH=d.slice(0,7);
-  renderTLMonth();renderDayList();
+  saveData();closeDaySheet();
+  TL_MONTH=d.slice(0,7);renderTLMonth();
 }
-function delDay(i){DATA.days.splice(i,1);saveData();renderTLMonth();renderDayList();}
-function renderDayList(){
-  const box=document.getElementById("dayList");if(!box)return;
-  if(!DATA.days.length){box.innerHTML="";return;}
-  const sorted=[...DATA.days].sort((a,b)=>a.d<b.d?-1:1);
-  box.innerHTML='<div class="dc-sec">记下的日子</div>'+sorted.map(x=>{
-    const i=DATA.days.indexOf(x);
-    return `<div class="note-item"><span class="ty rule">${x.d.slice(5)}${x.yearly?" · 每年":""}</span>
-      <span class="tx">${esc(x.text)}</span>
-      <span class="del" onclick="delDay(${i})">×</span></div>`;}).join("");
+function delDay(i){DATA.days.splice(i,1);saveData();renderTLMonth();if(DAY_VIEW_ISO)openDayView(DAY_VIEW_ISO);}
+function openDayView(iso){
+  DAY_VIEW_ISO=iso;
+  const list=daysOn(iso),isGoal=DATA.profile.goal_deadline===iso;
+  document.getElementById("dayViewTitle").textContent=dayTag(iso);
+  let html="";
+  if(isGoal)html+=`<div class="note-item"><span class="ty event">目标日</span><span class="tx">画像里定的截止日</span></div>`;
+  html+=list.map(x=>`<div class="note-item"><span class="ty rule">${x.yearly?"每年":x.d}</span>
+    <span class="tx">${esc(x.text)}</span>
+    <span class="del" onclick="delDay(${x.i})">×</span></div>`).join("");
+  document.getElementById("dayViewList").innerHTML=html;
+  document.getElementById("dayView").classList.add("on");
 }
+function closeDayView(){DAY_VIEW_ISO="";document.getElementById("dayView").classList.remove("on");}
 function renderWeek(){
   const grid=document.getElementById("wkGrid");if(!grid)return;
   const ps=DATA.week.periods,wds=todayWeekday(),mon=weekMonday();
