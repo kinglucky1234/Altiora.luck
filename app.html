@@ -3035,14 +3035,24 @@ async function handleUser(v){
     }
   }
 
-  // 「行 / 算了」：回应分身摆出的具体时段。排不排由用户拍板，这里只执行他说的
+  // 「行 / 算了」：回应分身摆出的具体时段，或一份排好的计划。排不排由用户拍板，这里只执行他说的
   const propose=DATA.care&&DATA.care.pending;
-  if(propose&&propose.date===todayStr()){
+  if(propose&&(propose.type==="plan"||propose.date===todayStr())){
     const say=stripPunct(v).toLowerCase();
     const YES=/^(行|行吧|好|好的|可以|确定|要|排|排吧|安排|嗯|对|成|中|没问题|ok|okay|yes)$/;
     const NO=/^(不行|不要|不用|不用了|算了|不|否|不排|改天|再说|先不)$/;
     if(YES.test(say)){
       DATA.care.pending=null;saveData();
+      if(propose.type==="plan"){
+        let n=0,dup=0;
+        propose.items.forEach(it=>{
+          const r=addStructuredEvent({name:it.name,type:"goal",date:it.date,start:it.start,end:it.end});
+          if(r.dup)dup++;else n++;
+        });
+        renderGantt();renderConflicts();renderOrbs();renderMe();updStats();saveData();
+        setTimeout(()=>push("ai",`排进去了 ${n} 场${dup?`，${dup} 场原来就有、跳过了`:""}。到日子在日程页画个勾就行。`),200);
+        return;
+      }
       const r=addStructuredEvent({name:propose.goal,type:"goal",date:propose.date,start:propose.start,end:propose.end});
       setTimeout(()=>push("ai",r.dup
         ?`这个点已经有「${esc(propose.goal)}」了，不重复加。`
@@ -3051,9 +3061,34 @@ async function handleUser(v){
     }
     if(NO.test(say)){
       DATA.care.pending=null;saveData();
-      setTimeout(()=>push("ai","行，那就不排。哪天想动了跟我说一句，我帮你找空当。"),200);
+      setTimeout(()=>push("ai",propose.type==="plan"
+        ?"行，那就先不排。哪天想动了说一句「帮我排计划」，我按当天的空档重新摆。"
+        :"行，那就不排。哪天想动了跟我说一句，我帮你找空当。"),200);
       return;
     }
+  }
+
+  // 「帮我排计划 / 排到这周 / 排到考前」：范围按你说的算；练什么交给模型拆（没 Key 用模板），时段永远本地算
+  if(!(DATA.care&&DATA.care.pending)&&/(排|做|出|定|安排).{0,8}(计划|安排)|计划.{0,2}(排|做|定)/.test(v)){
+    const pool=[["mid_term_goal",DATA.profile.mid_term_goal],["short_term_goal",DATA.profile.short_term_goal],["long_term_goal",DATA.profile.long_term_goal]].filter(x=>x[1]);
+    const hit=pool.find(([,g])=>matchGoal(v,g));
+    const gn=hit?hit[1]:(pool.length===1?pool[0][1]:"");
+    if(gn){
+      const need=(DATA.profile.goal_min||{})[(hit?hit[0]:pool[0][0])]||60;
+      const slot=push("ai","<span class='typing'>正在按你的空档排计划…</span>");
+      const items=await buildPlan(gn,need,planScope(v));
+      if(!items.length){
+        setMsg(slot.id,`接下来这几天没有够 ${fmtDur(need)} 的空当给「${esc(gn)}」。要么把时长调小一点，要么先把某件事挪走——你说了算。`);
+        return;
+      }
+      DATA.care=DATA.care||{};
+      DATA.care.pending={type:"plan",items};
+      DATA.care.date=todayStr();saveData();
+      setMsg(slot.id,planText(gn,items));
+      return;
+    }
+    setTimeout(()=>push("ai","你想给哪个目标排？先说一句「六级每天一个半小时」这样的，我记下节奏再排。"),200);
+    return;
   }
 
   // 「帮我排六级」：不用等分身开口，立刻按目标的时长找空当，摆出时段等你一句「行」
@@ -4238,6 +4273,91 @@ function proposeSlot(need){
   if(!g)return null;
   const buf=g[0]>480?raw:0;   // 前面没有别的事，就不用留缓冲
   return {start:fmtHM(g[0]+buf),end:fmtHM(g[0]+buf+need)};
+}
+/* ── 排计划：范围按用户说的算，练什么交给模型拆（没 Key 用模板），时段永远本地算 ── */
+function planScope(text){
+  const t=String(text||"");
+  if(/(到|直到|排到).{0,6}(考|考试|期末)|考前/.test(t))return "exam";
+  if(/(这周|本周|一周|七天|7天|未来几天|接下来几天)/.test(t))return "week";
+  return "day";
+}
+/* 某天已经被占掉的时间段：自己的事 + 课表当天的课 */
+function busyOn(date){
+  const list=DATA.events.filter(e=>e.date===date&&e.type!=="sleep")
+    .map(e=>({s:toMin(e.start),e:toMin(e.end)}));
+  const wd=(new Date(date+"T00:00:00").getDay()+6)%7;   // 课表 0=周一
+  (DATA.week.courses||[]).filter(c=>c.day===wd)
+    .forEach(c=>list.push({s:toMin(c.start),e:toMin(c.end)}));
+  return list.sort((a,b)=>a.s-b.s);
+}
+function freeSlotOn(date,need){
+  const raw=Math.max(0,Math.min(60,DATA.profile.buffer_min||10));
+  const tryGap=(s,e)=>{
+    const buf=s>480?raw:0;
+    return (e-s)>=need+buf?{start:fmtHM(s+buf),end:fmtHM(s+buf+need)}:null;
+  };
+  let cur=480;
+  for(const b of busyOn(date)){
+    const r=tryGap(cur,b.s);if(r)return r;
+    cur=Math.max(cur,b.e);
+  }
+  return tryGap(cur,1320);
+}
+const PLAN_TPL=[
+  [/六级|四级|雅思|托福|英语/,["单词 30 分 + 听力 1 篇","阅读真题 1 篇 + 精读","写作 1 篇 + 改错","翻译 1 段 + 复盘","整套真题 限时"]],
+  [/考研/,["主攻科目 1 章 + 做题","英语阅读 2 篇","政治背诵 1 节","专业课真题复盘"]],
+  [/编程|算法|代码|开发/,["刷题 2 道 + 复盘","看 1 章 + 手写实现","错题复盘 + 补笔记"]],
+  [/减肥|健身|跑步|运动|锻炼/,["力量 30 分钟","有氧 30 分钟","拉伸 + 走路"]]
+];
+function planTopicsLocal(goal){
+  for(const [re,list] of PLAN_TPL)if(re.test(goal))return list;
+  return ["推进一个具体小目标","把昨天没做完的补上","复盘 + 定明天一件事"];
+}
+async function directPlan(goal,n){
+  const msgs=[
+    {role:"system",content:"你只负责把一个学习/成长目标拆成每天练什么。只输出 JSON：{\"topics\":[\"…\"]}，4-6 条，每条 12 字以内，覆盖不同能力项；不要写时间、日期，不要鼓励语，不要解释。"},
+    {role:"user",content:`目标：${String(goal).slice(0,30)}\n需要 ${n} 天，给我一份轮换清单。`}
+  ];
+  const obj=parseJsonLoose(await directChat(USERLLM,msgs,300));
+  if(!obj||!Array.isArray(obj.topics))return null;
+  const list=obj.topics.map(s=>String(s||"").trim().slice(0,20)).filter(s=>s.length>=2).slice(0,6);
+  return list.length?list:null;
+}
+async function planTopics(goal,n){
+  if(USERLLM.key){
+    try{const r=await withTimeout(directPlan(goal,n),12000);if(r&&r.length)return r;}catch(e){}
+  }
+  return planTopicsLocal(goal);
+}
+async function buildPlan(goal,need,scope){
+  const t=todayStr(),dates=[];
+  if(scope==="week"){for(let i=0;i<7;i++)dates.push(addDays(t,i));}
+  else if(scope==="exam"&&DATA.profile.goal_deadline){
+    const end=DATA.profile.goal_deadline;
+    for(let i=0;i<14;i++){const d=addDays(t,i);if(d>end)break;dates.push(d);}
+  }else dates.push(t);
+  const topics=await planTopics(goal,dates.length);
+  const items=[];
+  dates.forEach((d,i)=>{
+    const s=freeSlotOn(d,need);
+    if(!s)return;
+    const topic=topics[i%topics.length];
+    /* 事件名要短：取「+」前面那一段，避免排进时间轴后被截断成半句 */
+    const short=topic.split(/[+＋/]/)[0].trim().slice(0,10);
+    items.push({date:d,start:s.start,end:s.end,name:`${goal}·${short}`.slice(0,20),topic});
+  });
+  return items;
+}
+function dateLabel(d){
+  const t=todayStr();
+  if(d===t)return "今天";
+  if(d===addDays(t,1))return "明天";
+  return d.slice(5).replace("-","/");
+}
+function planText(goal,items){
+  const head=`按空档排了 ${items.length} 天，${goal}：`;
+  const lines=items.map(it=>`${dateLabel(it.date)} ${it.start}-${it.end} ${esc(it.topic)}`);
+  return esc(head)+"<br>"+lines.join("<br>")+"<br>回一句「行」全部排进去，不想就说「算了」。";
 }
 function proactiveCare(){
   const t=todayStr();
