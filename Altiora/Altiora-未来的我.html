@@ -325,7 +325,7 @@ pre.json .n{color:#FDBA74}
 }
 .sheet-box textarea:focus{border-color:rgba(59,130,246,.5);background:rgba(59,130,246,.05)}
 #noteTyRow .chip{cursor:pointer}
-.goal-freq{display:flex;gap:6px;align-items:center;margin-top:6px;font-size:10px;color:var(--dim)}
+.goal-freq{display:flex;gap:6px;align-items:center;margin-top:6px;font-size:10px;color:var(--dim);flex-wrap:wrap}
 .goal-freq .gf{border:1px solid var(--line);background:none;color:var(--dim);border-radius:999px;padding:3px 10px;font-size:10px;cursor:pointer}
 .goal-freq .gf.on{border-color:var(--hue);color:var(--ink);background:rgba(106,168,255,.12)}
 .msg.care{box-shadow:0 0 0 1px rgba(126,231,163,.25)}
@@ -1455,6 +1455,9 @@ const DATA = {
     short_term_goal:"",
     /* 最近一个截止日期：陪跑的方向感，倒计时和缺口都靠它 */
     goal_deadline:"",
+    /* 每个目标的节奏（once 单次 / daily 重复）和每次要多久（分钟），分身提议时段靠这两项 */
+    goal_freq:{},
+    goal_min:{},
     /* 第三类数据源：公开发言（朋友圈/微博/说说）里提炼出的关于他自己的话 */
     social_insights:[],
     avatar_color:"#5B7CFA"
@@ -1462,6 +1465,8 @@ const DATA = {
   events:[],
   conflicts:[],
   notes:[],
+  /* 分身主动关心：今天说过没有 + 摆出的待确认时段（pending 等用户一句「行」） */
+  care:{},
   /* 第一类数据源：日记（按日历写）。每一条 {d:日期, t:正文}，一天一篇 */
   diary:[],
   /* 重要日子与备忘：{d:日期, text:名字, yearly:是否每年重复（生日）}，月视图上当日历标 */
@@ -1497,6 +1502,7 @@ try{localStorage.removeItem("altiora_state_v1");}catch(e){}
 function saveData(){
   try{localStorage.setItem(SAVE_KEY,JSON.stringify({
     profile:DATA.profile,events:DATA.events,notes:DATA.notes,diary:DATA.diary,days:DATA.days,
+    care:DATA.care,
     week:{periods:DATA.week.periods,courses:DATA.week.courses,synced:DATA.week.synced},
     memory:{chat:DATA.memory.chat,diary:DATA.memory.diary,
             last_seen:DATA.memory.last_seen,pending:DATA.memory.pending,
@@ -1510,6 +1516,7 @@ try{
   if(s&&Array.isArray(s.notes))DATA.notes=s.notes;
   if(s&&Array.isArray(s.days))DATA.days=s.days;
   if(s&&Array.isArray(s.diary))DATA.diary=s.diary;
+  if(s&&s.care&&typeof s.care==="object")DATA.care=s.care;
   if(s&&s.week){
     if(Array.isArray(s.week.periods)&&s.week.periods.length)DATA.week.periods=s.week.periods;
     if(Array.isArray(s.week.courses))DATA.week.courses=s.week.courses;
@@ -3001,6 +3008,46 @@ async function handleUser(v){
     }
   }
 
+  // 「行 / 算了」：回应分身摆出的具体时段。排不排由用户拍板，这里只执行他说的
+  const propose=DATA.care&&DATA.care.pending;
+  if(propose&&propose.date===todayStr()){
+    const say=stripPunct(v).toLowerCase();
+    const YES=/^(行|行吧|好|好的|可以|确定|要|排|排吧|安排|嗯|对|成|中|没问题|ok|okay|yes)$/;
+    const NO=/^(不行|不要|不用|不用了|算了|不|否|不排|改天|再说|先不)$/;
+    if(YES.test(say)){
+      DATA.care.pending=null;saveData();
+      const r=addStructuredEvent({name:propose.goal,type:"goal",date:propose.date,start:propose.start,end:propose.end});
+      setTimeout(()=>push("ai",r.dup
+        ?`这个点已经有「${esc(propose.goal)}」了，不重复加。`
+        :`排进去了：今天 ${propose.start} 到 ${propose.end}，${esc(propose.goal)}。${r.delta>0?"不过它撞上了别的事，代价在日程页里。":"到时候画个勾就行。"}`),200);
+      return;
+    }
+    if(NO.test(say)){
+      DATA.care.pending=null;saveData();
+      setTimeout(()=>push("ai","行，那就不排。哪天想动了跟我说一句，我帮你找空当。"),200);
+      return;
+    }
+  }
+
+  // 「帮我排六级」：不用等分身开口，立刻按目标的时长找空当，摆出时段等你一句「行」
+  if(!(DATA.care&&DATA.care.pending)&&/(排|安排)/.test(v)){
+    for(const [k,gn] of [["mid_term_goal",DATA.profile.mid_term_goal],["short_term_goal",DATA.profile.short_term_goal],["long_term_goal",DATA.profile.long_term_goal]]){
+      if(!gn||!matchGoal(v,gn))continue;
+      const need=(DATA.profile.goal_min||{})[k]||60;
+      const slot=proposeSlot(need);
+      const name=gn.slice(0,12);
+      if(slot){
+        DATA.care=DATA.care||{};
+        DATA.care.pending={date:todayStr(),goal:name,start:slot.start,end:slot.end};
+        DATA.care.date=todayStr();saveData();
+        setTimeout(()=>push("ai",`今天 ${slot.start} 到 ${slot.end} 空着，给「${esc(name)}」？回一句「行」我就排进去。`),200);
+      }else{
+        setTimeout(()=>push("ai",`今天没找到够长的空当给「${esc(name)}」。要不要把哪件往后挪挪？你说了算。`),200);
+      }
+      return;
+    }
+  }
+
   const tp=topicOf(v);if(tp&&SESS.topics[SESS.topics.length-1]!==tp)SESS.topics.push(tp);
 
   // 半句接龙：上一句我问了「几点到几点」，这句只给时间也接得上
@@ -3071,6 +3118,7 @@ async function routeLLM(j,slotId,v){
     const h=j.goal_horizon||"mid";
     if(DATA.profile[GOAL_KEY[h]]!==j.goal){
       DATA.profile[GOAL_KEY[h]]=j.goal;SESS.goal=j.goal;
+      applyGoalPace(GOAL_KEY[h],v);
       auxNotes.push(`「${esc(j.goal)}」收进${GOAL_LABEL[h]}`);auxChanged=true;
     }
   }
@@ -3137,7 +3185,9 @@ async function routeLLM(j,slotId,v){
   // 3) 目标（长期 / 中期 / 短期）
   if(j.intent==="goal"&&j.goal){
     const h=j.goal_horizon||goalHorizon(v)||"mid";
-    DATA.profile[GOAL_KEY[h]]=j.goal;SESS.goal=j.goal;renderMe();updStats();saveData();sessFlush();
+    DATA.profile[GOAL_KEY[h]]=j.goal;SESS.goal=j.goal;
+    applyGoalPace(GOAL_KEY[h],v);
+    renderMe();updStats();saveData();sessFlush();
     setMsgU(slotId,talkOrFallback(j.reply,"goal",`「${esc(j.goal)}」收进${GOAL_LABEL[h]}。今天不用开始。有冲突我先保它。`),j);
     return;
   }
@@ -3409,7 +3459,9 @@ function replyTo(v){
   const goal=extractGoal(t);
   if(goal){
     const h=goalHorizon(t)||"mid";
-    DATA.profile[GOAL_KEY[h]]=goal;SESS.goal=goal;renderMe();updStats();saveData();sessFlush();
+    DATA.profile[GOAL_KEY[h]]=goal;SESS.goal=goal;
+    applyGoalPace(GOAL_KEY[h],t);
+    renderMe();updStats();saveData();sessFlush();
     return `「${esc(goal)}」收进${GOAL_LABEL[h]}。今天不用开始。有冲突我先保它。`;
   }
   // 5) 说了一件要办的事，但没给钟点——问时间，并记着它等下补
@@ -4060,25 +4112,55 @@ const LOW_LINE={"sad":"我看你这几天一直不太高。","anxious":"我看�
 function setGoalFreq(key,v){
   DATA.profile.goal_freq=DATA.profile.goal_freq||{};
   DATA.profile.goal_freq[key]=v;saveData();renderMe();
-  toast(v==="daily"?"好，这事我天天帮你盯着。":"好，这件做完就算。");
+  toast(v==="daily"?"好，这事我天天帮你盯着，有空当就先问你。":"好，这件做完就算。");
+}
+function setGoalMin(key,m){
+  DATA.profile.goal_min=DATA.profile.goal_min||{};
+  DATA.profile.goal_min[key]=m;saveData();renderMe();
+  toast("好，每次给它 "+m+" 分钟。");
+}
+/* 从用户原话里读出节奏和每次时长（「每天一小时」「每周两次」），只在目标场景用 */
+function applyGoalPace(key,text){
+  const t=String(text||"");
+  if(!/每天|天天|每日|每晚|每周/.test(t))return;
+  DATA.profile.goal_freq=DATA.profile.goal_freq||{};
+  DATA.profile.goal_freq[key]="daily";
+  DATA.profile.goal_min=DATA.profile.goal_min||{};
+  let m=60;
+  if(/半小时|30\s*分钟/.test(t))m=30;
+  else if(/一个半|1\.5\s*个?小时|90\s*分钟/.test(t))m=90;
+  else if(/两\s*个?小时|2\s*个?小时|120\s*分钟/.test(t))m=120;
+  else if(/一\s*个?小时|1\s*个?小时|60\s*分钟/.test(t))m=60;
+  DATA.profile.goal_min[key]=m;
 }
 /* 今天 8:00-22:00 之间 >=90 分钟的空当，给主动关心的话术用 */
-function todayFreeGap(){
+function todayFreeGap(need){
+  need=need||90;
   const t=todayStr();
   const list=DATA.events.filter(e=>e.date===t&&e.type!=="sleep").slice().sort((a,b)=>toMin(a.start)-toMin(b.start));
   let cur=480;const gaps=[];
   for(const e of list){
     const s=toMin(e.start),en=toMin(e.end);
-    if(s-cur>=90)gaps.push([cur,s]);
+    if(s-cur>=need)gaps.push([cur,s]);
     cur=Math.max(cur,en);
   }
-  if(1320-cur>=90)gaps.push([cur,1320]);
+  if(1320-cur>=need)gaps.push([cur,1320]);
   return gaps[0]||null;
 }
-function fmtGap(g){return `${fmtMin(g[0])} 到 ${fmtMin(g[1])}`;}
+function fmtGap(g){return `${fmtHM(g[0])} 到 ${fmtHM(g[1])}`;}
+/* 提议时段：留出缓冲再问，别一开口就撞上上一件事的尾巴 */
+function proposeSlot(need){
+  const raw=Math.max(0,Math.min(60,DATA.profile.buffer_min||10));
+  const g=todayFreeGap(need+raw);
+  if(!g)return null;
+  const buf=g[0]>480?raw:0;   // 前面没有别的事，就不用留缓冲
+  return {start:fmtHM(g[0]+buf),end:fmtHM(g[0]+buf+need)};
+}
 function proactiveCare(){
   const t=todayStr();
   DATA.care=DATA.care||{};
+  /* 昨天的待确认时段不作数，别拿过期的时间来问你 */
+  if(DATA.care.pending&&DATA.care.pending.date!==t)DATA.care.pending=null;
   if(DATA.care.date===t)return;           // 一天最多一句，不刷屏
   let emoKey=null;
   // 1. 情绪复盘：近 3 天低落类情绪 >=2 次，按最多的那种情绪说话（没配 Key 没数据就不开口，不瞎猜）
@@ -4090,24 +4172,33 @@ function proactiveCare(){
   }
   // 2. 完成复盘：重复目标昨天或今天排了但没画上勾，或者干脆没排
   const fr=DATA.profile.goal_freq||{};
+  const gmin=DATA.profile.goal_min||{};
   const names={long_term_goal:DATA.profile.long_term_goal,mid_term_goal:DATA.profile.mid_term_goal,short_term_goal:DATA.profile.short_term_goal};
-  let stall=null;
+  let stall=null,stallMin=60;
   for(const k of ["short_term_goal","mid_term_goal","long_term_goal"]){
     if(fr[k]!=="daily"||!names[k])continue;
     const gname=names[k];
-    const hit=[addDays(t,-1),t].some(d=>DATA.events.some(e=>e.date===d&&e.done&&matchGoalByName(gname,e.name)));
-    if(!hit){stall=gname;break;}
+    const hit=[addDays(t,-1),t].some(d=>DATA.events.some(e=>e.date===d&&e.done&&matchGoal(e.name,gname)));
+    if(!hit){stall=gname;stallMin=gmin[k]||60;break;}
   }
   if(!emoKey&&!stall)return;
-  const gap=todayFreeGap();
-  let msg="";
-  if(emoKey){
-    msg=LOW_LINE[emoKey]||"我看你这几天状态不太好。";
-    msg+=stall?`「${stall.slice(0,12)}」也几天没画上勾了。`:"";
-    msg+=gap?`今天 ${fmtGap(gap)} 空着——出去走走？二十分钟也行。`:"今天排得满，要不要把哪件往后挪挪？你说了算。";
+  const lowLine=emoKey?(LOW_LINE[emoKey]||"我看你这几天状态不太好。"):"";
+  let msg="",gap=null;
+  if(stall){
+    const gname=stall.slice(0,12);
+    // 3. 提议排任务：空当够长就把具体时段摆出来，等用户一句「行」——绝不擅自动手
+    const slot=proposeSlot(stallMin);
+    if(slot){
+      DATA.care.pending={date:t,goal:gname,start:slot.start,end:slot.end};
+      msg=(lowLine?lowLine+" ":"")
+        +`「${gname}」这两天没画上勾。今天 ${slot.start} 到 ${slot.end} 空着——给它？回一句「行」我就排进去，不想就回「算了」。`;
+    }else{
+      msg=(lowLine?lowLine+" ":"")
+        +`「${gname}」这两天没画上勾，今天排满了。要不要把哪件往后挪挪？你说了算。`;
+    }
   }else{
-    msg=`「${stall.slice(0,12)}」这两天没画上勾。是没时间，还是不想做？`;
-    msg+=gap?`没时间我帮你挪——今天 ${fmtGap(gap)} 正好空着，给它半小时？要就说一声，不催。`:"不想做咱们把它改小点，你说了算。";
+    gap=todayFreeGap(90);
+    msg=lowLine+(gap?`今天 ${fmtGap(gap)} 空着——出去走走？二十分钟也行。`:"今天排得满，要不要把哪件往后挪挪？你说了算。");
   }
   DATA.care.date=t;saveData();
   const rec=push("ai",esc(msg));
@@ -4144,6 +4235,11 @@ function renderMe(){
       const fr=DATA.profile.goal_freq||{};
       const cur=fr[key]||"once";
       el.innerHTML+=`<div class="goal-freq"><span>节奏</span><button class="gf${cur==="once"?" on":""}" onclick="setGoalFreq('${key}','once')">单次</button><button class="gf${cur==="daily"?" on":""}" onclick="setGoalFreq('${key}','daily')">重复</button></div>`;
+      /* 重复的事才问「一次多久」——分身按这个长度找空当，提议具体时段 */
+      if(cur==="daily"){
+        const gm=(DATA.profile.goal_min||{})[key]||60;
+        el.innerHTML+=`<div class="goal-freq"><span>每次</span>${[[30,"30分"],[60,"1时"],[90,"1.5时"],[120,"2时"]].map(([m,t])=>`<button class="gf${gm===m?" on":""}" onclick="setGoalMin('${key}',${m})">${t}</button>`).join("")}</div>`;
+      }
     }
   };
   goalCell("goalLong","long_term_goal","长期");
