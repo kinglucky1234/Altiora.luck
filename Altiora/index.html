@@ -3006,6 +3006,12 @@ async function handleUser(v){
   sessBegin();
   memPush("u",v);
 
+  /* 一句长话里夹了「记住：…」：不管后半句还要排计划，先把这些脾气和弱项收下，并给一句回执 */
+  const memorized=rememberInline(v);
+  if(memorized.length){
+    push("ai",`记住了：${memorized.map(s=>`「${esc(s)}」`).join("、")}。`);
+  }
+
   // 「每天两个半小时」：这不是一条日程，是目标的节奏。本地算、直接摆时段，绝不再反问「几点到几点」
   const pace=paceIntent(v);
   if(pace&&!pace.key&&pace.goal){
@@ -3037,15 +3043,7 @@ async function handleUser(v){
   }
 
   // 「记住…」是确定性命令：本地写进缺点，不交给模型判意图，避免判错漏记
-  const memCmd=v.trim().match(/^(记住|记一下|帮我记住|规矩)[\s，,。.:：]*(.+)$/);
-  if(memCmd){
-    const r=stripPunct(memCmd[2]);
-    if(r){
-      DATA.profile.known_weakness.push(r);renderMe();updStats();saveData();
-      setTimeout(()=>push("ai",`「${esc(r)}」记住了。下次快撞上去，我先摆代价。`),180);
-      return;
-    }
-  }
+  if(memorized.length&&/^(记住|记一下|帮我记住|规矩)/.test(v.trim()))return;
 
   // 「以后不…」「再也不…」也是确定性命令：本地写进缺点，不交给模型判意图，避免判错漏记
   if(/以后不|以后别|再也不|不许|别再|不要再/.test(v)){
@@ -3097,6 +3095,8 @@ async function handleUser(v){
     const gn=hit?hit[1]:(pool.length===1?pool[0][1]:"");
     if(gn){
       const need=(DATA.profile.goal_min||{})[(hit?hit[0]:pool[0][0])]||60;
+      /* 之前摆过的那一个时段，被这份计划顶掉了——明说一句，免得他以为两条提议都还算数 */
+      const stale=DATA.care&&DATA.care.pending&&DATA.care.pending.type!=="plan"?DATA.care.pending:null;
       const slot=push("ai","<span class='typing'>正在按你的空档排计划…</span>");
       const plan=await buildPlan(gn,need,planScope(v),preferStartMin(v));
       if(!plan.days.length){
@@ -3106,7 +3106,7 @@ async function handleUser(v){
       DATA.care=DATA.care||{};
       DATA.care.pending={type:"plan",items:plan.items};
       DATA.care.date=todayStr();saveData();
-      setMsg(slot.id,planText(gn,plan.days));
+      setMsg(slot.id,(stale?`<span class="hint">刚才 ${stale.start} 那个提议先作废，按这份来。</span><br>`:"")+planText(gn,plan.days));
       return;
     }
     setTimeout(()=>push("ai","你想给哪个目标排？先说一句「六级每天一个半小时」这样的，我记下节奏再排。"),200);
@@ -4246,6 +4246,26 @@ function cleanGoalName(s){
   /* 只剩「学」「点开始」这种碎片，说明这句没带目标名，宁可问一句也别记错 */
   if(t.length<2||/(点|开始|结束|每天|每周|小时|分钟)/.test(t))return "";
   return t.slice(0,12);
+}
+/* 「记住：A，B；C」：一句话里夹着脾气和弱项，先按标点拆成几条，逐条收下。
+   纯本地判断，不交给模型——记错一句，后面就会拿错的东西去判断他。 */
+function rememberInline(text){
+  const m=String(text||"").match(/记住[\s，,。.:：]*([\s\S]+)$/);
+  if(!m)return [];
+  const out=[];
+  const dw=DATA.profile.known_weakness=DATA.profile.known_weakness||[];
+  m[1].split(/[；;，,]/).forEach(seg=>{
+    const s=seg.replace(/^我/,"")
+      .replace(/帮我?排[\s\S]*$/,"")            // 「…帮我排到考前」是请求，不是要记的事
+      .replace(/[。！？!?\s]/g,"").trim();
+    if(s.length<2||s.length>24)return;
+    if(/开始|计划|安排|几点/.test(s))return;     // 排计划的意图别混进弱项
+    if(/\d{1,2}\s*月|\d{1,2}\s*[日号]|过线|及格/.test(s))return; // 日期和分数线由目标字段接管
+    if(dw.includes(s))return;
+    dw.push(s);out.push(s);
+  });
+  if(out.length){renderMe();updStats();saveData();}
+  return out;
 }
 /* 每天/每周 + 时长，但没说钟点：这是目标的节奏，不是一条日程，本地直接算并提议时段 */
 function paceIntent(text){
