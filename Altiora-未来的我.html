@@ -888,6 +888,9 @@ button,.btn,.tab,.chip,.tag,.ai-pill,.hint,.ttl,.opt-name,.io div,.legend span,
 .me-hero-txt{min-width:0;flex:1}
 .me-name{font-size:15px;font-weight:650;color:var(--t1);letter-spacing:.3px}
 .me-sub{font-size:12px;color:var(--t3);margin-top:3px}
+.me-prog{height:6px;border-radius:6px;background:var(--line);margin-top:8px;overflow:hidden}
+.me-prog-bar{height:100%;border-radius:6px;background:var(--hue);width:0;transition:width .5s ease}
+.me-prog-txt{font-size:11px;color:var(--t3);margin-top:5px}
 .goal-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .goal-col{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 12px 14px;min-width:0}
 .goal-col i{display:block;font-style:normal;font-size:11px;color:var(--t3);margin-bottom:7px}
@@ -1146,6 +1149,8 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
       <div class="me-hero-txt">
         <div class="me-name" id="meName">还没告诉我你的名字</div>
         <div class="me-sub">这是你想成为的那个自己，住在这台电脑里。</div>
+        <div class="me-prog"><div class="me-prog-bar" id="meProgBar"></div></div>
+        <div class="me-prog-txt" id="meProgTxt"></div>
       </div>
       <button class="btn ghost" style="margin-left:auto" onclick="openProfileSurvey()">重新填一次问卷</button>
     </div>
@@ -2949,10 +2954,12 @@ async function handleUser(v){
   const filled=tryFillPending(v);
   if(filled){setTimeout(()=>push("ai",filled),180);return;}
 
-  const slot=push("ai","<span class='typing'>· · ·</span>");
+  const slot=push("ai","<span class='typing'>正在理解你说的话…</span>");
   const j=await askLLM(v);
   if(!j){setMsg(slot.id,replyTo(v));return;}
+  setMsg(slot.id,"<span class='typing'>听懂了，正在归类…</span>");
   await routeLLM(j,slot.id,v);
+  if(TALK_STAT.gen)renderMe(); // 刷新画像页的「AI 说话自检」
 }
 /* 把模型这次抽到的字段摊开给用户看：理解得对不对，一眼可查 */
 const INTENT_CN={schedule:"排程",emotion:"情绪",goal:"目标",memory:"规矩",social:"公开发言",safety:"安全",chat:"闲聊"};
@@ -2978,6 +2985,26 @@ function understandCard(j){
 }
 function setMsgU(slotId,html,j){
   setMsg(slotId,html+understandCard(j));
+}
+/* ── 话术三级降级：模型合格句 → 同 intent 上次合格句 → 本地模板原句 ──
+   校验三层：是字符串且不长（结构）、不喊口号不客服腔（评语）、schedule 不带数字（校验层：
+   账只能由计算器说）。模型这轮没开口不算失败，不进分母。 */
+const RE_BADTALK=/嗯[，,]\s*我在听|我在听|你接着说|我在这儿|我都在|会好起来|会好一点|加油|你可以的|相信自己|慢慢来|不要放弃|你能做到/;
+const LAST_OK={};
+const TALK_STAT={gen:0,bad:0};
+function goodTalk(t,intent){
+  if(!t||t.length>80)return false;
+  if(RE_BADTALK.test(t))return false;
+  if(intent==="schedule"&&/\d/.test(t))return false;
+  return true;
+}
+function talkOrFallback(reply,intent,local){
+  if(typeof reply!=="string"||!reply.trim())return local; // 模型没开口：直接模板，不计入统计
+  TALK_STAT.gen++;
+  const t=reply.trim();
+  if(goodTalk(t,intent)){LAST_OK[intent]=t;return t;}
+  TALK_STAT.bad++;
+  return LAST_OK[intent]||local;
 }
 async function routeLLM(j,slotId,v){
   // 情绪由模型判，直接落到本次会话的日记里；本地关键词表只做离线兜底
@@ -3026,6 +3053,7 @@ async function routeLLM(j,slotId,v){
         setMsgU(slotId,`时间轴里已经有${dups.map(n=>`「${esc(n)}」`).join("、")}了，我没重复加。`,j);
         return;
       }
+      setMsg(slotId,"<span class='typing'>已写入时间轴，正在算代价…</span>");
       const line=await askSay(added.length===1?{
         事件:{名称:added[0].name,开始:added[0].start,结束:added[0].end},
         新撞出的冲突数:totalDelta,
@@ -3044,30 +3072,31 @@ async function routeLLM(j,slotId,v){
     // 听懂了，但用户没说结束时间 —— 不编，问一句；记住它，等下补时间
     const sub=j.subject?`「${esc(j.subject)}」`:"这件事";
     if(j.subject){DATA.memory.pending={name:j.subject.slice(0,10),date:resolveDate(v),ts:Date.now()};saveData();}
-    setMsgU(slotId,j.reply||`${sub}我听懂了。但要进时间轴还差个开始和结束时间——几点到几点？`,j);
+    setMsgU(slotId,talkOrFallback(j.reply,"schedule",`${sub}我听懂了。但要进时间轴还差个开始和结束时间——几点到几点？`),j);
     return;
   }
   // 2) 明确要求记住的规矩
   if(j.intent==="memory"&&j.memory){
     DATA.profile.known_weakness.push(j.memory.text);renderMe();updStats();saveData();
-    setMsgU(slotId,j.reply||`行，记住了：「${esc(j.memory.text)}」。下次快撞上去，我先摆代价。`,j);
+    setMsgU(slotId,talkOrFallback(j.reply,"memory",`行，记住了：「${esc(j.memory.text)}」。下次快撞上去，我先摆代价。`),j);
     return;
   }
   // 3) 目标（长期 / 中期 / 短期）
   if(j.intent==="goal"&&j.goal){
     const h=j.goal_horizon||goalHorizon(v)||"mid";
     DATA.profile[GOAL_KEY[h]]=j.goal;SESS.goal=j.goal;renderMe();updStats();saveData();sessFlush();
-    setMsgU(slotId,j.reply||`「${esc(j.goal)}」收进${GOAL_LABEL[h]}。今天不用开始。有冲突我先保它。`,j);
+    setMsgU(slotId,talkOrFallback(j.reply,"goal",`「${esc(j.goal)}」收进${GOAL_LABEL[h]}。今天不用开始。有冲突我先保它。`),j);
     return;
   }
   // 3.5) 公开发言 → 提炼一条关于他自己的话
   if(j.intent==="social"&&j.social){
     pushSocialInsight(j.social,v);
-    setMsgU(slotId,j.reply||`「${esc(j.social)}」——当成你说过的话记下来了。下次撞着相关的事，我摆出来。`,j);
+    setMsgU(slotId,talkOrFallback(j.reply,"social",`「${esc(j.social)}」——当成你说过的话记下来了。下次撞着相关的事，我摆出来。`),j);
     return;
   }
   // 4) 情绪 / 闲聊：模型只负责说话
-  if(j.reply){setMsgU(slotId,esc(j.reply)+(auxNotes.length?`<br><small>${auxNotes.join("；")}</small>`:""),j);return;}
+  const talk=talkOrFallback(j.reply,j.intent,null);
+  if(talk){setMsgU(slotId,esc(talk)+(auxNotes.length?`<br><small>${auxNotes.join("；")}</small>`:""),j);return;}
   // 5) 模型没给话，退回本地兜底
   setMsg(slotId,replyTo(v));
 }
@@ -3851,6 +3880,16 @@ function renderMe(){
   if(av){av.style.background=p.avatar_color||"var(--hue)";av.textContent=(p.name||"我").trim().charAt(0)||"我";}
   const nm=document.getElementById("meName");
   if(nm)nm.textContent=p.name?p.name:"还没告诉我你的名字";
+  // 档案完整度进度条：这五项是排程真正会用到的输入，缺哪个就明说出来
+  const pfItems=[["目标",!!(p.long_term_goal||p.mid_term_goal||p.short_term_goal)],
+    ["睡眠底线",!!p.hard_sleep_deadline],["精力高峰",!!p.preferred_focus_hours],
+    ["缺点",p.known_weakness.length>0],["截止日期",!!p.goal_deadline]];
+  const pfDone=pfItems.filter(x=>x[1]).length;
+  const pBar=document.getElementById("meProgBar"),pTxt=document.getElementById("meProgTxt");
+  if(pBar)pBar.style.width=(pfDone/pfItems.length*100)+"%";
+  if(pTxt)pTxt.textContent=pfDone===pfItems.length
+    ?"档案齐了，排程全部用得上"
+    :`档案 ${pfDone}/${pfItems.length}，还差：${pfItems.filter(x=>!x[1]).map(x=>x[0]).join("、")}`;
   // 三档目标：长期 / 中期 / 短期
   const goalCell=(id,key,lab)=>{
     const el=document.getElementById(id);if(!el)return;
@@ -3871,7 +3910,8 @@ function renderMe(){
     <div>睡眠底线</div><div>${p.hard_sleep_deadline?"不晚于 "+esc(p.hard_sleep_deadline):'<span class="dash">还没说</span>'}</div>
     <div>精力高峰</div><div>${dash(p.preferred_focus_hours)}</div>
     <div>我的缺点</div><div><div class="chips">${weak}</div></div>
-    <div>今日记录</div><div>${DATA.events.filter(e=>e.date===todayStr()&&e.type!=="sleep").length} 件 · 冲突 ${detectConflicts(todayStr()).length} 处</div>`;
+    <div>今日记录</div><div>${DATA.events.filter(e=>e.date===todayStr()&&e.type!=="sleep").length} 件 · 冲突 ${detectConflicts(todayStr()).length} 处</div>
+    <div>AI 说话自检</div><div>${TALK_STAT.gen?`${Math.round(100*(1-TALK_STAT.bad/TALK_STAT.gen))}% 达标（${TALK_STAT.gen} 次，不合格已拦下 ${TALK_STAT.bad} 次）`:'<span class="dash">AI 还没说过话</span>'}</div>`;
   // 三个入口计数（日记 / 随手记 / 我的生活圈）
   const dd=document.getElementById("dsrcDiary");
   if(dd)dd.textContent=DATA.diary.length;
