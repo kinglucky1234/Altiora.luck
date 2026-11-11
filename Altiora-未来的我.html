@@ -3680,10 +3680,6 @@ function renderTLMonth(){
     const marks=[];
     if(isGoal)marks.push("目标日");
     else if(dayMarks.length)marks.push(dayMarks[0].text.slice(0,4));
-    else{
-      if(nC)marks.push(nC+"课");
-      if(nE)marks.push(nE+"事");
-    }
     const cls=["dc","tlm"];
     if(iso===today)cls.push("today");
     if(marks.length)cls.push("mark");
