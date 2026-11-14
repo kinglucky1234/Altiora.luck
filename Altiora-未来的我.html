@@ -1257,8 +1257,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
         <div class="sn-item" onclick="showSnack('snSocial')"><b id="dsrcSocial">0</b><span>我的生活圈</span></div>
       </div>
       <div class="sn-empty" id="snEmpty">
-        还没记过东西。三种说法都能直接用：<br>
-        <b>「明天 8 点跑步」</b> → 进时间轴 · <b>「以后不熬夜」</b> → 记成规矩 · <b>「今天有点累」</b> → 记成一件小事
+        还没有记录。
       </div>
     </div>
 
@@ -1339,7 +1338,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
     </div>
 
     <div class="card">
-      <div class="ttl">目标 <small>长期 · 中期 · 短期，各记一个；跟我说一句就能改</small></div>
+      <div class="ttl">目标 <small>长期 · 中期 · 短期</small></div>
       <div class="goal-grid">
         <div class="goal-col" id="goalLong"></div>
         <div class="goal-col" id="goalMid"></div>
@@ -1350,7 +1349,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
         <input type="date" id="goalDeadline" onchange="setGoalDeadline(this.value)"
           style="font:inherit;padding:4px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--t1)">
         <span id="goalDeadlineHint"></span>
-        <span style="color:var(--t3)" id="goalDeadlineWhy">填了才能算倒计时、才能「排到考前」</span>
+        <span style="color:var(--t3)" id="goalDeadlineWhy">不填就没有倒计时</span>
       </div>
       </div>
 
@@ -1380,9 +1379,9 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
         <input type="file" id="importFile" accept=".json,application/json" style="display:none" onchange="importData(this)">
       </div>
       <div class="chips-row" style="margin:10px 0 0;font-size:12px;color:var(--t3)">
-        <span>两件事挨着多久算「撞上了」：缓冲</span>
+        <span>两件事之间至少空几分钟</span>
         <input type="number" id="bufMin" min="0" max="120" step="5" style="width:64px;font:inherit;padding:4px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--t1)" onchange="setBufferMin(this.value)">
-        <span>分钟（默认 10——连轴转没饭吃，也算撞）</span>
+        <span>默认 10；填 0 只算真正的时间重叠</span>
       </div>
     </div>
   </div>
@@ -5304,7 +5303,7 @@ function updStats(){
   if(el){el.textContent=c;el.className=c?"v red":"v green";}
   const todayN=DATA.events.filter(e=>e.date===todayStr()).length,gm=document.getElementById("gazeMsg");
   if(!c&&!todayN){gm.style.display="none";}
-  else{gm.style.display="";document.getElementById("gazeTxt").textContent=c?`我盯着呢，今天有 ${c} 处冲突等你定`:"我盯着呢，今天没冲突";}
+  else{gm.style.display="";document.getElementById("gazeTxt").textContent=c?`今天 ${c} 处冲突待定`:"今天没有冲突";}
   gm.className=c?"gaze-msg warn":"gaze-msg";
 }
 
