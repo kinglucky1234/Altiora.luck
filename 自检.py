@@ -122,22 +122,17 @@ def check_js_syntax():
         ok("前端脚本语法", f"{len(scripts)} 段内联脚本语法正常")
 
 
-def check_html_copies():
-    """5 份同源 HTML 必须逐字节一致，改一份要同步全部。"""
-    files = ["app.html", "index.html", "Altiora-未来的我.html",
-             "Altiora/index.html", "Altiora/Altiora-未来的我.html"]
-    sums = {}
-    for f in files:
-        p = BASE / f
-        if not p.exists():
-            fail("HTML 副本", f"缺少 {f}")
-            return
-        sums[f] = hashlib.md5(p.read_bytes()).hexdigest()
-    if len(set(sums.values())) != 1:
-        detail = "；".join(f"{k}={v[:8]}" for k, v in sums.items())
-        fail("HTML 副本", "不一致，改一份要同步全部：" + detail)
+def check_single_copy():
+    """全仓只允许 1 份成品 HTML。历史上有 5 份硬副本，已收口，别再加回来。"""
+    banned = ["index.html", "app.html",
+              "Altiora/index.html", "Altiora/Altiora-未来的我.html"]
+    found = [f for f in banned if (BASE / f).exists()]
+    if found:
+        fail("单一成品", "多余副本：" + "、".join(found) + "——改代码请改根目录 Altiora-未来的我.html")
+    elif not (BASE / "Altiora-未来的我.html").exists():
+        fail("单一成品", "根目录成品缺失")
     else:
-        ok("HTML 副本", f"5 份一致 {list(sums.values())[0][:8]}")
+        ok("单一成品", "只有 Altiora-未来的我.html")
 
 
 def free_port():
@@ -222,7 +217,7 @@ def check_server():
 def main():
     print("Altiora 自检\n" + "=" * 48)
     for fn in (check_python, check_deps, check_model, check_frontend,
-               check_js_syntax, check_html_copies, check_server):
+               check_js_syntax, check_single_copy, check_server):
         try:
             fn()
         except Exception as e:

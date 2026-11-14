@@ -3,11 +3,11 @@
 > 用你的历史数据算出代价的私人助理 ——「数字孪生」在此指**可计算的你**（课表、精力、软肋、目标节奏），不做拟人仿真
 > 赛道：传智杯大赛 · Vibe Coding 挑战赛 · B 组 · 赛道 8 个人效能与数字孪生具身仿真
 
-> ⚠️ **评审提示**：所有代码、Bug 修复、AI 协同对话历史、Prompt 快照都在 `main` 分支，直接看即可，无需切换分支。**完整开发历史也在 `main`**：从 2026-10-22 起连续提交、无 merge，条数以 `git rev-list --count main` 为准，`git log --oneline main` 可逐条 `git show` 核对（`history` 分支只是 10-30 前的历史备份，内容已全部包含在 `main` 中）。
+> ⚠️ **评审提示**：所有代码、Bug 修复、AI 协同对话历史、Prompt 快照都在 `main` 分支，直接看即可，无需切换分支。**完整开发历史也在 `main`**：无 merge，提交条数以 `git rev-list --count main` 为准，逐日分布用 `git log --date=short --format=%ad main | sort | uniq -c` 自查，`git log --oneline main` 可逐条 `git show` 核对（`history` 分支只是 10-30 前的历史备份，内容已全部包含在 `main` 中）。
 
 > **在线体验（评委可直接打开，无需任何配置）**：<http://82.157.162.252:8000/>
-> 服务端已配好模型，打开页面右上角即显示「AI 在线」。每 IP 每日 50 次、全局 1000 次限流，超限时前端自动回退本地规则，页面功能不受影响。
-> 部署自检（2026-11-14 实测）：首页 200、`/favicon.ico` 204、`/api/health` 返回 `llm:true`（`deepseek-ai/DeepSeek-V3`）、线上页面 md5 与仓库成品一致、systemd 自启为 `active` / `enabled`。复跑命令见技术文档 11.5。
+> 服务端已配好模型，打开页面右上角即显示「AI 在线」。服务有每日额度限制，超限时页面会明确提示「已切到离线引擎」，功能完整；如遇限流，语音与大模型效果见演示视频。
+> 部署自检（2026-11-14 实测）：首页 200、`/favicon.ico` 204、`/api/health` 返回 `llm:true`（`deepseek-ai/DeepSeek-V3`）、systemd 自启为 `active` / `enabled`；页面一致性用 `curl -s <地址>/ | md5sum` 与本地 `md5sum Altiora-未来的我.html` 对照。复跑命令见技术文档 11.5。
 
 ## 目录
 
@@ -56,7 +56,7 @@ LLM 的边界被写死在代码里（`Altiora/backend/llm.py`）：
 - 服务端硬约束：`intent` 不是 `emotion` / `chat` 时，模型生成的 `reply` 会被直接丢弃，不允许它替计算器下结论；
 - 用户没说结束时间，`event` 就是 `null` —— 宁可追问一句，也不替用户编时间。
 
-没有 Key 时整条链路自动切到本地规则，页面右上角显示「本地规则」；配了 Key 显示「AI 在线」。两种模式功能都完整。
+没有 Key 时整条链路自动切到离线模式，页面右上角显示「离线」；配了 Key 显示「AI 在线」。两种模式功能都完整。
 
 ## 2.1 评委 90 秒上手
 
@@ -69,7 +69,7 @@ LLM 的边界被写死在代码里（`Altiora/backend/llm.py`）：
 | 功能 | 怎么来的 |
 |---|---|
 | 打字对话、排日程、算冲突代价、刷新不丢 | 双击就能用，全部在前端完成 |
-| 看得见的状态 | 理解 → 算空档 → 组织回话，三段按真实进度推进；走本地规则时直接标「本地规则」，不假装有模型 |
+| 看得见的状态 | 理解 → 算空档 → 组织回话，三段按真实进度推进；走离线模式时直接标「离线模式」，不假装有模型 |
 | 语音输入 | 浏览器自带识别：用 Chrome / Edge 打开 `http://localhost` 或 https 页面，点麦克风即可，不装 Python、不下模型 |
 | AI 在线（口语理解更准、话术更像人） | 点右上角状态标签，30 秒填自己的 Key，浏览器直连厂商 |
 
@@ -86,7 +86,7 @@ LLM 的边界被写死在代码里（`Altiora/backend/llm.py`）：
 
 | 方式 | 操作 | 适合 |
 |---|---|---|
-| 看演示视频 | 提交的 5-8 分钟视频里有 AI 在线模式的完整链路 | 最快，零配置 |
+| 看演示视频 | 5-8 分钟成片录制中，完成后随提交物一并提交；成片含 AI 在线模式的完整链路 | 稍后可用 |
 | 自己配 | 点右上角状态标签，30 秒填完自己的 Key | 想亲手验 |
 
 > 仓库里**不含任何 API Key**。作者的 Key 只存在本机浏览器（localStorage），用于录制演示视频，不进提交物。
@@ -120,12 +120,12 @@ LLM 的边界被写死在代码里（`Altiora/backend/llm.py`）：
 1. **同一输入，同一输出。** 冲突检测、10 分钟缓冲、代价账单、空档排程全部由本地确定性代码计算，不调用模型；模型只负责把句子翻译成字段、把结果说成人话，失败即降级。
 2. **没有隐藏服务。** 文字功能零依赖：双击 HTML 就能跑完整个闭环，不需要注册、不需要数据库、不需要联网。
 3. **仓库不含任何 Key。** `.env.example` 只有占位符；线上体验地址的 Key 只在服务器 `.env` 中，不下发浏览器、不进日志。
-4. **可一键自检。** `python3 自检.py` 检查依赖、模型、前端控件、Key 泄漏、脚本语法、5 份 HTML 副本一致性与接口；线上可用 `/api/health` 看 `llm` 是否为 `true`。
-5. **演进过程可查。** `main` 分支从 2026-10-22 起连续提交、无 merge（条数以 `git rev-list --count main` 为准），可逐条 `git show`；Prompt 快照见 `prompt-snapshots/`，完整文字版见 [AI协同对话历史.md](AI协同对话历史.md)，按步骤照着走的演进脚本见 [docs/replay.md](docs/replay.md)，改前/改后对照见 [Altiora-改前改后.html](Altiora-改前改后.html)。
+4. **可一键自检。** `python3 自检.py` 检查依赖、模型、前端控件、Key 泄漏、脚本语法、单一成品守卫与接口；线上可用 `/api/health` 看 `llm` 是否为 `true`。
+5. **演进过程可查。** `main` 分支无 merge（条数以 `git rev-list --count main` 为准，逐日分布用 `git log --date=short --format=%ad main | sort | uniq -c`），可逐条 `git show`；Prompt 快照见 `prompt-snapshots/`，完整文字版见 [AI协同对话历史.md](AI协同对话历史.md)，按步骤照着走的演进脚本见 [docs/replay.md](docs/replay.md)，改前/改后对照见 [Altiora-改前改后.html](Altiora-改前改后.html)。
 
 ### 复现成功的三个标志（先记住这三个，再往下做）
 
-1. 打开 `http://localhost:8000`（或在线体验地址），右上角显示 **「AI 在线」**；未配 Key 时显示「本地规则」，功能同样完整。
+1. 打开 `http://localhost:8000`（或在线体验地址），右上角显示 **「AI 在线」**；未配 Key 时显示「离线」，功能同样完整。
 2. 发一句 **「今天有点累」**，收到一句接住情绪的话，且不弹出表格或方案。
 3. 发 **「周五下午3点开会」**，时间轴出现事件；再发 **「周五下午3点半做家教，两小时」**，出现 A/B/C 三个代价选项。
 
@@ -139,7 +139,7 @@ LLM 的边界被写死在代码里（`Altiora/backend/llm.py`）：
 | Python | **3.10 及以上**（`python --version` 可验证） |
 | 浏览器 | Chrome / Edge（语音输入依赖 Web Audio + MediaRecorder） |
 | 磁盘 | 约 150 MB |
-| 网络 | 仅首次装依赖需要；**本地规则模式完全离线**，AI 在线模式需联网直连厂商 API |
+| 网络 | 仅首次装依赖需要；**离线模式完全离线**，AI 在线模式需联网直连厂商 API |
 
 > Windows 安装 Python 时务必勾选 **Add Python to PATH**。
 
@@ -191,7 +191,7 @@ python3 自检.py
 
 | # | 操作 | 预期结果 |
 |---|---|---|
-| 1 | 点麦克风，说「今天没睡好」 | 约 1-3 秒后出现汉字气泡，AI 用一句话接住情绪 |
+| 1 | 打字「今天没睡好」 | 一句话接住情绪；在线体验版走 http，浏览器不开放麦克风，语音需在 `localhost` 运行 `python server.py` |
 | 2 | 打字「我明天下午要和导师讨论」 | 听懂意图，但时间不全 → 追问「几点到几点」，不替你编时间 |
 | 3 | 打字「周五下午3点到5点去家教」 | 抽成事件排进时间轴，并算出撞了几处、代价在哪一页 |
 | 4 | 打字「记住，我晚上容易刷手机」 | 一句话确认，写入本地画像 |
@@ -209,7 +209,7 @@ cp .env.example .env
 |---|---|---|
 | `PORT` | `8000` | 服务端口，被占用时改成 8001 等 |
 | `VOSK_MODEL_PATH` | 内置模型路径 | 换用其他 Vosk 中文模型时填写绝对路径 |
-| `LLM_API_KEY` | 空 | 大模型 Key。留空 = 本地规则模式，功能完整 |
+| `LLM_API_KEY` | 空 | 大模型 Key。留空 = 离线模式，功能完整 |
 | `LLM_BASE_URL` | `https://api.openai.com/v1` | OpenAI 兼容地址（DeepSeek / 通义 / 火山方舟均可） |
 | `LLM_MODEL` | `gpt-4o-mini` | 模型名或方舟接入点 ID |
 | `RATE_PER_IP_DAY` | `50` | 服务端每人每天最多调多少次大模型 |
@@ -217,7 +217,7 @@ cp .env.example .env
 
 `.env` 支持写在值后面的行内注释（`RATE_PER_IP_DAY=50   # 说明`），也支持 `#` 整行注释与引号包裹。
 
-> 只在自己电脑上用可忽略限流两项；把服务开放到公网时，它们是防止免费额度被刷爆的闸门。超限返回 429，前端自动回退本地规则，用户无感。
+> 只在自己电脑上用可忽略限流两项；把服务开放到公网时，它们是防止免费额度被刷爆的闸门。超限返回 429，页面会明确提示已切到离线引擎，功能完整。
 
 ### 4.1 大模型：先想清楚「谁付钱」
 
@@ -228,7 +228,7 @@ cp .env.example .env
 
 页面里的方式（BYOK，Bring Your Own Key）：
 
-1. 打开页面，点右上角「本地规则 / AI 在线」标签
+1. 打开页面，点右上角「离线 / AI 在线」标签
 2. 选厂商 → 粘贴自己的 API Key → 保存 → 测试连接。URL、模型名都能改，需要时还能加额外请求头（一行一个 `Key: Value`，中转站常用）
 3. Key 只存在他自己的浏览器里（localStorage）；请求由浏览器直连厂商，不经过任何中转，服务端不落盘、不写日志、不进仓库
 4. 换电脑、换浏览器、点「清除」，Key 就没了
@@ -246,17 +246,17 @@ cp .env.example .env
 python3 server.py
 ```
 
-重启后页面右上角从「本地规则」变成「AI 在线」，口语化的说法（「我明天下午要和导师讨论」）也能被听懂。其他厂商的地址与模型名见 `.env.example` 注释。
+重启后页面右上角从「离线」变成「AI 在线」，口语化的说法（「我明天下午要和导师讨论」）也能被听懂。其他厂商的地址与模型名见 `.env.example` 注释。
 
 > 全部留空也能完整跑通 —— 这是本项目「零外部依赖」的设计目标，也是断网/无 Key 场景下的兜底。
 
 ## 5. 目录结构
 
+全仓只有 1 份成品 HTML（`Altiora-未来的我.html`），功能改动只提交它。
+
 ```
 Altiora.luck/
 ├── Altiora-未来的我.html           # ★ 单文件成品，双击即用
-├── index.html                      # 同源副本（部署用）
-├── app.html                        # 同源副本
 ├── server.py                       # 唯一后端入口：语音识别 + 可选 LLM 代理
 ├── 自检.py                          # 复现自检
 ├── requirements.txt
@@ -267,10 +267,7 @@ Altiora.luck/
 │   └── replay.md                    # 演进脚本：六迭代 + 三 Bug 的四段式复现步骤
 ├── scripts/
 │   └── download_vosk.py            # 下载 Vosk 中文离线模型（约 66 MB）
-├── Altiora/                        # 可运行版本（与根目录同源）
-│   ├── server.py                   # 与根目录同一份
-│   ├── index.html
-│   ├── requirements.txt
+├── Altiora/                        # 后端与模型（不含成品 HTML）
 │   └── backend/
 │       ├── llm.py                  # AI 翻译官：只抽取、只说话，不做计算
 │       └── model/                  # Vosk 模型（不进 git，用 scripts/download_vosk.py 下载）
@@ -298,7 +295,7 @@ Altiora.luck/
 | 比赛要求 | 仓库位置 | 状态 |
 |---|---|---|
 | 代码仓库 Public | 本仓库 | ✅ |
-| Git 提交历史（细粒度，逐条可查） | `main` 分支从 2026-10-22 起连续提交、无 merge（9 个开发日），条数以 `git rev-list --count main` 为准：`git log --oneline main`；说明见 `docs/replay.md` 第 4 节 | ✅ |
+| Git 提交历史（细粒度，逐条可查） | `main` 分支无 merge，条数以 `git rev-list --count main` 为准，逐日分布用 `git log --date=short --format=%ad main | sort | uniq -c`：`git log --oneline main`；说明见 `docs/replay.md` 第 4 节 | ✅ |
 | AI Prompt 历史快照（≥3 组迭代） | `prompt-snapshots/` | ✅ |
 | 10 分钟复现指南 | 本文档第 3 节（含「复现成功的三个标志」） | ✅ |
 | 演进脚本（Prompt → 建议 → 引导修复 → 验证） | `docs/replay.md` | ✅ |
