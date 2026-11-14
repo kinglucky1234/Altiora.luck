@@ -51,12 +51,18 @@ def check_python():
 def check_deps():
     # 缺依赖是最常见的「装了跑不起来」原因，逐个报名字，别只说 ImportError
     for mod, pkg in [("fastapi", "fastapi"), ("uvicorn", "uvicorn"),
-                     ("multipart", "python-multipart"), ("vosk", "vosk")]:
+                     ("multipart", "python-multipart")]:
         try:
             __import__(mod)
             ok(f"依赖 {pkg}", "已安装")
         except Exception:
             fail(f"依赖 {pkg}", f"没装。运行：pip install {pkg}")
+    # 语音是可选能力：没装 vosk 只影响录音识别，文字对话与 AI 在线都不依赖它
+    try:
+        __import__("vosk")
+        ok("依赖 vosk", "已安装")
+    except Exception:
+        warn("依赖 vosk", "没装（可选，只影响语音识别）。要用再 pip install vosk")
 
 
 def check_model():

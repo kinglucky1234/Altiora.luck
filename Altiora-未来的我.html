@@ -3486,11 +3486,11 @@ async function routeLLM(j,slotId,v){
       }
       setMsg(slotId,stepsHTML(2,"schedule","代价已由本地算完"));
       const line=await askSay(added.length===1?{
-        事件:{名称:added[0].name,开始:added[0].start,结束:added[0].end},
+        事件:{名称:added[0].name,日期:added[0].date||todayStr(),开始:added[0].start,结束:added[0].end},
         新撞出的冲突数:totalDelta,
         冲突:conflictInfo
       }:{
-        新增事件:added.map(e=>({名称:e.name,开始:e.start,结束:e.end})),
+        新增事件:added.map(e=>({名称:e.name,日期:e.date||todayStr(),开始:e.start,结束:e.end})),
         新撞出的冲突数:totalDelta,
         首个冲突:conflictInfo
       });
