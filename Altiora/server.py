@@ -40,7 +40,7 @@ def _load_dotenv():
 
 _load_dotenv()
 
-BACKEND = BASE / "Altiora" / "backend"
+BACKEND = BASE / "backend"
 sys.path.insert(0, str(BACKEND))
 import llm  # noqa: E402  —— AI 翻译官（未配 Key 时自动退回规则）
 

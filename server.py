@@ -13,11 +13,13 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import wave
 from contextlib import asynccontextmanager
+from datetime import date
 from pathlib import Path
 
-from fastapi import Body, FastAPI, UploadFile, File
+from fastapi import Body, FastAPI, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
@@ -56,6 +58,41 @@ MODEL_DIR = Path(
 )
 PORT = int(os.environ.get("PORT", "8000"))
 HTML = BASE / "Altiora-未来的我.html"
+
+# ── 限流：防止服务器上的免费 Key 被刷爆 ──────────────────────────
+# 只对调大模型的两个接口（/api/understand、/api/say）生效；
+# /api/asr 是本地语音，不花 Key 钱，不限。
+RATE_PER_IP_DAY = int(os.environ.get("RATE_PER_IP_DAY", "50"))     # 每个 IP 每天最多调多少次大模型
+RATE_GLOBAL_DAY = int(os.environ.get("RATE_GLOBAL_DAY", "1000"))  # 全服务器每天总上限
+_rate_lock = threading.Lock()
+_rate = {"day": "", "ip": {}, "total": 0}
+
+
+def _client_ip(request: Request) -> str:
+    """取真实客户端 IP：优先 X-Forwarded-For（反代/隧道后），再退到直连 IP。"""
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _check_rate(request: Request):
+    """每日（按服务器本地日期）重置计数器；超限返回 429，否则返回 None。"""
+    today = date.today().isoformat()
+    ip = _client_ip(request)
+    with _rate_lock:
+        if _rate["day"] != today:
+            _rate["day"] = today
+            _rate["ip"].clear()
+            _rate["total"] = 0
+        if _rate["total"] >= RATE_GLOBAL_DAY:
+            return JSONResponse({"ok": False, "reason": "rate_limited_global"}, status_code=429)
+        cnt = _rate["ip"].get(ip, 0)
+        if cnt >= RATE_PER_IP_DAY:
+            return JSONResponse({"ok": False, "reason": "rate_limited"}, status_code=429)
+        _rate["ip"][ip] = cnt + 1
+        _rate["total"] += 1
+    return None
 
 
 @asynccontextmanager
@@ -143,11 +180,14 @@ def health():
 
 
 @app.post("/api/understand")
-async def understand(req: dict = Body(...)):
+async def understand(request: Request, req: dict = Body(...)):
     """
     AI 翻译官：自然语言 → 结构化字段。
     只做理解，不做任何计算；失败时返回 ok=False，前端退回本地规则。
     """
+    limited = _check_rate(request)
+    if limited is not None:
+        return limited
     text = str(req.get("text") or "").strip()
     if not text:
         return {"ok": False, "source": "rule", "reason": "empty"}
@@ -163,11 +203,14 @@ async def understand(req: dict = Body(...)):
 
 
 @app.post("/api/say")
-async def say(req: dict = Body(...)):
+async def say(request: Request, req: dict = Body(...)):
     """
     第二段翻译官：计算器算出的确定结果 → 一句人话。
     模型只能引用给定数字，写错就作废，前端退回模板。
     """
+    limited = _check_rate(request)
+    if limited is not None:
+        return limited
     facts = req.get("facts")
     if not isinstance(facts, dict) or not facts:
         return {"ok": False, "reason": "empty_facts"}
