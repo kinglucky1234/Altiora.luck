@@ -42,10 +42,15 @@ _BANNED = re.compile(
     r"加油|你可以的|相信自己|慢慢来|不要放弃|你能做到"
 )
 _NUM = re.compile(r"\d+(?:\.\d+)?")
+# goal 只收目标本身：超长、带日期/星期、带寒暄的，一律丢弃，交给本地兜底
+_GOAL_BAD = re.compile(
+    r"\d{1,2}\s*[月日号]|今天|明天|后天|大后天|周[一二三四五六日天]|星期[一二三四五六日天]|"
+    r"你好|谢谢|在吗|早上好|晚上好|晚安"
+)
 
 SYSTEM = """你叫 Altiora，是「用户理想中更好的自己」在电脑里的投影，不是客服，也不是心理医生。
 
-你的职责只有翻译，不做决策。
+你的职责是理解：判断意图、抽取事件、识别目标与情绪；计算与排程由本地确定性引擎完成。
 
 【判断 intent，只能选一个】
 - safety：出现不想活、自伤、结束生命的意味
@@ -439,9 +444,12 @@ def understand(text: str, profile: dict | None = None,
         subject = str(raw_subject or "").strip()[:20] or None
     memory = _clean_memory(obj.get("memory")) if intent == "memory" else None
     # 目标不再只认 goal 意图：倾诉里顺带提一句「我想考研」也算数
-    goal = str(obj.get("goal") or "").strip()[:60] or None
+    goal = str(obj.get("goal") or "").strip()
+    if len(goal) > 20 or _GOAL_BAD.search(goal):
+        goal = None
+    goal = goal or None
     goal_horizon = obj.get("goal_horizon")
-    if goal_horizon not in ("long", "mid", "short"):
+    if goal_horizon not in ("long", "mid", "short") or not goal:
         goal_horizon = None
     weakness = _clean_weakness(obj.get("weakness"))
     social = str(obj.get("social") or "").strip()[:40] or None if intent == "social" else None
