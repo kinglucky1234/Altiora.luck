@@ -78,7 +78,7 @@ for line in [
     "自然语言理解：用户输入明天 11 点到 1 点家教，时薪 80，LLM 提取为 intent=schedule, event={name:家教, start:11:00, end:13:00, wage:80}，冲突和代价由本地代码计算。",
     "结果表达：本地计算器算出冲突后，LLM 把确定结果说成一句人话，且只允许引用已有数字，编造数字整句作废。",
     "BYOK 架构：用户自带 API Key，Key 只存浏览器 localStorage，服务端不落盘、不写日志；自填 URL 只允许公网 https，带 DNS 重绑定防护。",
-    "确定性兜底：无 Key 或 LLM 调用失败时，全部回退本地规则，功能完整可用。",
+    "确定性兜底：无 Key 或 LLM 调用失败时，全部回退离线引擎，功能完整可用。",
     "AI 协同开发：开发过程中使用 Trae 进行 Bug 排查、代码审查、回归用例生成，如以后想正则漏匹配、日记 flush 时机、前导逗号清理等修复均由 AI 协助定位并验证。",
 ]:
     story.append(Paragraph("• " + line, styles["bullet"]))

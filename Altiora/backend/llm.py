@@ -11,7 +11,7 @@ AI 翻译官（LLM 版）
   - 不补全用户没说的信息（没说时间就不编时间）
   - 不在 schedule / memory / goal / safety 场景生成回复
 
-没配 Key 或调用失败时返回 ok=False，前端自动退回本地规则 —— 离线也能完整跑。
+没配 Key 或调用失败时返回 ok=False，前端自动退回离线引擎 —— 离线也能完整跑。
 """
 from __future__ import annotations  # PEP 563：延迟求值注解，让 str | None / list[dict] 在 3.10+ 也能跑
 
@@ -67,7 +67,7 @@ SYSTEM = """你叫 Altiora，是「用户理想中更好的自己」在电脑里
   intensity 是这个情绪的强烈程度，1 最淡、10 最烈。
   例子：「我快撑不住了」→ intensity 9；「今天没睡好」→ intensity 3；none 永远 intensity 0。
 - 用户可能用中文数字（三点）、相对说法（下午/明晚/下周三）、口语时长（复习两小时），
-  这些都由你负责理解并归一化成 24 小时制 HH:MM，别指望本地规则去猜。
+  这些都由你负责理解并归一化成 24 小时制 HH:MM，别指望离线引擎去猜。
 - schedule 的时间给在 events 数组里，每项必须有 name、start、end，最多 4 件。
   用户一句话说几件事，就拆几条；说了几件事但只有部分有完整时间，只把时间完整的放进去。
   一件都凑不齐 start/end，events 给空数组 []，并把那件事的名字写进 subject，不要猜时间。

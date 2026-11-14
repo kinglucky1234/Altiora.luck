@@ -222,7 +222,7 @@ body[data-tab="home"] .fab{display:none}
 /* 刚排进去的那一件：指给用户看，2.4 秒后自己淡掉，不需要他动手关 */
 .vtl-item.flash .vtl-chunk{animation:flashChunk 2.4s ease-out}
 @keyframes flashChunk{0%,40%{box-shadow:0 0 0 2px var(--blue);border-color:var(--blue)}100%{box-shadow:0 0 0 0 transparent}}
-/* 这句话是谁说的：没接大模型时就标本地规则，不装「思考中」 */
+/* 这句话是谁说的：没接大模型时就标离线引擎，不装「思考中」 */
 .src{display:block;margin-top:6px;font-size:11px;color:var(--t3)}
 /* 三步状态条：只写真实阶段（理解 → 算 / 落 → 回话），不写「AI 正在深度思考」这类假戏 */
 .steps{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11.5px;color:var(--t3)}
@@ -2742,7 +2742,7 @@ const LLM_SYS=`你叫 Altiora，是「用户理想中更好的自己」在电脑
 
 【抽取规则】
 - 用户可能用中文数字（三点）、相对说法（下午/明晚/下周三）、口语时长（复习两小时），
-  这些都由你负责理解并归一化成 24 小时制 HH:MM，别指望本地规则去猜。
+  这些都由你负责理解并归一化成 24 小时制 HH:MM，别指望离线引擎去猜。
 - schedule 的时间给在 events 数组里，每项必须有 name、start、end，最多 4 件。
   用户一句话说几件事，就拆几条；说了几件事但只有部分有完整时间，只把时间完整的放进去。
   一件都凑不齐 start/end，events 给空数组 []，并把那件事的名字写进 subject，不要猜时间。
@@ -3361,7 +3361,7 @@ async function handleUser(v){
 
   const slot=push("ai",stepsHTML(0,"chat"));
   const j=await askLLM(v);
-  /* 没接上大模型就明说「本地规则」，不让用户以为那头有个模型在思考 */
+  /* 没接上大模型就明说「离线引擎」，不让用户以为那头有个模型在思考 */
   if(!j){setMsg(slot.id,replyTo(v)+`<span class="src">离线模式 · 未接大模型</span>`);return;}
   setMsg(slot.id,stepsHTML(1,j.intent==="schedule"?"schedule":"chat"));
   await routeLLM(j,slot.id,v);
@@ -3444,7 +3444,7 @@ async function routeLLM(j,slotId,v){
   if(j.intent==="schedule"){
     let evs=(Array.isArray(j.events)&&j.events.length)?j.events.slice(0,4):(j.event?[j.event]:[]);
     if(!evs.length){
-      // 大模型一件都没凑齐，但用户原话里明明有时间——本地规则兜底，别让用户重说一遍
+      // 大模型一件都没凑齐，但用户原话里明明有时间——离线引擎兜底，别让用户重说一遍
       const local=parseEventsFromText(v);
       if(local.length)evs=local.slice(0,4);
     }
@@ -3870,7 +3870,7 @@ function toast(msg){
   clearTimeout(toast._t);
   toast._t=setTimeout(()=>t.classList.remove("on"),5200);
 }
-/* 429 不能静默降级：评审看到「本地规则」会以为没接模型，这里明确说是额度用尽 */
+/* 429 不能静默降级：评审看到「离线引擎」会以为没接模型，这里明确说是额度用尽 */
 function quotaNotice(){
   setAIPill(false);
   let b=document.getElementById("quotaNotice");

@@ -195,7 +195,7 @@ def health():
 async def understand(request: Request, req: dict = Body(...)):
     """
     AI 翻译官：自然语言 → 结构化字段。
-    只做理解，不做任何计算；失败时返回 ok=False，前端退回本地规则。
+    只做理解，不做任何计算；失败时返回 ok=False，前端退回离线引擎。
     """
     limited = _check_rate(request)
     if limited is not None:
