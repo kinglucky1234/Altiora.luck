@@ -2455,6 +2455,7 @@ function renderHistory(){
     box.appendChild(d);
   });
   box.scrollTop=box.scrollHeight;
+  keepLatestUCardOpen();
 }
 /* ── 全屏聊天记录 ── */
 let fullRec=null,fullMicOn=false;
@@ -3385,11 +3386,17 @@ function understandCard(j){
     rows.push(`<span class="uc-k">事件</span><span class="uc-v">${evs.map(e=>`${esc(e.name)} ${e.start}-${e.end}${e.date?"（"+esc(e.date)+"）":""}`).join("、")}</span>`);
   if(j.subject&&!evs.length)
     rows.push(`<span class="uc-k">待补</span><span class="uc-v">${esc(j.subject)}（缺开始/结束时间）</span>`);
-  if(rows.length<2)return "";
-  return `<details class="ucard"><summary>模型理解（${rows.length-1} 项）</summary><div class="uc-body">${rows.join("<br>")}</div></details>`;
+  if(!rows.length)return "";
+  return `<details class="ucard" open><summary>模型理解${j.source==="llm"?" · AI 在线":" · 离线解析"}（${rows.length} 项）</summary><div class="uc-body">${rows.join("<br>")}</div></details>`;
+}
+/* 只让最新一张理解卡展开，历史记录不堆一屏 */
+function keepLatestUCardOpen(){
+  const cards=document.querySelectorAll(".ucard");
+  cards.forEach((c,i)=>c.open=(i===cards.length-1));
 }
 function setMsgU(slotId,html,j){
   setMsg(slotId,html+understandCard(j));
+  keepLatestUCardOpen();
 }
 /* ── 话术三级降级：模型合格句 → 同 intent 上次合格句 → 本地模板原句 ──
    校验三层：是字符串且不长（结构）、不喊口号不客服腔（评语）、schedule 不带数字（校验层：
