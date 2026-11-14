@@ -3319,9 +3319,19 @@ async function handleUser(v){
   if(/(排|做|出|定|安排).{0,12}(计划|安排)|计划.{0,2}(排|做|定)/.test(v)){
     const pool=[["mid_term_goal",DATA.profile.mid_term_goal],["short_term_goal",DATA.profile.short_term_goal],["long_term_goal",DATA.profile.long_term_goal]].filter(x=>x[1]);
     const hit=pool.find(([,g])=>matchGoal(v,g));
-    const gn=hit?hit[1]:(pool.length===1?pool[0][1]:"");
+    let gn=hit?hit[1]:(pool.length===1?pool[0][1]:"");
+    let gk=hit?hit[0]:(pool.length===1?pool[0][0]:"mid_term_goal");
+    /* 画像里一个目标都没有：从这句话里把目标剥出来，记进画像再排，别反问他再说一遍 */
+    if(!gn){
+      const cand=goalFromPlanText(v);
+      if(cand){
+        gn=cand;
+        gk=/这周|本周|这个?星期|下周|近期|这几天/.test(v)?"short_term_goal":"mid_term_goal";
+        DATA.profile[gk]=cand;saveData();renderMe();updStats();
+      }
+    }
     if(gn){
-      const need=(DATA.profile.goal_min||{})[(hit?hit[0]:pool[0][0])]||60;
+      const need=(DATA.profile.goal_min||{})[gk]||60;
       /* 之前摆过的那一个时段，被这份计划顶掉了——明说一句，免得他以为两条提议都还算数 */
       const stale=DATA.care&&DATA.care.pending&&DATA.care.pending.type!=="plan"?DATA.care.pending:null;
       const slot=push("ai",stepsHTML(1,"plan"));
@@ -3597,6 +3607,19 @@ const MOOD_LABEL=[
   [/没人|孤独|一个人/,"很孤单"],
   [/摆烂|躺平|没动力/,"没动力"]
 ];
+/* 「这周备考六级，帮我排计划」：画像里还没有目标时，把这句话里的目标剥出来 */
+function goalFromPlanText(v){
+  const segs=String(v||"").split(/[，,、。！!？?；;\s]+/).filter(Boolean);
+  for(let s of segs){
+    s=s.replace(/(每天|每周|每日|一个月内).*$/,"");
+    s=s.replace(/^(这周|本周|这个?星期|下周|这个月|下个月|这学期|本学期|近期|这几天|今天|明天|后天)[，,]?/,"");
+    s=s.replace(/(帮我|给我|帮忙|请|麻烦)/g,"");
+    s=s.replace(/(安排一下|安排|排一下|排个|排|计划|规划|方案)/g,"");
+    s=s.trim();
+    if(s.length>=2&&s.length<=14&&!/\d/.test(s))return s;
+  }
+  return "";
+}
 // 从一句话里抠出「目标本身」：去掉寒暄、连接词、语气词，动词归一
 function extractGoal(t){
   let s=t.trim()
