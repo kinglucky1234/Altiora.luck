@@ -617,6 +617,32 @@ story.append(B("<b>记忆滚窗</b>：聊天记忆超 6 条即 shift 掉最早�
 story.append(B("<b>无递归</b>：所有循环均为有界 for/while，不存在递归调用栈溢出风险。"))
 story.append(B("<b>LLM 超时</b>：directUnderstand/directSay 均设 fetch 超时（默认 15s），超时即回退确定性文案，不会挂起界面。"))
 
+story += H2("7.6 公网服务部署与调用限流")
+story.append(P("评审版以 <b>同源部署</b>方式提供：前端页面与 /api/understand、/api/say 由同一台服务器（同一个 server.py）提供，页面里用相对路径调用接口，因此不存在 https 页面调 http 接口的混合内容拦截，也不需要额外的反向代理或隧道。"))
+story.append(P("服务端注入 Key 后，浏览器侧零配置即为「AI 在线」。为防止公网被刷爆免费额度，接口层加了一道<b>进程内每日限流</b>："))
+story.append(B("<b>每 IP 每日 50 次</b>（RATE_PER_IP_DAY），按天自动清零，互不影响。"))
+story.append(B("<b>全局每日 1000 次</b>（RATE_GLOBAL_DAY），防止换 IP 绕开单 IP 限制。"))
+story.append(B("<b>只拦两个花额度的接口</b>：/api/understand 与 /api/say；/api/asr 是本地语音识别，不计费，不限。"))
+story.append(B("<b>超限返回 429</b>，前端 askLLM 收到非 2xx 即返回 null，静默回退本地规则，用户侧功能不降级、不报错。"))
+story.append(P("客户端真实 IP 优先取 <code>X-Forwarded-For</code> 首段，兼容将来放在反向代理之后；没有该头时退回直连地址。计数器由一把线程锁保护，避免并发下重复计数。"))
+story.append(CODE("""RATE_PER_IP_DAY = int(os.environ.get("RATE_PER_IP_DAY", "50"))
+RATE_GLOBAL_DAY = int(os.environ.get("RATE_GLOBAL_DAY", "1000"))
+
+def _check_rate(request):
+    today = date.today().isoformat()
+    ip = _client_ip(request)
+    with _rate_lock:
+        if _rate["day"] != today:          # 跨天自动清零
+            _rate["day"], _rate["ip"], _rate["total"] = today, {}, 0
+        if _rate["total"] >= RATE_GLOBAL_DAY:
+            return JSONResponse({"ok": False, "reason": "rate_limited_global"}, status_code=429)
+        if _rate["ip"].get(ip, 0) >= RATE_PER_IP_DAY:
+            return JSONResponse({"ok": False, "reason": "rate_limited"}, status_code=429)
+        _rate["ip"][ip] = _rate["ip"].get(ip, 0) + 1
+        _rate["total"] += 1
+    return None"""))
+story.append(P("另一处部署级细节：<code>.env</code> 解析支持<b>行内注释</b>（<code>KEY=50&nbsp;&nbsp;# 说明</code>）。最初的实现只做 strip，导致照着模板部署时 <code>int(\"50&nbsp;&nbsp;# 说明\")</code> 直接抛 ValueError、服务起不来；现按「# 前必须是空白」的规则剥离注释，既修掉崩溃，又不会误伤值里合法的 # 字符。"))
+
 # ════════════════════════════════════════
 # 8. 测试方案与结果
 # ════════════════════════════════════════
@@ -744,6 +770,44 @@ python server.py                     # 启动后打开 http://localhost:8000""")
 
 story += H2("11.3 AI 在线模式")
 story.append(P("页面右上角点状态标签 → 填自己的 API Key → 保存。Key 只存本机浏览器，请求直连厂商。支持 DeepSeek / 通义 / 火山方舟等 OpenAI 兼容接口。"))
+
+story += H2("11.4 评委直接体验：服务端同源部署")
+story.append(P("除零依赖与 BYOK 两种方式外，评审版另提供一台已配置好的公网服务，评委打开即用，无需任何设置："))
+story.append(CODE("""http://82.157.162.252:8000/          # 打开即「AI 在线」"""))
+story.append(P("该服务由 <code>server.py</code> 同时托管前端页面与 /api 接口，Key 只存在服务器 <code>.env</code> 中，不下发浏览器、不进仓库。以下为可复现的常驻部署方式（Linux）："))
+story.append(CODE("""# 1) 代码与依赖（在仓库根目录，不要在 Altiora/ 子目录里启动）
+cd ~/Altiora.luck
+pip3 install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+
+# 2) 配置 Key（.env 必须放在仓库根目录）
+cp .env.example .env
+vi .env       # 填 LLM_API_KEY / LLM_BASE_URL / LLM_MODEL
+
+# 3) 开机自启（systemd），替代 nohup，服务器重启后自动拉起
+sudo tee /etc/systemd/system/altiora.service > /dev/null <<EOF
+[Unit]
+Description=Altiora AI Proxy
+After=network.target
+
+[Service]
+Type=simple
+User=$USER
+WorkingDirectory=$HOME/Altiora.luck
+ExecStart=$(which python3) server.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now altiora
+sudo systemctl status altiora      # 看到 active (running)"""))
+story.append(B("<b>启动目录是硬约束</b>：<code>BASE = Path(__file__).resolve().parent</code> 决定它去哪里找 <code>Altiora/backend/llm.py</code>、主页面与 <code>.env</code>。必须在仓库根目录启动、<code>.env</code> 也放根目录，放进 <code>Altiora/</code> 子目录等于没配。"))
+story.append(B("<b>端口</b>：默认 8000，需在云厂商安全组放行入站 TCP 8000；换端口改 <code>PORT</code> 环境变量。"))
+story.append(B("<b>日志与重启</b>：日志 <code>~/Altiora.luck/server.log</code>（nohup 方式）或 <code>journalctl -u altiora -f</code>（systemd 方式）。"))
+story.append(B("<b>实测</b>：首页 200、<code>/api/health</code> 返回 <code>llm:true</code>、<code>/api/understand</code> 返回 <code>source:\"llm\"</code>、日程落地与刷新持久化均通过；单轮耗时约 5 秒（DeepSeek-V3）。"))
 
 # ════════════════════════════════════════
 # 12. 不足与展望
