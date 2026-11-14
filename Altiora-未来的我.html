@@ -3313,7 +3313,7 @@ async function handleUser(v){
       const need=(DATA.profile.goal_min||{})[(hit?hit[0]:pool[0][0])]||60;
       /* 之前摆过的那一个时段，被这份计划顶掉了——明说一句，免得他以为两条提议都还算数 */
       const stale=DATA.care&&DATA.care.pending&&DATA.care.pending.type!=="plan"?DATA.care.pending:null;
-      const slot=push("ai",stepsHTML(1,"plan","离线模式"));
+      const slot=push("ai",stepsHTML(1,"plan"));
       const plan=await buildPlan(gn,need,planScope(v),preferStartMin(v));
       if(!plan.days.length){
         setMsg(slot.id,`接下来这几天没有够 ${fmtDur(need)} 的空当给「${esc(gn)}」。要么把时长调小一点，要么先把某件事挪走——你说了算。`);
@@ -4236,9 +4236,9 @@ function loadDemo(){
   });
   DATA.events=[
     {id:"demo1",name:"图书馆复习",type:"study",date:t,start:"09:00",end:"11:00",loc:"图书馆",priority:1,wage:0,done:true},
-    {id:"demo2",name:"组会",type:"meeting",date:t,start:"14:00",end:"15:30",loc:"实验室",priority:3,wage:0,done:false},
+    {id:"demo2",name:"组会",type:"meeting",date:t,start:"14:00",end:"15:30",loc:"实验室",priority:3,wage:0,done:true},
     {id:"demo3",name:"家教",type:"work",date:t,start:"15:00",end:"17:00",loc:"学生家",priority:2,wage:80,done:false},
-    {id:"demo4",name:"课程设计",type:"study",date:d1,start:"10:00",end:"12:00",loc:"自习室",priority:2,wage:0,done:false},
+    {id:"demo4",name:"课程设计",type:"study",date:d1,start:"10:00",end:"12:00",loc:"自习室",priority:2,wage:0,done:true},
     {id:"demo5",name:"社团活动",type:"meeting",date:d1,start:"19:00",end:"21:00",loc:"活动室",priority:1,wage:0,done:false},
     {id:"demo6",name:"早课",type:"class",date:d2,start:"08:30",end:"10:00",loc:"教学楼",priority:3,wage:0,done:false}
   ];
@@ -4757,8 +4757,24 @@ async function directPlan(goal,n){
 }
 async function planTopics(goal,n){
   if(USERLLM.key){
-    try{const r=await withTimeout(directPlan(goal,n),12000);if(r&&r.length)return r;}catch(e){}
+    try{const r=await withTimeout(directPlan(goal,n),12000);if(r&&r.length){window.LAST_TOPIC_SRC="llm";return r;}}catch(e){}
   }
+  /* 评委浏览器没有 Key：借服务端 .env 里的模型拆，别直接掉模板 */
+  if(!API_DOWN){
+    const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),20000);
+    try{
+      const r=await fetch("/api/topics",{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({goal,n}),signal:ctl.signal
+      });
+      clearTimeout(t);
+      if(r.ok){
+        const j=await r.json();
+        if(j&&j.ok&&Array.isArray(j.topics)&&j.topics.length){window.LAST_TOPIC_SRC="server";return j.topics;}
+      }else if(r.status===404||r.status===405)API_DOWN=true;
+    }catch(e){clearTimeout(t);}
+  }
+  window.LAST_TOPIC_SRC="local";
   return planTopicsLocal(goal);
 }
 /* 「7点开始」：用户说了想从几点开始排，就从几点往后找空当 */
@@ -4825,8 +4841,10 @@ function planText(goal,days){
   const more=days.length-show.length;
   const head=`按空档排了 ${days.length} 天，${goal}：`;
   const lines=show.map(it=>`${dateLabel(it.date)} ${it.start}-${it.end} ${esc(it.topic)}`);
+  const SRC_CN={llm:"模型",server:"服务端模型",local:"本地模板"};
   return esc(head)+"<br>"+lines.join("<br>")
     +(more?`<br>…还有 ${more} 天，一起排进去`:"")
+    +`<br><span class="hint">拆解来源：${SRC_CN[window.LAST_TOPIC_SRC]||"本地模板"}</span>`
     +"<br>回一句「行」全部排进去，不想就说「算了」。";
 }
 function proactiveCare(){

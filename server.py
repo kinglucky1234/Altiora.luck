@@ -236,6 +236,27 @@ async def say(request: Request, req: dict = Body(...)):
     )
 
 
+@app.post("/api/topics")
+async def topics(request: Request, req: dict = Body(...)):
+    """
+    目标拆解：把一个目标拆成每天练什么。
+    只返回清单，不排时间、不算代价；失败返回空列表，前端落本地模板。
+    """
+    limited = _check_rate(request)
+    if limited is not None:
+        return limited
+    goal = str(req.get("goal") or "").strip()
+    if not goal:
+        return {"ok": False, "topics": [], "source": "none", "reason": "empty_goal"}
+    try:
+        n = int(req.get("n") or 1)
+    except (TypeError, ValueError):
+        n = 1
+    n = max(1, min(60, n))
+    r = llm.topics(goal, n)
+    return {"ok": bool(r), "topics": r or [], "source": "llm" if r else "none"}
+
+
 @app.post("/api/asr")
 async def asr(audio: UploadFile = File(...)):
     """浏览器录音（webm/ogg/wav）→ 文字。

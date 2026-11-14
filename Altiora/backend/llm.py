@@ -530,3 +530,31 @@ def say(facts: dict, profile: dict | None = None,
     if not _numbers(line) <= _numbers(fact_json):
         return {"ok": False, "reason": "invented_number"}
     return {"ok": True, "text": line, "model": model_id}
+
+
+def topics(goal: str, n: int) -> list[str] | None:
+    """把一个目标拆成每天练什么。只返回清单，不排时间、不算代价。"""
+    api_key, base_url, model_id = _resolve(None, None, None)
+    if not api_key:
+        return None
+    sys_prompt = (
+        '你只负责把一个学习/成长目标拆成每天练什么。只输出 JSON：{"topics":["…"]}，'
+        '4-6 条，每条 12 字以内，覆盖不同能力项；不要写时间、日期，不要鼓励语，不要解释。'
+    )
+    usr = f"目标：{str(goal)[:30]}\n需要 {n} 天，给我一份轮换清单。"
+    try:
+        content = _chat([
+            {"role": "system", "content": sys_prompt},
+            {"role": "user", "content": usr},
+        ], api_key, base_url, model_id)
+    except Exception:
+        return None
+    obj = _parse_json(content)
+    if not obj or not isinstance(obj.get("topics"), list):
+        return None
+    out = []
+    for t in obj["topics"][:6]:
+        s = str(t or "").strip()[:20]
+        if len(s) >= 2:
+            out.append(s)
+    return out or None
