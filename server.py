@@ -252,7 +252,7 @@ async def topics(request: Request, req: dict = Body(...)):
         n = int(req.get("n") or 1)
     except (TypeError, ValueError):
         n = 1
-    n = max(1, min(60, n))
+    n = max(1, min(7, n))
     r = llm.topics(goal, n)
     return {"ok": bool(r), "topics": r or [], "source": "llm" if r else "none"}
 

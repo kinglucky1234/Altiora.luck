@@ -538,8 +538,10 @@ def topics(goal: str, n: int) -> list[str] | None:
     if not api_key:
         return None
     sys_prompt = (
-        '你只负责把一个学习/成长目标拆成每天练什么。只输出 JSON：{"topics":["…"]}，'
-        '4-6 条，每条 12 字以内，覆盖不同能力项；不要写时间、日期，不要鼓励语，不要解释。'
+        f'你只负责把一个学习/成长目标拆成每天练什么。只输出 JSON：{{"topics":["…"]}}，'
+        f'正好 {n} 条，每条 12 字以内，覆盖不同能力项；'
+        f'若 {n} <= 4 则合并成大类，若 {n} >= 10 则拆到具体技能点；'
+        f'不要写时间、日期，不要鼓励语，不要解释。'
     )
     usr = f"目标：{str(goal)[:30]}\n需要 {n} 天，给我一份轮换清单。"
     try:
@@ -553,7 +555,7 @@ def topics(goal: str, n: int) -> list[str] | None:
     if not obj or not isinstance(obj.get("topics"), list):
         return None
     out = []
-    for t in obj["topics"][:6]:
+    for t in obj["topics"][:7]:
         s = str(t or "").strip()[:20]
         if len(s) >= 2:
             out.append(s)
