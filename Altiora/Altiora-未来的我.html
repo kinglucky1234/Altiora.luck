@@ -211,6 +211,11 @@ body[data-tab="home"] .fab{display:none}
   border:3px solid var(--bg);box-shadow:0 0 0 1px var(--line-hi),0 0 12px rgba(255,255,255,.12);z-index:2}
 .vtl-chunk{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 13px;transition:.15s}
 .vtl-item:hover .vtl-chunk{border-color:var(--line-hi)}
+/* 刚排进去的那一件：指给用户看，2.4 秒后自己淡掉，不需要他动手关 */
+.vtl-item.flash .vtl-chunk{animation:flashChunk 2.4s ease-out}
+@keyframes flashChunk{0%,40%{box-shadow:0 0 0 2px var(--blue);border-color:var(--blue)}100%{box-shadow:0 0 0 0 transparent}}
+/* 这句话是谁说的：没接大模型时就标本地规则，不装「思考中」 */
+.src{display:block;margin-top:6px;font-size:11px;color:var(--t3)}
 .vtl-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
 .vtl-name{font-size:13px;font-weight:600;color:var(--t1)}
 .vtl-tag{font-size:10.5px;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.04);
@@ -1794,7 +1799,7 @@ function renderGantt(){
     const cf=cfIds.has(e.id);
     const col=COLORS[e.type]||"#3B82F6";
     const idx=DATA.events.indexOf(e);
-    return `<div class="vtl-item${cf?" cf":""}${e.done?" done":""}" title="${esc(e.name)} ${e.start}-${e.end} · 优先级 ${e.priority}${e.wage?" · 时薪"+e.wage+"元":""}">
+    return `<div class="vtl-item${cf?" cf":""}${e.done?" done":""}" data-eid="${e.id}" title="${esc(e.name)} ${e.start}-${e.end} · 优先级 ${e.priority}${e.wage?" · 时薪"+e.wage+"元":""}">
       <div class="vtl-dot" style="background:${col}"></div>
       <div class="vtl-chunk">
         <div class="vtl-row"><b class="vtl-name">${esc(e.name)}</b><span class="vtl-tag">${TYPE_CN[e.type]||"日程"}</span></div>
@@ -1838,6 +1843,23 @@ function refreshDay(){
   DATA.conflicts=detectConflicts();
   saveData();
   renderDayBar();renderGantt();renderRecon();renderCountdown();renderConflicts();renderOrbs();renderMe();updStats();
+}
+
+/* 排进去之后别只回一句话：把时间轴翻到那一天，滚到那一件，高亮一下。
+   因果要看得见——他说「行」，屏幕就得有东西动给他看。 */
+function revealEvent(date,id){
+  if(!date||!id)return;
+  VIEW_DATE=date;
+  go("timeline");
+  setTLView("day");
+  refreshDay();
+  setTimeout(()=>{
+    const el=document.querySelector('#bars .vtl-item[data-eid="'+id+'"]');
+    if(!el)return;
+    try{el.scrollIntoView({block:"center",behavior:"smooth"});}catch(e){el.scrollIntoView();}
+    el.classList.add("flash");
+    setTimeout(()=>el.classList.remove("flash"),2600);
+  },150);
 }
 
 /* ════════ 陪跑：截止日期 / 完成 / 对账 / 周回顾 ════════ */
@@ -3102,19 +3124,30 @@ async function handleUser(v){
     if(YES.test(say)){
       DATA.care.pending=null;saveData();
       if(propose.type==="plan"){
-        let n=0,dup=0;
-        propose.items.forEach(it=>{
+        let n=0,dup=0,first=null;
+        const items=propose.items.slice().sort((a,b)=>(a.date+a.start).localeCompare(b.date+b.start));
+        items.forEach(it=>{
           const r=addStructuredEvent({name:it.name,type:"goal",date:it.date,start:it.start,end:it.end});
           if(r.dup)dup++;else n++;
+          if(!first)first=r.ev;
         });
         renderGantt();renderConflicts();renderOrbs();renderMe();updStats();saveData();
-        setTimeout(()=>push("ai",`排进去了 ${n} 场${dup?`，${dup} 场原来就有、跳过了`:""}。到日子在日程页画个勾就行。`),200);
+        const days=new Set(propose.items.map(i=>i.date)).size;
+        const msg=n===0
+          ?"这些时间你日程里已经有了，没重复加。我指给你看。"
+          :`排好了：${days} 天 ${n} 场${dup?`，${dup} 场原来就有、跳过了`:""}${first?`，从 ${cuteDate(first.date)} ${first.start} 的「${esc(first.name)}」开始`:""}。我指给你看。`;
+        push("ai",msg);
+        if(first){
+          revealEvent(first.date,first.id);
+          setTimeout(()=>toast(n===0?"已经在日程里了":`排好了 · ${days} 天 ${n} 场`),350);
+        }
         return;
       }
       const r=addStructuredEvent({name:propose.goal,type:"goal",date:propose.date,start:propose.start,end:propose.end});
-      setTimeout(()=>push("ai",r.dup
+      push("ai",r.dup
         ?`这个点已经有「${esc(propose.goal)}」了，不重复加。`
-        :`排进去了：今天 ${propose.start} 到 ${propose.end}，${esc(propose.goal)}。${r.delta>0?"不过它撞上了别的事，代价在日程页里。":"到时候画个勾就行。"}`),200);
+        :`排进去了：${cuteDate(propose.date)} ${propose.start} 到 ${propose.end}，${esc(propose.goal)}。${r.delta>0?"不过它撞上了别的事，代价在下面。":"到时候画个勾就行。"}`);
+      if(!r.dup)revealEvent(r.ev.date,r.ev.id);
       return;
     }
     if(NO.test(say)){
@@ -3181,7 +3214,8 @@ async function handleUser(v){
 
   const slot=push("ai","<span class='typing'>正在理解你说的话…</span>");
   const j=await askLLM(v);
-  if(!j){setMsg(slot.id,replyTo(v));return;}
+  /* 没接上大模型就明说「本地规则」，不让用户以为那头有个模型在思考 */
+  if(!j){setMsg(slot.id,replyTo(v)+`<span class="src">本地规则 · 未接大模型</span>`);return;}
   setMsg(slot.id,"<span class='typing'>听懂了，正在归类…</span>");
   await routeLLM(j,slot.id,v);
   if(TALK_STAT.gen)renderMe(); // 刷新画像页的「AI 说话自检」
@@ -4462,7 +4496,10 @@ async function buildPlan(goal,need,scope,from){
     };
     const alloc=[],flex=[];
     parts.forEach((p,i)=>{const d=durOf(p);if(d){alloc[i]=d;}else flex.push(i);});
-    let rest=need-alloc.reduce((a,b)=>a+(b||0),0);
+    /* 段与段之间要留缓冲：不然自己排出来的两块紧挨着，立刻被冲突规则判成「撞了」 */
+    const buf=Math.max(0,Math.min(60,DATA.profile.buffer_min==null?10:DATA.profile.buffer_min));
+    const usable=Math.max(parts.length*15,need-Math.max(0,parts.length-1)*buf);
+    let rest=usable-alloc.reduce((a,b)=>a+(b||0),0);
     if(rest<flex.length*15)rest=flex.length*15;
     flex.forEach(i=>{alloc[i]=Math.max(15,Math.floor(rest/flex.length));});
     let cursor=toMin(s.start);
@@ -4471,7 +4508,7 @@ async function buildPlan(goal,need,scope,from){
       if(len<15)return;
       items.push({date:d,start:fmtHM(cursor),end:fmtHM(cursor+len),
         name:`${p}·${goal}`.slice(0,20),topic:p});
-      cursor+=len;
+      cursor+=len+buf;
     });
     days.push({date:d,start:s.start,end:s.end,topic});
   });
