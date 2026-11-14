@@ -598,8 +598,9 @@ pre.json .n{color:#FDBA74}
 .uc-body{margin-top:5px;line-height:1.75;color:var(--t2)}
 .uc-k{display:inline-block;min-width:38px;color:#9a9a9a;margin-right:4px}
 .uc-v{font-weight:600}
-/* 在线体验版为文字模式：语音入口在公网不可用，隐藏而非点击后报错 */
-#micBtn, #fullMicBtn { display: none !important; }
+/* 在线体验版为文字模式：语音入口默认隐藏，仅 https / localhost 下放开 */
+body:not(.mic-ok) #micBtn,
+body:not(.mic-ok) #fullMicBtn { display: none !important; }
 </style>
 <style id="skin-engine">
 /* ══════════ 可切换主题：3 套皮肤 × 主色 ══════════ */
@@ -1097,6 +1098,14 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 </style>
 </head>
 <body>
+<script>
+/* 语音入口只在能拿到麦克风的环境出现：https 或 localhost；file:// 打开时保持隐藏 */
+(function(){
+  var local = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+  var fileOk = !String(location.protocol).startsWith("file:");
+  if(fileOk && (window.isSecureContext || local)) document.body.classList.add("mic-ok");
+})();
+</script>
 
 <div class="gaze">
   <div class="gaze-in">
