@@ -152,8 +152,9 @@ body[data-tab="home"] .fab{display:none}
 .quick-start .qs-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
 .quick-start .qs-chip{padding:6px 12px;border-radius:20px;border:1px solid var(--line-hi);background:var(--card);color:inherit;font-size:13px;cursor:pointer}
 .quick-start .qs-chip:hover{border-color:var(--blue);color:var(--blue)}
-.quick-start .qs-demo{margin-top:9px;background:none;border:none;color:var(--blue);font-size:12px;cursor:pointer;text-decoration:underline}
-.demo-bar{margin:0 auto 10px;width:max-content;max-width:100%;background:var(--card);border:1px solid var(--line-hi);border-radius:20px;padding:7px 13px;font-size:12px;color:var(--t2);box-shadow:0 4px 12px rgba(0,0,0,.12)}
+.quick-start .qs-demo{margin-top:9px;padding:6px 12px;border-radius:20px;border:1px dashed var(--line-hi);background:none;color:var(--t2);font-size:12.5px;cursor:pointer;font-family:inherit}
+.quick-start .qs-demo:hover{border-color:var(--blue);color:var(--blue)}
+.demo-bar{margin:10px auto 0;width:max-content;max-width:100%;background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:8px;padding:5px 11px;font-size:11.5px;color:var(--t3)}
 .demo-bar a{color:var(--blue);cursor:pointer;text-decoration:underline}
 .wx-bar input{
   flex:1;min-width:0;padding:12px 16px;border-radius:10px;border:1px solid var(--line);
@@ -1118,7 +1119,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 </div>
 
 <div class="wrap">
-  <div class="demo-bar" id="demoBar" style="display:none">示例数据 · <a onclick="clearDemo()">一键清空</a></div>
+  <div class="demo-bar" id="demoBar" style="display:none">这些是示例数据 · <a onclick="clearDemo()">换成我自己的</a></div>
   <div class="tabs-wrap">
     <div class="tabs">
       <button class="tab on" data-p="home">主页</button>
@@ -1143,7 +1144,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
         <button class="qs-chip" onclick="quickSend('明天下午3点开组会')">明天下午3点开组会</button>
         <button class="qs-chip" onclick="quickSend('记住，我晚上容易刷手机')">记住，我晚上容易刷手机</button>
       </div>
-      <button class="qs-demo" onclick="loadDemo()">载入示例数据，直接看冲突与代价 →</button>
+      <button class="qs-demo" onclick="loadDemo()">或者，先看一份填满的日程 →</button>
     </div>
 
     <div class="peek" id="peek" onclick="openFullChat()">
@@ -4250,7 +4251,8 @@ function quickSend(t){
 }
 function refreshQuickStart(){
   const q=document.getElementById("quickStart");if(!q)return;
-  const empty=!HISTORY.some(m=>m.who==="user")&&!DATA.events.length&&!DATA.notes.length&&!DATA.diary.length;
+  /* 只要还没开口，就把三句示例留在首屏；载入示例数据不等于「已经聊过」 */
+  const empty=!HISTORY.some(m=>m.who==="user");
   q.style.display=empty?"":"none";
 }
 function loadDemo(){
