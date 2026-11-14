@@ -2690,6 +2690,13 @@ async function checkAI(){
 function webSpeechCtor(){return window.SpeechRecognition||window.webkitSpeechRecognition||null;}
 function setMicEnabled(on){
   const b=document.getElementById("micBtn");if(!b)return;
+  /* 公网 http 下浏览器根本不给麦克风，按钮直接置灰，别让评委点了才发现 */
+  const secure=window.isSecureContext||location.hostname==="localhost"||location.hostname==="127.0.0.1";
+  if(!secure){
+    b.disabled=true;b.style.opacity="0.35";b.style.cursor="not-allowed";
+    b.title="在线体验版为文字模式；语音见演示视频";
+    return;
+  }
   const onChrome=!!webSpeechCtor();
   const isFile=location.protocol==="file:";
   let usable,title;

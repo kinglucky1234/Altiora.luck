@@ -1,6 +1,6 @@
 # Altiora · 未来的我
 
-> 把你的约束算成代价的日程助理。不做拟人分身。
+> 把你的约束（时间、精力、软肋、目标节奏）建成分身参数，每次对话实时回写，用它算每个选择的代价。
 > 赛道：传智杯大赛 · Vibe Coding 挑战赛 · B 组 · 赛道 8 个人效能与数字孪生具身仿真
 
 > 仓库结构：成品是 `Altiora-未来的我.html`，后端 `server.py`，LLM 在 `Altiora/backend/llm.py`，演进记录在 `docs/replay.md`。
@@ -219,8 +219,8 @@ cp .env.example .env
 | `LLM_API_KEY` | 空 | 大模型 Key。留空 = 离线模式，功能完整 |
 | `LLM_BASE_URL` | `https://api.openai.com/v1` | OpenAI 兼容地址（DeepSeek / 通义 / 火山方舟均可） |
 | `LLM_MODEL` | `gpt-4o-mini` | 模型名或方舟接入点 ID |
-| `RATE_PER_IP_DAY` | `50` | 服务端每人每天最多调多少次大模型 |
-| `RATE_GLOBAL_DAY` | `1000` | 服务端每天总调用上限 |
+| `RATE_PER_IP_DAY` | `50` | 服务端每人每天最多调多少次大模型；线上演示环境已调至 500 |
+| `RATE_GLOBAL_DAY` | `1000` | 服务端每天总调用上限；线上演示环境已调至 5000 |
 
 `.env` 支持写在值后面的行内注释（`RATE_PER_IP_DAY=50   # 说明`），也支持 `#` 整行注释与引号包裹。
 
