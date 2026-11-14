@@ -73,6 +73,12 @@ SYSTEM = """你叫 Altiora，是「用户理想中更好的自己」在电脑里
   一件都凑不齐 start/end，events 给空数组 []，并把那件事的名字写进 subject，不要猜时间。
 - events 每项可以给 date（YYYY-MM-DD），只在用户说了具体哪天（如下周三、下个月 3 号、10 月 8 日）时给；
   说今天/明天这种相对日期也可以换算成具体日期再给。拿不准就不给 date，由本地按今天推算。
+- 时间只有小时、没有上午/下午，也不是 HH:MM 或区间时，必须输出 ambiguity：
+  {"field":"hour12","confidence":0.0到1.0,"candidates":["HH:MM","HH:MM"]}
+  candidates 只放两个最可能的候选（如 "03:00","15:00"），按可能性排序。
+  说不出哪个更可能时 confidence 给 0.5 以下，不要编。
+  已经说清上午/下午、或本来就是 24 小时制的，ambiguity 给 null。
+  同时 events 里这类事件可以给出你认为最可能的时间，但 confidence 必须如实反映不确定。
 - memory 只在用户明确要求记住时给，text 原样保留用户的话，不要改写。
 - goal 只保留目标本身，去掉「我想」这类前缀；同时给 goal_horizon：
   long（长远/最终/十年/梦想/成为…）、mid（这学期/半年/明年/考研/求职/毕业）、short（这周/这个月/近期/明天）。
@@ -103,7 +109,7 @@ SYSTEM = """你叫 Altiora，是「用户理想中更好的自己」在电脑里
 - 闲聊：正常聊天，可以有一点幽默，但别硬逗。
 
 只输出 JSON，不要解释，不要 Markdown 代码块：
-{"intent":"schedule","events":[{"name":"家教","start":"11:00","end":"13:00","date":null}],"subject":null,"emotion":{"tag":"none","intensity":0},"memory":null,"goal":null,"goal_horizon":null,"weakness":null,"social":null,"reply":null}"""
+{"intent":"schedule","events":[{"name":"家教","start":"11:00","end":"13:00","date":null}],"subject":null,"ambiguity":null,"emotion":{"tag":"none","intensity":0},"memory":null,"goal":null,"goal_horizon":null,"weakness":null,"social":null,"reply":null}"""
 
 SAY_SYSTEM = """你是 Altiora，用户理想中更好的自己在电脑里的投影。下面是本地计算器算出的确定结果，你只负责把它说成一句人话。
 
@@ -263,6 +269,29 @@ def _clean_event(raw) -> dict | None:
     if date:
         out["date"] = date
     return out
+
+
+def _clean_ambiguity(raw) -> dict | None:
+    """裸小时（只说「3 点」）：只收结构化候选，说不出哪个更可能就是 None。"""
+    if not isinstance(raw, dict):
+        return None
+    try:
+        conf = float(raw.get("confidence", 0.5))
+    except (TypeError, ValueError):
+        conf = 0.5
+    conf = max(0.0, min(1.0, conf))
+    cands: list[str] = []
+    raw_cands = raw.get("candidates")
+    if isinstance(raw_cands, list):
+        for c in raw_cands:
+            t = _norm_time(c)
+            if t and t not in cands:
+                cands.append(t)
+            if len(cands) >= 2:
+                break
+    if not cands:
+        return None
+    return {"field": "hour12", "confidence": conf, "candidates": cands}
 
 
 def _clean_memory(raw) -> dict | None:
@@ -435,6 +464,8 @@ def understand(text: str, profile: dict | None = None,
             if legacy:
                 events = [legacy]
     event = events[0] if events else None
+    # 裸小时：模型判「分不清上午下午」时只收候选，前端据此决定反问还是按候选排
+    ambiguity = _clean_ambiguity(obj.get("ambiguity"))
     # 时间不全时仍保留主题，前端会追问时间，而不是替用户编一个
     subject = None
     if intent == "schedule":
@@ -478,6 +509,7 @@ def understand(text: str, profile: dict | None = None,
         "emotion_intensity": emotion_intensity,
         "event": event,
         "events": events,
+        "ambiguity": ambiguity,
         "subject": subject,
         "memory": memory,
         "goal": goal,

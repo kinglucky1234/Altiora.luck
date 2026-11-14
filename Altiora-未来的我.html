@@ -3381,17 +3381,35 @@ async function handleUser(v){
   const filled=tryFillPending(v);
   if(filled){setTimeout(()=>push("ai",filled),180);return;}
 
-  // 「3点开会」：不猜是凌晨还是下午，先反问；回「下午」由 tryFillPending 补全
+  // 「3点开会」：先按规则算出来，但不在这里拦——判断交给模型，规则退为兜底
   const amb=ambiguousHour(v);
-  if(amb){
-    DATA.memory.pending={name:amb.name,hour:amb.hour,date:amb.date,needPeriod:true,ts:Date.now()};
-    saveData();
-    setTimeout(()=>push("ai",`「${esc(amb.name)}」——${amb.hour} 点，是凌晨还是下午？回一句「下午」或「上午」，我就排进去。`),180);
-    return;
-  }
 
   const slot=push("ai",stepsHTML(0,"chat"));
   const j=await askLLM(v);
+  /* 模型在线且高置信判定这是裸小时：按它给的候选时间排，不反问 */
+  const mA=j&&j.ambiguity&&typeof j.ambiguity.confidence==="number"?j.ambiguity:null;
+  const cand=mA&&Array.isArray(mA.candidates)&&typeof mA.candidates[0]==="string"?mA.candidates[0].slice(0,5):"";
+  const cmin=cand?Number(cand.slice(0,2))*60+Number(cand.slice(3,5)):NaN;
+  if(mA&&mA.confidence>=0.8&&cmin>=0&&cmin<23*60){
+    const em=cmin+60,end=pad2(Math.floor(em/60))+":"+pad2(em%60);
+    const name=((amb&&amb.name)||(j.event&&j.event.name)||j.subject||"新安排").slice(0,12);
+    const date=(amb&&amb.date)||resolveDate(v);
+    const r=addStructuredEvent({name,start:cand,end,date});
+    if(date!==VIEW_DATE){VIEW_DATE=date;refreshDay();}
+    const tag=date!==todayStr()?`「${dayTag(date)} ${esc(r.ev.name)} ${cand}-${end}」`:`「${esc(r.ev.name)} ${cand}-${end}」`;
+    setMsgU(slot.id,r.dup
+      ?`${tag}时间轴里已经有这条了，我没重复加。`
+      :`${tag}排进去了。钟点按模型选的 ${cand}，不对就改一下${r.delta>0?`；撞了 <b>${r.delta}</b> 处，代价在时间轴页`:"；那天没撞"}。`,j);
+    return;
+  }
+  /* 离线、或模型自己也没把握：仍然反问一句，原逻辑不改；回「下午」由 tryFillPending 补全 */
+  if(amb){
+    DATA.memory.pending={name:amb.name,hour:amb.hour,date:amb.date,needPeriod:true,ts:Date.now()};
+    saveData();
+    const q=`「${esc(amb.name)}」——${amb.hour} 点，是凌晨还是下午？回一句「下午」或「上午」，我就排进去。`;
+    if(j)setMsgU(slot.id,q,j);else setMsg(slot.id,q);
+    return;
+  }
   /* 没接上大模型就明说「离线模式」，不让用户以为那头有个模型在思考 */
   if(!j){setMsg(slot.id,replyTo(v)+`<span class="src">离线模式 · 未接大模型</span>`);return;}
   setMsg(slot.id,stepsHTML(1,j.intent==="schedule"?"schedule":"chat"));
@@ -3415,6 +3433,8 @@ function understandCard(j){
   const evs=(Array.isArray(j.events)&&j.events.length)?j.events:(j.event?[j.event]:[]);
   if(evs.length)
     rows.push(`<span class="uc-k">事件</span><span class="uc-v">${evs.map(e=>`${esc(e.name)} ${e.start}-${e.end}${e.date?"（"+esc(e.date)+"）":""}`).join("、")}</span>`);
+  if(j.ambiguity&&typeof j.ambiguity.confidence==="number")
+    rows.push(`<span class="uc-k">时间歧义</span><span class="uc-v">${esc((j.ambiguity.candidates||[]).join(" / "))}（置信度 ${j.ambiguity.confidence.toFixed(1)}）</span>`);
   if(j.subject&&!evs.length)
     rows.push(`<span class="uc-k">待补</span><span class="uc-v">${esc(j.subject)}（缺开始/结束时间）</span>`);
   if(!rows.length)return "";
