@@ -224,7 +224,8 @@ story.append(P("用户输入 → LLM 翻译（directUnderstand）→ 结构化�
 
 story += H2("3.4 关键设计原则")
 story.append(B("<b>LLM 边界写死在代码里</b>：intent 不是 emotion/chat 时，模型生成的 reply 被直接丢弃。"))
-story.append(B("<b>没说结束时间就追问</b>：event 为 null 时不替用户编时间，宁可问一句。"))
+story.append(B("<b>只说开始时间怎么办</b>：带时段词（上午/中午/下午/晚上/夜里）就先按 1 小时摆进时间轴，并在回执里明说「我先按 1 小时算」——不偷偷替用户定时长；没带时段词则追问，不硬编。"))
+story.append(B("<b>「已经发生」的句子不当日程</b>：如「我 3 点就醒了」「下午 2 点睡了一觉」，命中状态词（醒/睡/起床/到家/下班/迟到）或句首「就/才/已经/刚」时直接放弃建事件，宁可问一句。"))
 story.append(B("<b>双模式自动切换</b>：无 Key 走本地规则，有 Key 走 AI 在线，功能都完整。"))
 story.append(B("<b>BYOK（自带 Key）</b>：Key 只存浏览器 localStorage，请求由浏览器直连厂商，服务端不落盘。"))
 story.append(B("<b>确定性的归确定性，生成的归生成</b>：排程由本地规则算，LLM 只负责把结果说成人话；LLM 失败一律回退确定性文案。"))

@@ -2995,14 +2995,24 @@ function parseTimeRange(t){
   const s=String(t).replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-65248));
   let m=s.match(/(\d{1,2})[:：](\d{2})\s*(?:[-~至到—－])\s*(\d{1,2})[:：](\d{2})/);
   if(m)return {start:pad2(+m[1])+":"+m[2],end:pad2(+m[3])+":"+m[4]};
-  m=s.match(/(上午|早上|中午|下午|晚上|夜里)?\s*([零〇一二三四五六七八九十两\d]{1,3})\s*[点时]?\s*(半)?\s*(?:到|至|~|—|－|-)\s*(上午|早上|中午|下午|晚上|夜里)?\s*([零〇一二三四五六七八九十两\d]{1,3})\s*[点时]?\s*(半)?/);
-  if(!m)return null;
   const fix=(h,p)=>{
     if(isNaN(h))return NaN;
     if(/下午|晚上|夜里/.test(p)&&h<12)h+=12;
     if(/中午/.test(p)&&h>=1&&h<=11)h+=12;
     return h;
   };
+  m=s.match(/(上午|早上|中午|下午|晚上|夜里)?\s*([零〇一二三四五六七八九十两\d]{1,3})\s*[点时]?\s*(半)?\s*(?:到|至|~|—|－|-)\s*(上午|早上|中午|下午|晚上|夜里)?\s*([零〇一二三四五六七八九十两\d]{1,3})\s*[点时]?\s*(半)?/);
+  if(!m){
+    /* 只说了一个时间点：「晚上8点跑步」「明天下午3点开会」——按 1 小时先摆着，并标明是估的。
+       必须带时段词才认，避免「3点就醒了」这种被当成日程。 */
+    const one=s.match(/(上午|早上|中午|下午|晚上|夜里)\s*([零〇一二三四五六七八九十两\d]{1,3})\s*[点时](半)?/);
+    if(!one)return null;
+    const h0=fix(cnHour(one[2]),one[1]);
+    if(!(h0>=0&&h0<23))return null;
+    const mi0=one[3]?30:0;
+    const e0=h0*60+mi0+60;
+    return {start:pad2(h0)+":"+pad2(mi0),end:pad2(Math.floor(e0/60))+":"+pad2(e0%60),guess:true};
+  }
   const p1=m[1]||"",p2=m[4]||p1;      // 「下午三点到五点」后半跟着前半走
   const h1=fix(cnHour(m[2]),p1),h2=fix(cnHour(m[5]),p2);
   const m1=m[3]?30:0,m2=m[6]?30:0;
@@ -3012,6 +3022,7 @@ function parseTimeRange(t){
 }
 /* 一句话可能说好几件事：按标点/连接词切开，每段单独抠时间和名字 */
 const TIME_PAT=/(上午|早上|中午|下午|晚上|夜里)?\s*[零〇一二三四五六七八九十两\d]{1,3}\s*[点时]?\s*(半)?\s*(?:到|至|~|—|－|-)\s*(上午|早上|中午|下午|晚上|夜里)?\s*[零〇一二三四五六七八九十两\d]{1,3}\s*[点时]?\s*(半)?/g;
+const SINGLE_TIME_PAT=/(上午|早上|中午|下午|晚上|夜里)\s*[零〇一二三四五六七八九十两\d]{1,3}\s*[点时]\s*(?:半)?/g;
 function parseEventsFromText(t){
   const segs=String(t).split(/[，,；;、]|然后|还有|另外|顺便|再看|再排/).map(x=>x.trim()).filter(Boolean);
   const out=[];
@@ -3022,13 +3033,16 @@ function parseEventsFromText(t){
     let name=seg
       .replace(/(\d{1,2})[:：](\d{2})\s*(?:[-~至到—－])\s*(\d{1,2})[:：](\d{2})/g," ")
       .replace(TIME_PAT," ")
+      .replace(SINGLE_TIME_PAT," ")
       .replace(/\d{1,2}[:：]\d{2}/g," ")
       .replace(/^(?:(?:下下个?周|下个?周|下个?星期|周|星期)[一二三四五六日天]\s*)+/,"")
       .replace(/^(?:(?:大后天|后天|明天|明早|明晚|今天|今早|今晚)\s*)+/,"")
       .replace(/^(?:(?:上午|下午|晚上|早上|中午|上)\s*)+/,"")
       .replace(/[，,。.、\s]+/g," ").trim();
     if(!name)continue;
-    out.push({name:name.slice(0,12),start:r.start,end:r.end,date});
+    /* 只给了开始时间的，是估的：明显是「已经发生」的句子就不当日程 */
+    if(r.guess&&(/^(就|才|已经|刚|已)/.test(name)||/醒|睡|起床|到家|下班|迟到/.test(name)))continue;
+    out.push({name:name.slice(0,12),start:r.start,end:r.end,date,guess:!!r.guess});
   }
   return out;
 }
@@ -3381,40 +3395,57 @@ async function routeLLM(j,slotId,v){
 
 /* 先接住情绪，再看能不能落到日程 */
 const EMOTIONS=[
-  {k:/想哭|哭了|哭出来|难受|伤心|难过|心里堵|委屈|低落|心情不好/,r:[
+  {tag:"sad",k:/想哭|哭了|哭出来|难受|伤心|难过|心里堵|委屈|低落|心情不好/,r:[
     "嗯，我听着。这事儿不用先讲道理，你说就行。",
     "这种时候排什么日程都挺可笑的。今天剩下的，不做完也行。",
     "我不劝你。想哭就哭，哭完那口气会顺一点。"
   ]},
-  {k:/没力气|撑不住|不想动|提不起|好累|很累|累死|疲惫|透支|困死/,r:[
+  {tag:"tired",k:/没力气|撑不住|不想动|提不起|好累|很累|有点累|有些累|累了|累死|疲惫|透支|困死/,r:[
     "那就先停。日程不会因为你歇一会儿就塌，塌的是你硬撑的时候。",
     "累成这样还逼自己，等于跟身体借钱。今天先还一点。",
     "晚上的事，晚点再说。你现在只负责休息。"
   ]},
-  {k:/焦虑|慌|压力|好怕|担心|来不及|赶不上|睡不着|心里发紧|好烦|烦死|心烦|烦躁/,r:[
+  {tag:"anxious",k:/焦虑|慌|压力|好怕|担心|来不及|赶不上|睡不着|心里发紧|好烦|烦死|心烦|烦躁/,r:[
     "慌，是因为你把它当成一件必须一次做完的事。它其实可以先只做第一步。",
     "先说最让你睡不着的那一件。别的先放着，我们不一次解决全部。",
     "别急着规划全局。接下来十分钟，你能动哪一下？"
   ]},
-  {k:/废物|没用|我很差|做不到|失败|搞砸|烂透|恨自己|对不起自己|看不起自己/,r:[
+  {tag:"selfblame",k:/废物|没用|我很差|做不到|失败|搞砸|烂透|恨自己|对不起自己|看不起自己/,r:[
     "先停一下。骂自己不会让事情变少，只会让你更想重开。",
     "你不是不行，你是累了还在拿满分要求自己。这两件事不一样。",
     "我不接这句。你昨天也这么说过，可你今天还是回来跟我说了，这叫没放弃。"
   ]},
-  {k:/重开|重新开始|明天再|明天一定|明天开始|等一个|完美|从头来过|新的开始|头发油/,r:[
+  {tag:"relapse",k:/重开|重新开始|明天再|明天一定|明天开始|等一个|完美|从头来过|新的开始|头发油/,r:[
     "「明天开始」这句你说过不少次了。我不是说你，是这句真的不太管用。",
     "我知道你想按那个键。先别按——今天不用重新开始，接着往下走就行。",
     "完美起点不存在。头发油着、房间乱着、心情烂着，都能开始。"
   ]},
-  {k:/没人|孤独|一个人|没朋友|没人懂|没人理|没人在乎/,r:[
+  {tag:"lonely",k:/没人|孤独|一个人|没朋友|没人懂|没人理|没人在乎/,r:[
     "现在至少有我一个。虽然我只是你想成为的样子，但我在听。",
     "这种时候不需要谁给答案，需要有人别走。我不走。"
   ]},
-  {k:/摆烂|颓废|放弃了|不想努力|躺平|没动力|不想干/,r:[
+  {tag:"numb",k:/摆烂|颓废|放弃了|不想努力|躺平|没动力|不想干/,r:[
     "躺一会儿可以，别把「躺」写成结论。",
     "动力不是等来的，是动起来之后剩下的那点。今天不逼你。"
   ]}
 ];
+/* 用户自己说过的规律，跟当前情绪对得上才拿出来（没有就什么都不加，绝不编）。
+   用法：先说他自己那句话，再接着往下说——他听的是「你记得我」，不是道理。 */
+function ownWordsFor(tag){
+  const ws=DATA.profile.known_weakness||[];
+  const rel={
+    selfblame:/骂|凶|批评|重话|吃软|不吃硬|自尊/,
+    relapse:/摆烂|放弃|拖延|手机|刷|坚持|明天再/,
+    tired:/熬夜|晚睡|睡眠|硬撑|透支|早睡/,
+    anxious:/焦虑|慌|担心|比较|攀比/,
+    sad:/哭|难受|情绪|低落|憋/,
+    lonely:/一个人|独来独往|朋友|没人/,
+    numb:/没劲|麻木|提不起|躺|摆烂|放弃/
+  }[tag];
+  if(!rel)return "";
+  const hit=ws.find(w=>rel.test(String(w)));
+  return hit?`你自己说过「${hit}」——`:"";
+}
 // 日记里怎么形容那会儿的状态
 const MOOD_LABEL=[
   [/想哭|哭|难受|伤心|难过|委屈|低落|心情不好/,"难过"],
@@ -3603,9 +3634,11 @@ function replyTo(v){
     if(lastDate&&lastDate!==VIEW_DATE){VIEW_DATE=lastDate;refreshDay();}
     if(!added.length)return `${dups.join("、")}时间轴里已经有了，我没重复加。`;
     const dupTxt=dups.length?`；${dups.join("、")}重复，跳过`:"";
+    /* 只说了「几点」没说「到几点」：明说是估的，别让人以为我偷偷改了他的时长 */
+    const guessTxt=evs.some(e=>e.guess)?"（你只说了开始，我先按 1 小时算，要改说一声）":"";
     return total>0
-      ? `${added.join("、")}排进去了，撞了 <b>${total}</b> 处。代价算好了，去时间轴页看${dupTxt}。`
-      : `${added.join("、")}排进去了，那天没撞${dupTxt}。`;
+      ? `${added.join("、")}排进去了，撞了 <b>${total}</b> 处${guessTxt}。代价算好了，去时间轴页看${dupTxt}。`
+      : `${added.join("、")}排进去了，那天没撞${guessTxt}${dupTxt}。`;
   }
   // 2.6) 「重开」类先反问半句——确认真想扔才拦，只是烦就当烦接住（防止关键词误伤）
   const RELAPSE_NEG=/没想|不想|不是|谈不上|才不会|只是/;
@@ -3628,7 +3661,9 @@ function replyTo(v){
   // 3) 情绪优先——先当人，再当工具
   for(const e of EMOTIONS) if(e.k.test(t)){
     SESS.mood=(MOOD_LABEL.find(([re])=>re.test(t))||[,"情绪低"])[1];
-    return pickFresh(e.r);
+    const own=ownWordsFor(e.tag);
+    const line=pickFresh(e.r);
+    return own?own+line:line;
   }
   // 4) 目标：收下目标本身，但不逼你现在就干；按远近归到长期/中期/短期
   const goal=extractGoal(t);
@@ -4604,27 +4639,31 @@ function proactiveCare(){
   const fr=DATA.profile.goal_freq||{};
   const gmin=DATA.profile.goal_min||{};
   const names={long_term_goal:DATA.profile.long_term_goal,mid_term_goal:DATA.profile.mid_term_goal,short_term_goal:DATA.profile.short_term_goal};
-  let stall=null,stallMin=60;
+  let stall=null,stallMin=60,stallKey=null;
   for(const k of ["short_term_goal","mid_term_goal","long_term_goal"]){
     if(fr[k]!=="daily"||!names[k])continue;
     const gname=names[k];
     const hit=[addDays(t,-1),t].some(d=>DATA.events.some(e=>e.date===d&&e.done&&matchGoal(e.name,gname)));
-    if(!hit){stall=gname;stallMin=gmin[k]||60;break;}
+    if(!hit){stall=gname;stallMin=gmin[k]||60;stallKey=k;break;}
   }
   if(!emoKey&&!stall)return;
   const lowLine=emoKey?(LOW_LINE[emoKey]||"我看你这几天状态不太好。"):"";
   let msg="",gap=null;
   if(stall){
     const gname=stall.slice(0,12);
+    /* 中期/长期目标有截止日，就把「还有多少天」摆出来——只报事实，不催 */
+    const dl=DATA.profile.goal_deadline;
+    const left=dl?daysUntil(dl):null;
+    const dlTxt=(stallKey!=="short_term_goal"&&left!==null&&left>=0)?`离「${gname}」还有 ${left} 天。`:"";
     // 3. 提议排任务：空当够长就把具体时段摆出来，等用户一句「行」——绝不擅自动手
     const slot=proposeSlot(stallMin);
     if(slot){
       DATA.care.pending={date:t,goal:gname,start:slot.start,end:slot.end};
       msg=(lowLine?lowLine+" ":"")
-        +`「${gname}」这两天没画上勾。今天 ${slot.start} 到 ${slot.end} 空着——给它？回一句「行」我就排进去，不想就回「算了」。`;
+        +`「${gname}」这两天没画上勾。${dlTxt}今天 ${slot.start} 到 ${slot.end} 空着——给它？回一句「行」我就排进去，不想就回「算了」。`;
     }else{
       msg=(lowLine?lowLine+" ":"")
-        +`「${gname}」这两天没画上勾，今天排满了。要不要把哪件往后挪挪？你说了算。`;
+        +`「${gname}」这两天没画上勾，${dlTxt}今天排满了。要不要把哪件往后挪挪？你说了算。`;
     }
   }else{
     gap=todayFreeGap(90);
