@@ -121,7 +121,15 @@ LLM 的边界被写死在代码里（`Altiora/backend/llm.py`）：
 2. **没有隐藏服务。** 文字功能零依赖：双击 HTML 就能跑完整个闭环，不需要注册、不需要数据库、不需要联网。
 3. **仓库不含任何 Key。** `.env.example` 只有占位符；线上体验地址的 Key 只在服务器 `.env` 中，不下发浏览器、不进日志。
 4. **可一键自检。** `python3 自检.py` 检查依赖、模型、前端控件、Key 泄漏、脚本语法与接口；线上可用 `/api/health` 看 `llm` 是否为 `true`。
-5. **演进过程可查。** Prompt 快照见 `prompt-snapshots/`，完整文字版见 [AI协同对话历史.md](AI协同对话历史.md)，改前/改后对照见 [Altiora-改前改后.html](Altiora-改前改后.html)。
+5. **演进过程可查。** Prompt 快照见 `prompt-snapshots/`，完整文字版见 [AI协同对话历史.md](AI协同对话历史.md)，按步骤照着走的演进脚本见 [docs/replay.md](docs/replay.md)，改前/改后对照见 [Altiora-改前改后.html](Altiora-改前改后.html)。
+
+### 复现成功的三个标志（先记住这三个，再往下做）
+
+1. 打开 `http://localhost:8000`（或在线体验地址），右上角显示 **「AI 在线」**；未配 Key 时显示「本地规则」，功能同样完整。
+2. 发一句 **「今天有点累」**，收到一句接住情绪的话，且不弹出表格或方案。
+3. 发 **「周五下午3点开会」**，时间轴出现事件；再发 **「周五下午3点半做家教，两小时」**，出现 A/B/C 三个代价选项。
+
+三条都对上，说明环境、页面、模型与确定性计算器都在正常工作。
 
 ### 0-2 分钟：环境准备
 
@@ -255,6 +263,8 @@ Altiora.luck/
 ├── .env.example                    # 环境变量模板
 ├── Altiora-技术文档.pdf              # 技术文档（23 页，≤30；可复跑 python3 scripts/gen_tech_doc.py 重新生成）
 ├── AI协同对话历史.md                # Prompt 链文字版（6 迭代 + 5 次 Bug 修复）
+├── docs/
+│   └── replay.md                    # 演进脚本：六迭代 + 三 Bug 的四段式复现步骤
 ├── scripts/
 │   └── download_vosk.py            # 下载 Vosk 中文离线模型（约 66 MB）
 ├── Altiora/                        # 可运行版本（与根目录同源）
@@ -288,9 +298,10 @@ Altiora.luck/
 | 比赛要求 | 仓库位置 | 状态 |
 |---|---|---|
 | 代码仓库 Public | 本仓库 | ✅ |
-| 细粒度 Git 提交历史 | `git log --oneline` | ✅ |
+| Git 提交历史（细粒度，逐条可查） | `git log --oneline`；仓库迁移说明见 `docs/replay.md` 第 4 节 | ✅ |
 | AI Prompt 历史快照（≥3 组迭代） | `prompt-snapshots/` | ✅ |
-| 10 分钟复现指南 | 本文档第 3 节 | ✅ |
+| 10 分钟复现指南 | 本文档第 3 节（含「复现成功的三个标志」） | ✅ |
+| 演进脚本（Prompt → 建议 → 引导修复 → 验证） | `docs/replay.md` | ✅ |
 | 环境变量模板 | `.env.example` | ✅ |
 | 可复现性自检（依赖/模型/控件/接口） | `python3 自检.py` | ✅ |
 | 10 段对话改前 / 改后对照 | `Altiora-改前改后.html`（在线地址同名路径） | ✅ |
