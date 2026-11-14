@@ -3,7 +3,7 @@
 > 用你的历史数据算出代价的私人助理 ——「数字孪生」在此指**可计算的你**（课表、精力、软肋、目标节奏），不做拟人仿真
 > 赛道：传智杯大赛 · Vibe Coding 挑战赛 · B 组 · 赛道 8 个人效能与数字孪生具身仿真
 
-> ⚠️ **评审提示**：所有代码、Bug 修复、AI 协同对话历史、Prompt 快照都在 `main` 分支，直接看即可，无需切换分支。**完整开发历史也在 `main`**：170 次细粒度提交，2026-10-22 → 11-14 连续未断，`git log --oneline main` 可逐条 `git show` 核对（次数以 `git rev-list --count main` 为准，之后每次提交会再 +1；`history` 分支只是 10-30 前的历史备份，内容已全部包含在 `main` 中）。
+> ⚠️ **评审提示**：所有代码、Bug 修复、AI 协同对话历史、Prompt 快照都在 `main` 分支，直接看即可，无需切换分支。**完整开发历史也在 `main`**：从 2026-10-22 起连续提交、无 merge，条数以 `git rev-list --count main` 为准，`git log --oneline main` 可逐条 `git show` 核对（`history` 分支只是 10-30 前的历史备份，内容已全部包含在 `main` 中）。
 
 > **在线体验（评委可直接打开，无需任何配置）**：<http://82.157.162.252:8000/>
 > 服务端已配好模型，打开页面右上角即显示「AI 在线」。每 IP 每日 50 次、全局 1000 次限流，超限时前端自动回退本地规则，页面功能不受影响。
@@ -121,7 +121,7 @@ LLM 的边界被写死在代码里（`Altiora/backend/llm.py`）：
 2. **没有隐藏服务。** 文字功能零依赖：双击 HTML 就能跑完整个闭环，不需要注册、不需要数据库、不需要联网。
 3. **仓库不含任何 Key。** `.env.example` 只有占位符；线上体验地址的 Key 只在服务器 `.env` 中，不下发浏览器、不进日志。
 4. **可一键自检。** `python3 自检.py` 检查依赖、模型、前端控件、Key 泄漏、脚本语法、5 份 HTML 副本一致性与接口；线上可用 `/api/health` 看 `llm` 是否为 `true`。
-5. **演进过程可查。** `main` 分支有 170 余次细粒度提交（2026-10-22 → 11-14 连续，以 `git rev-list --count main` 为准），可逐条 `git show`；Prompt 快照见 `prompt-snapshots/`，完整文字版见 [AI协同对话历史.md](AI协同对话历史.md)，按步骤照着走的演进脚本见 [docs/replay.md](docs/replay.md)，改前/改后对照见 [Altiora-改前改后.html](Altiora-改前改后.html)。
+5. **演进过程可查。** `main` 分支从 2026-10-22 起连续提交、无 merge（条数以 `git rev-list --count main` 为准），可逐条 `git show`；Prompt 快照见 `prompt-snapshots/`，完整文字版见 [AI协同对话历史.md](AI协同对话历史.md)，按步骤照着走的演进脚本见 [docs/replay.md](docs/replay.md)，改前/改后对照见 [Altiora-改前改后.html](Altiora-改前改后.html)。
 
 ### 复现成功的三个标志（先记住这三个，再往下做）
 
@@ -298,7 +298,7 @@ Altiora.luck/
 | 比赛要求 | 仓库位置 | 状态 |
 |---|---|---|
 | 代码仓库 Public | 本仓库 | ✅ |
-| Git 提交历史（细粒度，逐条可查） | `main` 分支 **170 余次连续提交**（2026-10-22 → 11-14，9 个开发日）：`git log --oneline main`；说明见 `docs/replay.md` 第 4 节 | ✅ |
+| Git 提交历史（细粒度，逐条可查） | `main` 分支从 2026-10-22 起连续提交、无 merge（9 个开发日），条数以 `git rev-list --count main` 为准：`git log --oneline main`；说明见 `docs/replay.md` 第 4 节 | ✅ |
 | AI Prompt 历史快照（≥3 组迭代） | `prompt-snapshots/` | ✅ |
 | 10 分钟复现指南 | 本文档第 3 节（含「复现成功的三个标志」） | ✅ |
 | 演进脚本（Prompt → 建议 → 引导修复 → 验证） | `docs/replay.md` | ✅ |
