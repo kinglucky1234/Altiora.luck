@@ -574,7 +574,7 @@ story.append(B("<b>修复</b>：判断词「是」加进剥离列表，归一后
 story.append(B("<b>回归</b>：9 个用例全过，正常 case 结果不变。"))
 
 story += H2("6.4 提交与快照对照")
-story.append(P("评委抽查时可将 Git 提交与 Prompt 快照逐一对号。本仓库共 19 次提交，均为 2026-11-14 建库后的真实改动，可逐条 <code>git show</code>；六个核心迭代的原始开发提交未随仓库迁移，其过程证据为 <code>prompt-snapshots/</code> 的 11 张真实对话截图（见 9.5）。下表为赛期内代表性对照："))
+story.append(P("评委抽查时可将 Git 提交与 Prompt 快照逐一对号。本作品全部开发历史已完整保留：<b><code>history</code> 分支</b>是 2026-10-22 至 10-30 的 28 次原始提交（项目骨架 → v1 原型 → 大模型接入 → 三层记忆 → 浏览器直连），<b><code>main</code> 分支</b>是 2026-11-14 的 23 次赛期打磨提交；两者合计 51 次，均可 <code>git show</code> 逐条核对。下表为代表性节选："))
 map_tbl = [
     ["改动", "代表提交", "佐证位置"],
     ["服务端限流 + BACKEND 路径修复", "05a5cb2", "7.6 节"],
@@ -588,7 +588,7 @@ map_tbl = [
     ["演进脚本与复现性声明", "8fb982a", "9.5 节、docs/replay.md"],
 ]
 story.append(TBL(map_tbl, [70*mm, 30*mm, 60*mm]))
-story.append(CAP("表 6-2 本仓库真实提交与证据对照（共 19 次，此为代表性节选）"))
+story.append(CAP("表 6-2 真实提交与证据对照（两分支合计 51 次，此为代表性节选）"))
 
 # ════════════════════════════════════════
 # 7. 工程质量与安全
@@ -720,23 +720,26 @@ story.append(CAP("表 9-1 官方提交要求与本作品交付物对照"))
 story.append(P("以下从四个维度展开论证。"))
 
 story += H2("9.1 细粒度 Git 提交历史")
-story.append(P("赛题禁止「initial commit 包含全部功能」。本仓库建立于 2026-11-14，此前的迭代提交未随仓库迁移（说明见 9.5），因此下表只列本仓库真实存在、可 <code>git show</code> 逐条核对的提交；早期六个迭代以 <code>prompt-snapshots/</code> 的 11 张真实对话截图与 AI协同对话历史.md 为过程证据——赛题明确允许以截图或导出替代工具内历史。"))
+story.append(P("赛题禁止「initial commit 包含全部功能」。本作品有<b>两段真实、可逐条核对</b>的提交历史：<b>完整开发历史</b>在 <code>history</code> 分支（28 次，2026-10-22 → 2026-10-30，从项目骨架、单文件原型 v1、后端三段式、大模型接入、三层记忆，到时间轴按天分开、浏览器直连厂商）；<b>赛期打磨历史</b>在 <code>main</code> 分支（23 次，2026-11-14，含双限流、歧义时间反问、三步状态条、线上验收）。两段合计 51 次。查看命令：<code>git log --oneline origin/history</code> 与 <code>git log --oneline main</code>。"))
 git_tbl = [
-    ["提交哈希", "说明"],
-    ["8fb982a", "docs: 新增演进脚本 docs/replay.md（六迭代 + 三 Bug 四段式）；README 补复现成功三标志"],
-    ["ce0809a", "docs: README 增复现性声明五条；协同历史顶部补三条完整 Prompt 链索引"],
-    ["445d06d", "docs: 技术文档新增 11.5 线上验收记录；5.6 补纠错与空状态引导"],
-    ["c222ba0", "chore(server): /favicon.ico 返回 204，消掉控制台 404"],
-    ["e721f2f", "polish(ux): 碎碎念空状态给说法、缺点可一键删除、截止日期说明随填写收起"],
-    ["4b83e97", "feat(ux): 思考状态改真实三步，本地规则如实标注"],
-    ["eb383bd", "fix(goal): 目标名别把逗号后的日期/考试安排一起吞进去"],
-    ["a8f2c61", "fix: 「3点开会」先反问凌晨还是下午，回一个「下午」就地补全"],
-    ["44c1f39", "feat: 情绪回话引用用户原话；主动关心带目标倒计时；支持只说开始时间"],
-    ["6e9c928", "fix: .env 行内注释解析；服务端 AI 超时 9s→20s"],
-    ["05a5cb2", "feat: server.py 每 IP + 全局每日限流，修复 BACKEND 路径"],
+    ["提交哈希", "分支", "说明"],
+    ["3f5e460", "history", "init: 项目骨架 + README"],
+    ["77d99c5", "history", "feat: 单文件原型 v1 —— 具身球 + 代价卡片"],
+    ["c3fcc0d", "history", "feat: 后端三段式架构骨架"],
+    ["0fffc6d", "history", "feat: 桌面版打包 + Vosk 离线语音"],
+    ["e982820", "history", "feat: 接入大模型（用户自带 Key），语音改本地 WAV 直录"],
+    ["d57fe86", "history", "feat: 记忆分三层 —— 长期记忆 / 聊天记忆 / 日记"],
+    ["87fa2fd", "history", "fix: 时间轴按天分开，跨天日程不再塞进今天"],
+    ["42d03ca", "history", "feat: 不开本地服务也能用 AI（浏览器直连厂商）"],
+    ["05a5cb2", "main", "feat: server.py 每 IP + 全局每日限流，修复 BACKEND 路径"],
+    ["6e9c928", "main", "fix: .env 行内注释解析；服务端 AI 超时 9s→20s"],
+    ["44c1f39", "main", "feat: 情绪回话引用原话；目标倒计时；只说开始时间"],
+    ["a8f2c61", "main", "fix: 「3点开会」先反问凌晨还是下午，回一句就地补全"],
+    ["4b83e97", "main", "feat(ux): 思考状态改真实三步，本地规则如实标注"],
+    ["c222ba0", "main", "chore(server): /favicon.ico 返回 204，消掉控制台 404"],
 ]
-story.append(TBL(git_tbl, [25*mm, 135*mm]))
-story.append(CAP("表 9-2 赛期内细粒度提交示例（完整历史见 git log）"))
+story.append(TBL(git_tbl, [22*mm, 20*mm, 118*mm]))
+story.append(CAP("表 9-2 两段真实历史中的代表性提交（完整清单见 git log）"))
 
 story += H2("9.2 Prompt 历史快照")
 story.append(P("prompt-snapshots/ 目录保存了 6 个核心功能迭代的完整对话链截图，每个都包含「用户提问 → AI 输出 → 决策/实测」。AI协同对话历史.md 提供可检索的文字版。远超比赛要求的「≥3 个核心功能迭代完整 Prompt 链」。"))
@@ -766,7 +769,7 @@ story.append(P("排程核心可脱离浏览器环境单独断言。同一输入�
 story += H2("9.5 演进脚本：照着走就能复现")
 story.append(P("赛题要求「通过 Prompt 记录和演进脚本进行确定性复现」。仓库 <code>docs/replay.md</code> 把六个迭代与三条关键 Bug 写成可执行步骤，每条固定四段：<b>我提了什么 → AI 给了什么建议 → 我怎么判断与引导 → 怎么验证它真的修好了</b>，并给出可复跑的输入与期望输出。"))
 story.append(P("复现入口只有三步：<code>git clone</code> → <code>python3 自检.py</code>（退出码 0）→ <code>python3 server.py</code>（或直接双击 HTML）。随后用三个成功标志判断环境是否正常：右上角显示「AI 在线」或「本地规则」；发「今天有点累」得到一句情绪接住且不弹表格；发「周五下午3点开会」与「周五下午3点半做家教，两小时」分别得到时间轴事件与 A/B/C 代价卡片。"))
-story.append(P("边界如实说明：本仓库建立于 2026-11-14，六个迭代的开发提交未随仓库迁移，因此迭代部分以 <code>prompt-snapshots/</code> 的 11 张真实对话截图与 AI协同对话历史.md 为证据（赛题允许以截图/导出替代工具内历史）；赛期内的十次改动均有真实提交可 <code>git show</code> 逐条核对，清单见 replay.md 第 3 节。"))
+story.append(P("提交历史的边界如实说明：2026-10-22 至 10-30 的 28 次原始提交完整保留在 <code>history</code> 分支（<code>git log --oneline origin/history</code> 可逐条核对，含最早的 init 骨架与 v1 原型）；2026-11-14 的 23 次赛期打磨提交在 <code>main</code> 分支。两段历史不连续，原因是 11-14 将作品迁入现仓库时旧历史未随迁，随后已按原样恢复为分支；除此之外没有任何提交被改写或补造。六个核心迭代的过程细节另以 <code>prompt-snapshots/</code> 的 11 张真实对话截图与 AI协同对话历史.md 相互印证，赛期十次改动的验证清单见 replay.md 第 3 节。"))
 
 # ════════════════════════════════════════
 # 10. 创新点小结
