@@ -2618,13 +2618,18 @@ function llmErr(r){
 }
 
 let MIC_SERVER=false;   // 本地语音服务是否在线（Vosk 离线识别）
+/* 托管在 GitHub Pages 这类静态站上时没有 /api，探测一次 404/405 就够了，
+   之后每条消息都别再发一次注定失败的请求（白等一个来回） */
+let API_DOWN=false;
 async function checkAI(){
   /* 有 Key：AI 直接在线；不管有没有 Key，都要问一句本地服务，决定麦克风能不能开 */
   if(USERLLM.key)setAIPill(true);
   try{
     const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),2500);
-    const j=await (await fetch("/api/health",{signal:ctl.signal})).json();
+    const rs=await fetch("/api/health",{signal:ctl.signal});
     clearTimeout(t);
+    if(!rs.ok){API_DOWN=true;throw new Error("no_api");}
+    const j=await rs.json();
     if(!USERLLM.key)setAIPill(!!j.llm);
     MIC_SERVER=!!j.asr;
     setMicEnabled(MIC_SERVER);
@@ -2906,6 +2911,7 @@ async function askLLM(text){
     }
   }
   /* ② 没 Key：问本地服务（服务端 .env 里可能配了 Key），失败就回本地兜底 */
+  if(API_DOWN)return null;
   const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),9000);
   try{
     const r=await fetch("/api/understand",{
@@ -2915,7 +2921,7 @@ async function askLLM(text){
       signal:ctl.signal
     });
     clearTimeout(t);
-    if(!r.ok)return null;
+    if(!r.ok){if(r.status===404||r.status===405)API_DOWN=true;return null;}
     const j=await r.json();
     return (j&&j.ok&&j.source==="llm")?j:null;
   }catch(e){clearTimeout(t);return null;}
@@ -2924,6 +2930,7 @@ async function askSay(facts){
   if(USERLLM.key){
     try{return await withTimeout(directSay(facts),12000);}catch(e){return "";}
   }
+  if(API_DOWN)return "";
   const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),9000);
   try{
     const r=await fetch("/api/say",{
@@ -2931,7 +2938,7 @@ async function askSay(facts){
       body:JSON.stringify({facts,profile:DATA.profile}),signal:ctl.signal
     });
     clearTimeout(t);
-    if(!r.ok)return "";
+    if(!r.ok){if(r.status===404||r.status===405)API_DOWN=true;return "";}
     const j=await r.json();
     return j&&j.ok&&j.text?j.text:"";
   }catch(e){clearTimeout(t);return "";}
