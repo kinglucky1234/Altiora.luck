@@ -913,6 +913,14 @@ button,.btn,.tab,.chip,.tag,.ai-pill,.hint,.ttl,.opt-name,.io div,.legend span,
 .me-prog{height:6px;border-radius:6px;background:var(--line);margin-top:8px;overflow:hidden}
 .me-prog-bar{height:100%;border-radius:6px;background:var(--hue);width:0;transition:width .5s ease}
 .me-prog-txt{font-size:11px;color:var(--t3);margin-top:5px}
+/* 这 30 天：一格一天，亮 = 那天动了手。不做百分比、不做评级 */
+.trace-grid{display:grid;grid-template-columns:repeat(10,1fr);gap:6px;max-width:380px}
+.trace-cell{aspect-ratio:1;border-radius:4px;background:rgba(255,255,255,.045);border:1px solid var(--line)}
+.trace-cell.open{background:rgba(59,130,246,.14);border-color:rgba(59,130,246,.28)}
+.trace-cell.done{background:rgba(16,185,129,.5);border-color:rgba(16,185,129,.65)}
+.trace-cell.today{outline:1px solid rgba(255,255,255,.5);outline-offset:1px}
+.trace-fact{margin-top:12px;font-size:12.5px;color:var(--t2);font-variant-numeric:tabular-nums}
+.trace-fact b{color:var(--t1);font-weight:600}
 .goal-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .goal-col{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 12px 14px;min-width:0}
 .goal-col i{display:block;font-style:normal;font-size:11px;color:var(--t3);margin-bottom:7px}
@@ -1255,6 +1263,12 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
     </div>
 
     <div class="card">
+      <div class="ttl">这 30 天 <small>只摆事实，不打分</small></div>
+      <div class="trace-grid" id="traceGrid"></div>
+      <div class="trace-fact" id="traceFact"></div>
+    </div>
+
+    <div class="card">
       <div class="ttl">目标 <small>长期 · 中期 · 短期，各记一个</small></div>
       <div class="goal-grid">
         <div class="goal-col" id="goalLong"></div>
@@ -1476,7 +1490,7 @@ const DATA = {
      long  长期记忆 = 上面的 profile。用户亲口说的事实，计算器唯一的输入。
      chat  聊天记忆 = 最近 3 轮。只为接住半句话，超过就滚掉，不沉淀。
      diary 日记     = 每次聊完一行「日期：摘要」。平时不出现，只在久别回来时翻。 */
-  memory:{chat:[],diary:[],last_seen:"",pending:null,emotion_history:[]},
+  memory:{chat:[],diary:[],last_seen:"",pending:null,emotion_history:[],visit_days:[]},
   /* 周课表：periods 是节次时间表（可在界面上改），courses 是一周课程 */
   week:{
     periods:[
@@ -1508,7 +1522,7 @@ function saveData(){
     week:{periods:DATA.week.periods,courses:DATA.week.courses,synced:DATA.week.synced},
     memory:{chat:DATA.memory.chat,diary:DATA.memory.diary,
             last_seen:DATA.memory.last_seen,pending:DATA.memory.pending,
-            emotion_history:DATA.memory.emotion_history}
+            emotion_history:DATA.memory.emotion_history,visit_days:DATA.memory.visit_days||[]}
   };
   try{localStorage.setItem(SAVE_KEY,JSON.stringify(state));}catch(e){}
   /* 每天留一份带内容的自动备份：闪退 / 误清缓存后还能捞回来 */
@@ -1548,6 +1562,7 @@ try{
     if(typeof m.last_seen==="string")DATA.memory.last_seen=m.last_seen;
     if(m.pending&&m.pending.name)DATA.memory.pending=m.pending;
     if(Array.isArray(m.emotion_history))DATA.memory.emotion_history=m.emotion_history.slice(-60);
+    if(Array.isArray(m.visit_days))DATA.memory.visit_days=m.visit_days.slice(-120);
   }
 }catch(e){}
 
@@ -1559,6 +1574,13 @@ try{
   const c=v.replace(/\d{2,3}\s*分?过线?$/,"").replace(/(^|\D)\d{2,3}$/,"$1").trim();
   if(c.length>=2&&c!==v)DATA.profile[k]=c;
 });
+
+/* 只记「哪天打开过」。不统计、不比较、不评分——画像页那一行格子用它 */
+(function(){
+  const t=todayStr(), v=DATA.memory.visit_days;
+  if(!v[v.length-1]||v[v.length-1]!==t)v.push(t);
+  if(v.length>120)v.splice(0,v.length-120);
+})();
 
 /* ════════ 记忆三层 ════════ */
 function todayStr(d){
@@ -4512,8 +4534,31 @@ function proactiveCare(){
   const rec=push("ai",esc(msg));
   const el=document.getElementById(rec.id);if(el)el.classList.add("care");
 }
+/* 这 30 天：一格一天。绿 = 那天画了勾，蓝 = 只是回来过，空 = 没动。
+   只把事实摆出来，不给百分比、不下结论——要不要改，用户自己看 */
+function renderTrace(){
+  const g=document.getElementById("traceGrid");if(!g)return;
+  const t=todayStr();
+  const open=new Set(DATA.memory.visit_days||[]);
+  let html="",doneCnt=0,cameCnt=0,planCnt=0;
+  for(let i=29;i>=0;i--){
+    const d=addDays(t,-i);
+    const evs=DATA.events.filter(e=>e.date===d);
+    const dn=evs.filter(e=>e.done).length;
+    planCnt+=evs.length;doneCnt+=dn;
+    const came=open.has(d)||dn>0;
+    if(came)cameCnt++;
+    const tip=d+(evs.length?` · 排了 ${evs.length} 场`:" · 没排事")
+      +(dn?` · 画了 ${dn} 个勾`:"");
+    html+=`<div class="trace-cell${dn?" done":(came?" open":"")}${d===t?" today":""}" title="${tip}"></div>`;
+  }
+  g.innerHTML=html;
+  const f=document.getElementById("traceFact");
+  if(f)f.innerHTML=`回来过 <b>${cameCnt}</b> 天 · 画了 <b>${doneCnt}</b> 个勾 · 排了 <b>${planCnt}</b> 场`;
+}
 function renderMe(){
   const p=DATA.profile;
+  renderTrace();
   const kv=document.getElementById("kv");if(!kv)return;
   const dash=v=>v?esc(v):'<span class="dash">还没说</span>';
   const weak=p.known_weakness.length
