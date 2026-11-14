@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Altiora · 改前 / 改后（10 条实证）</title>
+<style>
+:root{
+  --bg:#0B1020;--card:rgba(255,255,255,.035);--line:rgba(255,255,255,.08);
+  --t1:#E5E7EB;--t2:#9CA3AF;--t3:#6B7280;
+  --bad:#EF4444;--good:#10B981;--blue:#3B82F6;--amber:#F59E0B;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  background:var(--bg);color:var(--t1);font-size:14px;line-height:1.7;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(900px 500px at 10% -10%,rgba(59,130,246,.13),transparent 60%),
+             radial-gradient(700px 420px at 95% 0%,rgba(139,92,246,.10),transparent 60%);
+}
+.wrap{max-width:1080px;margin:0 auto;padding:44px 20px 72px;position:relative;z-index:1}
+h1{font-size:24px;font-weight:700;letter-spacing:.4px}
+.sub{color:var(--t2);font-size:13px;margin-top:10px;max-width:760px}
+.meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
+.chip{font-size:11.5px;color:var(--t3);border:1px solid var(--line);border-radius:999px;padding:4px 11px;background:rgba(255,255,255,.02)}
+.legend{display:flex;gap:22px;flex-wrap:wrap;margin:26px 0 18px;font-size:12px;color:var(--t3)}
+.legend b{font-weight:600}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:1px}
+.dot.b{background:var(--bad)}.dot.g{background:var(--good)}
+.card{
+  background:var(--card);border:1px solid var(--line);border-radius:14px;
+  padding:18px 20px;margin-bottom:14px;transition:.15s;
+}
+.card:hover{border-color:rgba(255,255,255,.16)}
+.head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.idx{font-size:11px;color:var(--t3);font-variant-numeric:tabular-nums;border:1px solid var(--line);border-radius:6px;padding:1px 6px}
+.name{font-size:14.5px;font-weight:600}
+.why{font-size:12px;color:var(--t3);margin-left:auto}
+.said{margin-top:12px;font-size:13px;color:var(--t2)}
+.said code{background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:6px;padding:2px 7px;color:#C7D2FE;font-family:inherit}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.pane{background:rgba(0,0,0,.18);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.pane.before{border-left:2px solid var(--bad)}
+.pane.after{border-left:2px solid var(--good)}
+.tag{font-size:11px;letter-spacing:.5px;margin-bottom:7px}
+.pane.before .tag{color:#FCA5A5}
+.pane.after .tag{color:#6EE7B7}
+.say{font-size:12.8px;color:var(--t1);word-break:break-word}
+.say.dim{color:var(--t3)}
+.check{margin-top:11px;font-size:12px;color:var(--t3)}
+.check b{color:var(--t2);font-weight:600}
+footer{margin-top:30px;padding-top:18px;border-top:1px solid var(--line);font-size:12px;color:var(--t3)}
+footer code{color:var(--t2)}
+@media(max-width:720px){
+  .pair{grid-template-columns:1fr}
+  .why{margin-left:0;width:100%}
+  .wrap{padding:28px 16px 56px}
+  h1{font-size:20px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Altiora · 改前 / 改后</h1>
+  <p class="sub">挑 10 条真实发生过的问题。左边是它当时的回答，右边是现在的回答。每条都写明「怎么判定改好了」——不是看起来对了，是能重复验一遍。</p>
+
+  <div class="meta">
+    <span class="chip">10 条实证</span>
+    <span class="chip">全部可在网页里复现</span>
+    <span class="chip">截至 2026-11-14</span>
+    <span class="chip">无 API Key 也能验（走本地规则）</span>
+  </div>
+
+  <div class="legend">
+    <span><i class="dot b"></i><b>改前</b>：当时的真实输出</span>
+    <span><i class="dot g"></i><b>改后</b>：现在的真实输出</span>
+  </div>
+
+  <!-- 01 -->
+  <div class="card">
+    <div class="head"><span class="idx">01</span><span class="name">「两个半小时」被听成半小时</span><span class="why">时长解析顺序</span></div>
+    <div class="said">你说：<code>六级每天两个半小时</code></div>
+    <div class="pair">
+      <div class="pane before"><div class="tag">改前</div><div class="say">记住了：六级，每天 <b>30 分钟</b>。</div></div>
+      <div class="pane after"><div class="tag">改后</div><div class="say">记住了：六级，每天 <b>2.5 小时</b>。今天 08:00 到 10:30 空着，就定这儿？</div></div>
+    </div>
+    <div class="check"><b>判据</b>：回复出现「2.5 小时」，且建议时段跨度正好 150 分钟。回归：「半小时」「一个半」「三个半」仍分别为 30 / 90 / 210 分钟。</div>
+  </div>
+
+  <!-- 02 -->
+  <div class="card">
+    <div class="head"><span class="idx">02</span><span class="name">目标名被记成「六级425」</span><span class="why">目标名清洗</span></div>
+    <div class="said">你说：<code>六级每天两个半小时，12月19号考，425分过线</code></div>
+    <div class="pair">
+      <div class="pane before"><div class="tag">改前</div><div class="say">记住了：<b>六级425</b>，每天 2.5 小时。<span class="dim">（分数、过线字样被当成名字的一部分）</span></div></div>
+      <div class="pane after"><div class="tag">改后</div><div class="say">记住了：<b>六级</b>，每天 2.5 小时。<span class="dim">（分数留在「目标分数」，不混进名字）</span></div></div>
+    </div>
+    <div class="check"><b>判据</b>：画像页的目标名是「六级」，不是「六级425」，也不是整句话。</div>
+  </div>
+
+  <!-- 03 -->
+  <div class="card">
+    <div class="head"><span class="idx">03</span><span class="name">说「帮我排计划」，它只反问钟点</span><span class="why">排计划分支</span></div>
+    <div class="said">你说：<code>帮我排到考前的计划，晚上8点开始</code></div>
+    <div class="pair">
+      <div class="pane before"><div class="tag">改前</div><div class="say">你每天那两个半小时，想定在几点到几点？<span class="dim">（把「定时长」的活推回给用户）</span></div></div>
+      <div class="pane after"><div class="tag">改后</div><div class="say">排好了：35 天 63 场，从 11月14日 20:00 的「阅读精读·六级」开始。我指给你看。<span class="dim">（回「行」才落进时间轴）</span></div></div>
+    </div>
+    <div class="check"><b>判据</b>：场次跨多天；回一句「行」后，时间轴条数真的增加；回「算了」则一条不加。</div>
+  </div>
+
+  <!-- 04 -->
+  <div class="card">
+    <div class="head"><span class="idx">04</span><span class="name">排计划只写「英语」两个字</span><span class="why">按内容拆块</span></div>
+    <div class="said">你说：<code>帮我排这周的计划，7点开始</code></div>
+    <div class="pair">
+      <div class="pane before"><div class="tag">改前</div><div class="say">日程里出现一条「<b>英语</b>」，时长 150 分钟，没有说这 150 分钟干什么。</div></div>
+      <div class="pane after"><div class="tag">改后</div><div class="say">拆成「<b>单词 30 分·英语</b>」→「<b>听力 1 篇·英语</b>」→「<b>阅读精读·英语</b>」多块，标注时长的先占，其余按剩余时间平分，每块不少于 15 分钟。</div></div>
+    </div>
+    <div class="check"><b>判据</b>：时间轴里同一天出现多块带内容名的事件，而不是一条笼统的科目名。</div>
+  </div>
+
+  <!-- 05 -->
+  <div class="card">
+    <div class="head"><span class="idx">05</span><span class="name">「3点开会」被直接丢掉</span><span class="why">歧义时间先反问</span></div>
+    <div class="said">你说：<code>3点开会</code> → <code>下午</code></div>
+    <div class="pair">
+      <div class="pane before"><div class="tag">改前</div><div class="say">「3点开会」——这句我没完全接住。你想让我帮你做什么？<span class="dim">（要么丢掉，要么直接猜凌晨 3 点排进去）</span></div></div>
+      <div class="pane after"><div class="tag">改后</div><div class="say">「开会」——3 点，是凌晨还是下午？回一句「下午」或「上午」，我就排进去。<br>你：下午<br>→「开会 15:00-16:00」排进去了（你只说了开始，我先按 1 小时算）。</div></div>
+    </div>
+    <div class="check"><b>判据</b>：第一句不新建事件；第二句只回「下午」即可落地；30 分钟不回应则 pending 过期，不会第二天冒出错时间。</div>
+  </div>
+
+  <!-- 06 -->
+  <div class="card">
+    <div class="head"><span class="idx">06</span><span class="name">「我3点就醒了」被当成日程</span><span class="why">已发生的事不排</span></div>
+    <div class="said">你说：<code>我3点就醒了</code></div>
+    <div class="pair">
+      <div class="pane before"><div class="tag">改前</div><div class="say">时间轴里多出一条「醒了 03:00-04:00」。<span class="dim">（把状态描述当成了待办）</span></div></div>
+      <div class="pane after"><div class="tag">改后</div><div class="say">「3点就醒了」——这句我没完全接住。你想让我帮你做什么？<span class="dim">（不建事件，也不追问凌晨还是下午）</span></div></div>
+    </div>
+    <div class="check"><b>判据</b>：时间轴无新增；命中「醒/睡/起床/到家/下班/迟到」的句子一律不排。</div>
+  </div>
+
+  <!-- 07 -->
+  <div class="card">
+    <div class="head"><span class="idx">07</span><span class="name">安慰是通用的，不认得你是谁</span><span class="why">画像参与回话</span></div>
+    <div class="said">你先说过：<code>记住：我吃软不吃硬，别骂我</code>　然后你说：<code>我就是个废物</code></div>
+    <div class="pair">
+      <div class="pane before"><div class="tag">改前</div><div class="say">别这么说自己，每个人都会有低谷期，调整好心态就好。<span class="dim">（放到任何人身上都成立）</span></div></div>
+      <div class="pane after"><div class="tag">改后</div><div class="say">你自己说过「吃软不吃硬」——先停一下。骂自己不会让事情变少，只会让你更想重开。</div></div>
+    </div>
+    <div class="check"><b>判据</b>：回复里出现用户自己说过的原话；没有匹配原话时宁可不加，绝不编造。</div>
+  </div>
+
+  <!-- 08 -->
+  <div class="card">
+    <div class="head"><span class="idx">08</span><span class="name">主动关心只有「没画勾」，没有分量</span><span class="why">带倒计时</span></div>
+    <div class="said">场景：目标「六级」连续两天没完成，今天还有空档</div>
+    <div class="pair">
+      <div class="pane before"><div class="tag">改前</div><div class="say">「六级」这两天没画上勾。今天 20:00 到 22:30 空着——给它？</div></div>
+      <div class="pane after"><div class="tag">改后</div><div class="say">「六级」这两天没画上勾。<b>离「六级」还有 35 天。</b>今天 20:00 到 22:30 空着——给它？<span class="dim">（短期目标不出现这句，不催）</span></div></div>
+    </div>
+    <div class="check"><b>判据</b>：带截止日期的长期目标才出现倒计时；一天最多主动开口一次。</div>
+  </div>
+
+  <!-- 09 -->
+  <div class="card">
+    <div class="head"><span class="idx">09</span><span class="name">评委打开作品，得先自己找 Key</span><span class="why">服务端同源部署</span></div>
+    <div class="said">场景：评委第一次打开</div>
+    <div class="pair">
+      <div class="pane before"><div class="tag">改前</div><div class="say">右上角点「模型」→ 粘贴 API Key → 刷新，才有 AI。<span class="dim">（多数评委在这一步就放弃，等于没看到 AI）</span></div></div>
+      <div class="pane after"><div class="tag">改后</div><div class="say">打开在线地址直接对话，AI 已在线；接口与页面同源，不走浏览器直连，所以既没有混合内容拦截，也不把 Key 暴露给前端。</div></div>
+    </div>
+    <div class="check"><b>判据</b>：<code>GET /api/health</code> 返回 <code>"llm":true</code>；连续请求超限后返回 429，前端自动回退本地规则而不报错。</div>
+  </div>
+
+  <!-- 10 -->
+  <div class="card">
+    <div class="head"><span class="idx">10</span><span class="name">换了入口就「失忆」</span><span class="why">数据兜底与镜像同步</span></div>
+    <div class="said">场景：从另一个链接打开，发现所有记录都没了</div>
+    <div class="pair">
+      <div class="pane before"><div class="tag">改前</div><div class="say">打开的是旧版页面／不同入口，看到空白的自己，以为数据丢了。</div></div>
+      <div class="pane after"><div class="tag">改后</div><div class="say">每天自动留一份本地备份，画像页可「恢复今天的自动备份」；仓库内五份 HTML 镜像 md5 一致，任何入口都是同一版。</div></div>
+    </div>
+    <div class="check"><b>判据</b>：五份文件 <code>md5sum</code> 去重后只有 1 个值；画像页能看到备份并可一键恢复。</div>
+  </div>
+
+  <footer>
+    <b>自己验一遍</b>：打开 <code>/</code> → 依次输入上面每条「你说」里的句子 → 对照右侧文字。
+    全部功能在没有 API Key 的情况下也能验证（走本地规则），所以不消耗任何模型额度。
+  </footer>
+
+</div>
+</body>
+</html>
