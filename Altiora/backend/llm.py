@@ -69,8 +69,9 @@ SYSTEM = """你叫 Altiora，是「用户理想中更好的自己」在电脑里
 - 用户可能用中文数字（三点）、相对说法（下午/明晚/下周三）、口语时长（复习两小时），
   这些都由你负责理解并归一化成 24 小时制 HH:MM，别指望离线引擎去猜。
 - schedule 的时间给在 events 数组里，每项必须有 name、start、end，最多 4 件。
-  用户一句话说几件事，就拆几条；说了几件事但只有部分有完整时间，只把时间完整的放进去。
-  一件都凑不齐 start/end，events 给空数组 []，并把那件事的名字写进 subject，不要猜时间。
+  用户没说结束时间时，end 填 start + 60 分钟，不要填 null。
+  用户一句话说几件事，就拆几条；说了几件事但只有部分有开始时间，就先给有开始时间的。
+  连开始时间都没有，events 给空数组 []，并把那件事的名字写进 subject，不要猜时间。
 - events 每项可以给 date（YYYY-MM-DD），只在用户说了具体哪天（如下周三、下个月 3 号、10 月 8 日）时给；
   说今天/明天这种相对日期也可以换算成具体日期再给。拿不准就不给 date，由本地按今天推算。
 - 时间只有小时、没有上午/下午，也不是 HH:MM 或区间时，必须输出 ambiguity：
@@ -254,8 +255,12 @@ def _clean_event(raw) -> dict | None:
     name = str(raw.get("name") or "").strip()[:20]
     start = _norm_time(raw.get("start"))
     end = _norm_time(raw.get("end"))
-    if not name or not start or not end:
+    if not name or not start:
         return None
+    # 用户本来就没说结束时间：按 1 小时先摆着，别把整条事件丢掉
+    if not end:
+        e = min(_to_minutes(start) + 60, 23 * 60 + 59)
+        end = f"{e // 60:02d}:{e % 60:02d}"
     # 只校验区间合法，不做任何时长/代价推导
     if _to_minutes(end) <= _to_minutes(start):
         return None

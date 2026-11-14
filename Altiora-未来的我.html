@@ -3390,7 +3390,7 @@ async function handleUser(v){
   const mA=j&&j.ambiguity&&typeof j.ambiguity.confidence==="number"?j.ambiguity:null;
   const cand=mA&&Array.isArray(mA.candidates)&&typeof mA.candidates[0]==="string"?mA.candidates[0].slice(0,5):"";
   const cmin=cand?Number(cand.slice(0,2))*60+Number(cand.slice(3,5)):NaN;
-  if(mA&&mA.confidence>=0.95&&cmin>=0&&cmin<23*60){
+  if(mA&&mA.confidence>=0.85&&cmin>=0&&cmin<23*60){
     const em=cmin+60,end=pad2(Math.floor(em/60))+":"+pad2(em%60);
     const name=((amb&&amb.name)||(j.event&&j.event.name)||j.subject||"新安排").slice(0,12);
     const date=(amb&&amb.date)||resolveDate(v);
