@@ -2912,7 +2912,7 @@ async function askLLM(text){
   }
   /* ② 没 Key：问本地服务（服务端 .env 里可能配了 Key），失败就回本地兜底 */
   if(API_DOWN)return null;
-  const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),9000);
+  const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),20000);
   try{
     const r=await fetch("/api/understand",{
       method:"POST",
@@ -2931,7 +2931,7 @@ async function askSay(facts){
     try{return await withTimeout(directSay(facts),12000);}catch(e){return "";}
   }
   if(API_DOWN)return "";
-  const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),9000);
+  const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),20000);
   try{
     const r=await fetch("/api/say",{
       method:"POST",headers:{"Content-Type":"application/json"},

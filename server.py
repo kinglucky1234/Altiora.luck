@@ -43,6 +43,12 @@ def _load_dotenv():
             if not line or line.startswith("#") or "=" not in line:
                 continue
             k, v = line.split("=", 1)
+            v = v.strip()
+            # 去掉行内注释："50      # 说明" → "50"
+            # 只在 # 前面是空白时才当注释，避免误伤值里合法的 # 字符
+            for sep in (" #", "\t#"):
+                if sep in v:
+                    v = v.split(sep, 1)[0]
             os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
 
 
