@@ -1378,9 +1378,9 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
         <button class="btn ghost" onclick="restoreBackup()">恢复今天的自动备份</button>
         <input type="file" id="importFile" accept=".json,application/json" style="display:none" onchange="importData(this)">
       </div>
-      <div class="chips-row" style="margin:10px 0 0;font-size:12px;color:var(--t3)">
+      <div class="chips-row" style="margin:10px 0 0;font-size:12px;color:var(--t3);display:flex;align-items:center;gap:8px;flex-wrap:wrap;line-height:1">
         <span>两件事之间至少空几分钟</span>
-        <input type="number" id="bufMin" min="0" max="120" step="5" style="width:64px;font:inherit;padding:4px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--t1)" onchange="setBufferMin(this.value)">
+        <input type="number" id="bufMin" min="0" max="120" step="5" style="width:64px;font:inherit;font-size:12px;line-height:1.2;padding:5px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--t1);text-align:center" onchange="setBufferMin(this.value)">
         <span>默认 10；填 0 只算真正的时间重叠</span>
       </div>
     </div>
