@@ -3527,6 +3527,9 @@ function extractGoal(t){
     g="成为"+g.slice(v[0].length).replace(/^[，,、\s]*/,"").replace(/^一(名|个|位|只)/,"");
   }
   g=g.replace(/[啊呀吧呢哦啦哈嘛]+$/,"").trim();
+  // 「考六级，12月14号考试」：逗号后若是日期/考试安排，那不是说目标本身，切掉；别的并列目标不动
+  const gi=g.search(/[，,；;]/);
+  if(gi>0&&/^(明?年|[0-9]{1,2}[月号日]|下周|下个?月|这周|每天|考前|考试)/.test(g.slice(gi+1).trim()))g=g.slice(0,gi).trim();
   g=stripPunct(g);   // 统一刮掉首尾标点，别让「：成为科学家」这种前导冒号进画像
   // 情绪动词、日常琐事、当天的事，都不算长期目标
   if(!g||g.length<2||g.length>40)return "";
