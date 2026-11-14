@@ -152,9 +152,7 @@ body[data-tab="home"] .fab{display:none}
 .quick-start .qs-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
 .quick-start .qs-chip{padding:6px 12px;border-radius:20px;border:1px solid var(--line-hi);background:var(--card);color:inherit;font-size:13px;cursor:pointer}
 .quick-start .qs-chip:hover{border-color:var(--blue);color:var(--blue)}
-.quick-start .qs-demo{margin-top:9px;padding:6px 12px;border-radius:20px;border:1px dashed var(--line-hi);background:none;color:var(--t2);font-size:12.5px;cursor:pointer;font-family:inherit}
-.quick-start .qs-demo:hover{border-color:var(--blue);color:var(--blue)}
-.demo-bar{margin:10px auto 0;width:max-content;max-width:100%;background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:8px;padding:5px 11px;font-size:11.5px;color:var(--t3)}
+.demo-bar{margin:0 auto 10px;width:max-content;max-width:100%;background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:8px;padding:5px 11px;font-size:11.5px;color:var(--t3)}
 .demo-bar a{color:var(--blue);cursor:pointer;text-decoration:underline}
 .wx-bar input{
   flex:1;min-width:0;padding:12px 16px;border-radius:10px;border:1px solid var(--line);
@@ -391,6 +389,11 @@ pre.json .n{color:#FDBA74}
 .result.warn{background:rgba(249,115,22,.08);border-color:rgba(249,115,22,.26);color:#FED7AA}
 .result.warn .lbl{color:var(--orange)}
 .chips-row{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap}
+/* 日/周/月切换：这是时间轴的主切换，别做成和标签一样小的胶囊 */
+#tlvSwitch{gap:4px;padding:4px;border:1px solid var(--line);border-radius:12px;background:var(--card);width:max-content;margin-left:auto;margin-right:auto}
+#tlvSwitch .chip{padding:7px 22px;font-size:13.5px;font-weight:600;min-width:56px;text-align:center;cursor:pointer;border-radius:9px;background:none;border:1px solid transparent;color:var(--t2)}
+#tlvSwitch .chip:hover{color:var(--t1);background:var(--card-hi)}
+#tlvSwitch .chip.sel{background:rgba(59,130,246,.16);border-color:rgba(59,130,246,.5);color:#93C5FD}
 .note-item{
   display:flex;gap:11px;align-items:flex-start;padding:11px 13px;border-radius:9px;
   background:rgba(255,255,255,.025);border:1px solid var(--line);margin-bottom:8px;
@@ -1119,7 +1122,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 </div>
 
 <div class="wrap">
-  <div class="demo-bar" id="demoBar" style="display:none">这些是示例数据 · <a onclick="clearDemo()">换成我自己的</a></div>
+  <div class="demo-bar" id="demoBar" style="display:none">示例日程 · <a onclick="clearDemo()">清空</a></div>
   <div class="tabs-wrap">
     <div class="tabs">
       <button class="tab on" data-p="home">主页</button>
@@ -1138,13 +1141,12 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
     </div>
 
     <div class="quick-start" id="quickStart">
-      <div class="qs-title">第一次打开？点一句，看它怎么接</div>
+      <div class="qs-title">你可以这样说</div>
       <div class="qs-row">
         <button class="qs-chip" onclick="quickSend('今天有点累')">今天有点累</button>
         <button class="qs-chip" onclick="quickSend('明天下午3点开组会')">明天下午3点开组会</button>
         <button class="qs-chip" onclick="quickSend('记住，我晚上容易刷手机')">记住，我晚上容易刷手机</button>
       </div>
-      <button class="qs-demo" onclick="loadDemo()">或者，先看一份填满的日程 →</button>
     </div>
 
     <div class="peek" id="peek" onclick="openFullChat()">
@@ -1326,7 +1328,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
     </div>
 
     <div class="card">
-      <div class="ttl">这 30 天 <small>只摆事实，不打分</small></div>
+      <div class="ttl">这 30 天</div>
       <div class="trace-grid" id="traceGrid"></div>
       <div class="trace-fact" id="traceFact"></div>
     </div>
@@ -3214,6 +3216,7 @@ function stepsHTML(stage,kind,src){
 }
 async function handleUser(v){
   if(guideOn)endGuide();   // 开始对话就收起引导，别挡着干活
+  markQsDone();refreshQuickStart();   // 开口了，首屏示例就不再出现
   push("me",v);
   if(v.startsWith("/")){setTimeout(()=>slashCmd(v),150);return;}
 
@@ -4249,10 +4252,14 @@ function quickSend(t){
   const inp=document.getElementById("chatIn");if(inp)inp.value=t;
   send();
 }
+/* 首屏三句提示：见过就不再回来。判据必须持久化——HISTORY 只在内存里，刷新就归零 */
+const QS_KEY="altiora_qs_done_v1";
+function qsSeen(){try{return localStorage.getItem(QS_KEY)==="1"}catch(e){return false}}
+function markQsDone(){try{localStorage.setItem(QS_KEY,"1")}catch(e){}}
 function refreshQuickStart(){
   const q=document.getElementById("quickStart");if(!q)return;
-  /* 只要还没开口，就把三句示例留在首屏；载入示例数据不等于「已经聊过」 */
-  const empty=!HISTORY.some(m=>m.who==="user");
+  const empty=!qsSeen()&&!HISTORY.some(m=>m.who==="user")
+    &&!DATA.events.length&&!DATA.notes.length&&!DATA.diary.length;
   q.style.display=empty?"":"none";
 }
 function loadDemo(){
@@ -4292,7 +4299,7 @@ function loadDemo(){
   }catch(e){}
   VIEW_DATE=t;
   renderDayBar();renderGantt();renderRecon();renderCountdown();renderConflicts();
-  renderOrbs();renderMe();renderNotes();updStats();renderWeek();refreshQuickStart();
+  renderOrbs();renderMe();renderNotes();updStats();renderWeek();markQsDone();refreshQuickStart();
   go("timeline");
   toast("示例数据已载入：今天 14:00 组会和 15:00 家教撞了 30 分钟");
 }
