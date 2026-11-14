@@ -147,6 +147,14 @@ body[data-tab="home"] .fab{display:none}
 
 /* ── 微信式输入条 ── */
 .wx-bar{display:flex;align-items:center;gap:8px;padding:14px 0 6px}
+.quick-start{padding:2px 0 4px;text-align:center}
+.quick-start .qs-title{font-size:12px;color:var(--t2);margin-bottom:8px}
+.quick-start .qs-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.quick-start .qs-chip{padding:6px 12px;border-radius:20px;border:1px solid var(--line-hi);background:var(--card);color:inherit;font-size:13px;cursor:pointer}
+.quick-start .qs-chip:hover{border-color:var(--blue);color:var(--blue)}
+.quick-start .qs-demo{margin-top:9px;background:none;border:none;color:var(--blue);font-size:12px;cursor:pointer;text-decoration:underline}
+.demo-bar{margin:0 auto 10px;width:max-content;max-width:100%;background:var(--card);border:1px solid var(--line-hi);border-radius:20px;padding:7px 13px;font-size:12px;color:var(--t2);box-shadow:0 4px 12px rgba(0,0,0,.12)}
+.demo-bar a{color:var(--blue);cursor:pointer;text-decoration:underline}
 .wx-bar input{
   flex:1;min-width:0;padding:12px 16px;border-radius:10px;border:1px solid var(--line);
   background:rgba(255,255,255,.04);color:var(--t1);font-size:14px;font-family:inherit;
@@ -1092,13 +1100,14 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
   <div class="gaze-in">
     <div class="logo">Altiora<span>记录自我，向着更高处成长</span></div>
     <div class="gaze-msg" id="gazeMsg" style="display:none"><span class="dot"></span><span id="gazeTxt"></span></div>
-    <div class="ai-pill" id="aiPill" onclick="openLLM()" title="点这里填你自己的 API Key">模型</div>
+    <div class="ai-pill" id="aiPill" onclick="openLLM()" title="当前离线：本地确定性计算。点这里填 Key 接入在线模型">离线</div>
     <button class="tts-btn" id="ttsBtn" onclick="toggleTTS()" title="朗读回复"></button>
     <div class="avatar-mini" id="gazeAvatar"></div>
   </div>
 </div>
 
 <div class="wrap">
+  <div class="demo-bar" id="demoBar" style="display:none">示例数据 · <a onclick="clearDemo()">一键清空</a></div>
   <div class="tabs-wrap">
     <div class="tabs">
       <button class="tab on" data-p="home">主页</button>
@@ -1114,6 +1123,16 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
       <div class="hero-avatar" id="bigAvatar"></div>
       <div class="hero-name" id="ovName">未来的你</div>
       <div class="hero-state" id="ovState"></div>
+    </div>
+
+    <div class="quick-start" id="quickStart">
+      <div class="qs-title">第一次打开？点一句，看它怎么接</div>
+      <div class="qs-row">
+        <button class="qs-chip" onclick="quickSend('今天有点累')">今天有点累</button>
+        <button class="qs-chip" onclick="quickSend('明天下午3点开组会')">明天下午3点开组会</button>
+        <button class="qs-chip" onclick="quickSend('记住，我晚上容易刷手机')">记住，我晚上容易刷手机</button>
+      </div>
+      <button class="qs-demo" onclick="loadDemo()">载入示例数据，直接看冲突与代价 →</button>
     </div>
 
     <div class="peek" id="peek" onclick="openFullChat()">
@@ -2690,10 +2709,10 @@ function setMicEnabled(on){
 function setAIPill(on){
   const el=document.getElementById("aiPill");if(!el)return;
   el.classList.toggle("on",on);
-  el.textContent=on?"AI 在线":"模型";
+  el.textContent=on?"AI 在线":"离线";
   el.title=on
     ?"点这里改设置。LLM 只负责听懂你说的话；算冲突、算代价仍是本地确定性计算器"
-    :"点这里填你自己的 API Key；不填也能用，全部走模型";
+    :"当前离线：本地确定性计算。点这里可填 Key 接入在线模型；不填也能用。";
 }
 
 /* ════════ 浏览器直连：不开本地服务也能用 AI ════════
@@ -3003,7 +3022,7 @@ function localFallback(t){
   return pickFresh([
     "这句我没抓着重点。你把它说成「几点到几点，干什么」，我立刻能排。",
     "没听懂，不装懂。换个说法，或者直接给我一个时间。",
-    "我离线的时候确实笨。要么给我一件事加一个时间，要么点右上角「模型」填个 Key。",
+    "我离线的时候确实笨。要么给我一件事加一个时间，要么点右上角「离线」填个 Key。",
     "这句接不住。要不你直接说：明天几点到几点，要干什么。"]);
 }
 /* 半句接龙：上一句我问了「几点到几点」，这句只给时间也接得上 */
@@ -3653,7 +3672,7 @@ const LOCAL_CHAT=[
   {k:/没跟上|听不懂|你听不懂|你接不住|你听不懂话|人工智障|什么破|你笨|你傻/,r:[
     "是我没接住，不是你说话的问题。<br>刚才那句我没在里面找到「时间」或「事」，就卡住了。你再说一遍，或者直接给我一个钟点，这个我一定接得住。",
     "这句是我的问题。要不你换个说法——给我一件事加一个时间，比如「周三下午三点到五点写论文」，我立刻排进去。",
-    "不怪你。我离线的时候只认几类话，闲聊是短板。<br>点右上角「模型」填个 Key，我就能真的跟你聊了。"
+    "不怪你。我离线的时候只认几类话，闲聊是短板。<br>点右上角「离线」填个 Key，我就能真的跟你聊了。"
   ]},
   {k:/^(谢谢|谢了|感谢|多谢|thx|thanks|3q)[!！。,.，~～\s]*$/i,r:[
     "不用谢。日程是你自己改的，谢你自己。",
@@ -4169,6 +4188,63 @@ function importData(inp){
   };
   r.readAsText(f);
   inp.value="";
+}
+/* ═══ 首屏：可点示例 + 一键示例数据（让空状态也看得见价值） ═══ */
+function quickSend(t){
+  const q=document.getElementById("quickStart");if(q)q.style.display="none";
+  const inp=document.getElementById("chatIn");if(inp)inp.value=t;
+  send();
+}
+function refreshQuickStart(){
+  const q=document.getElementById("quickStart");if(!q)return;
+  const empty=!HISTORY.some(m=>m.who==="user")&&!DATA.events.length&&!DATA.notes.length&&!DATA.diary.length;
+  q.style.display=empty?"":"none";
+}
+function loadDemo(){
+  const has=DATA.events.length||DATA.notes.length||DATA.diary.length||DATA.profile.name;
+  if(has&&!confirm("会用示例数据覆盖当前本地数据，继续？"))return;
+  const t=todayStr(),d1=addDays(t,1),d2=addDays(t,2);
+  DATA.profile=Object.assign({},DATA.profile,{
+    name:"小林",
+    hard_sleep_deadline:"23:30",
+    hard_morning_start:"07:00",
+    preferred_focus_hours:"09:00-11:00",
+    known_weakness:["晚上容易刷手机"],
+    long_term_goal:"考上研究生",
+    mid_term_goal:"六级 500+",
+    short_term_goal:"本周完成课程设计",
+    goal_deadline:d2
+  });
+  DATA.events=[
+    {id:"demo1",name:"图书馆复习",type:"study",date:t,start:"09:00",end:"11:00",loc:"图书馆",priority:1,wage:0,done:true},
+    {id:"demo2",name:"组会",type:"meeting",date:t,start:"14:00",end:"15:30",loc:"实验室",priority:3,wage:0,done:false},
+    {id:"demo3",name:"家教",type:"work",date:t,start:"15:00",end:"17:00",loc:"学生家",priority:2,wage:80,done:false},
+    {id:"demo4",name:"课程设计",type:"study",date:d1,start:"10:00",end:"12:00",loc:"自习室",priority:2,wage:0,done:false},
+    {id:"demo5",name:"社团活动",type:"meeting",date:d1,start:"19:00",end:"21:00",loc:"活动室",priority:1,wage:0,done:false},
+    {id:"demo6",name:"早课",type:"class",date:d2,start:"08:30",end:"10:00",loc:"教学楼",priority:3,wage:0,done:false}
+  ];
+  DATA.notes=[];DATA.diary=[];DATA.days=[];
+  DATA.conflicts=detectConflicts();
+  saveData();
+  try{
+    localStorage.setItem("altiora_demo","1");
+    localStorage.setItem("altiora_intro_done","1");
+    localStorage.setItem("altiora_guide_done","1");
+    const im=document.getElementById("introMask"),ib=document.getElementById("introBox");
+    if(im)im.classList.remove("on");if(ib)ib.classList.remove("on");
+    if(typeof guideOn!=="undefined"&&guideOn)endGuide();
+    document.getElementById("demoBar").style.display="";
+  }catch(e){}
+  VIEW_DATE=t;
+  renderDayBar();renderGantt();renderRecon();renderCountdown();renderConflicts();
+  renderOrbs();renderMe();renderNotes();updStats();renderWeek();refreshQuickStart();
+  go("timeline");
+  toast("示例数据已载入：今天 14:00 组会和 15:00 家教撞了 30 分钟");
+}
+function clearDemo(){
+  if(!confirm("清空示例数据，回到空白？"))return;
+  try{localStorage.removeItem(SAVE_KEY);localStorage.removeItem("altiora_demo");}catch(e){}
+  location.reload();
 }
 function setBufferMin(v){
   const n=Math.round(Number(v));
@@ -5396,11 +5472,13 @@ renderDayBar();renderGantt();renderRecon();renderCountdown();renderConflicts();i
 DATA.memory.last_seen=todayStr();saveData();
 initThemeUI();
 go("home");
+refreshQuickStart();
+try{if(localStorage.getItem("altiora_demo")==="1")document.getElementById("demoBar").style.display="";}catch(e){}
 checkAI();
 renderTTSBtn();
-// 首进问卷 → 游戏式引导：都只在首次出现，之后不再弹
+// 首访不再自动弹问卷：先让用户看见三个示例和球；问卷在「我的画像」里随时可开
 try{
-  if(!localStorage.getItem("altiora_intro_done"))setTimeout(startIntro,500);
+  if(!localStorage.getItem("altiora_intro_done")){}   // 新用户直接看首屏
   else if(!localStorage.getItem("altiora_guide_done"))setTimeout(startGuide,600);
 }catch(e){}
 </script>
