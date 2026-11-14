@@ -222,7 +222,7 @@ body[data-tab="home"] .fab{display:none}
 /* 刚排进去的那一件：指给用户看，2.4 秒后自己淡掉，不需要他动手关 */
 .vtl-item.flash .vtl-chunk{animation:flashChunk 2.4s ease-out}
 @keyframes flashChunk{0%,40%{box-shadow:0 0 0 2px var(--blue);border-color:var(--blue)}100%{box-shadow:0 0 0 0 transparent}}
-/* 这句话是谁说的：没接大模型时就标离线引擎，不装「思考中」 */
+/* 这句话是谁说的：没接大模型时就标离线模式，不装「思考中」 */
 .src{display:block;margin-top:6px;font-size:11px;color:var(--t3)}
 /* 三步状态条：只写真实阶段（理解 → 算 / 落 → 回话），不写「AI 正在深度思考」这类假戏 */
 .steps{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11.5px;color:var(--t3)}
@@ -2742,7 +2742,7 @@ const LLM_SYS=`你叫 Altiora，是「用户理想中更好的自己」在电脑
 
 【抽取规则】
 - 用户可能用中文数字（三点）、相对说法（下午/明晚/下周三）、口语时长（复习两小时），
-  这些都由你负责理解并归一化成 24 小时制 HH:MM，别指望离线引擎去猜。
+  这些都由你负责理解并归一化成 24 小时制 HH:MM，别指望离线模式去猜。
 - schedule 的时间给在 events 数组里，每项必须有 name、start、end，最多 4 件。
   用户一句话说几件事，就拆几条；说了几件事但只有部分有完整时间，只把时间完整的放进去。
   一件都凑不齐 start/end，events 给空数组 []，并把那件事的名字写进 subject，不要猜时间。
@@ -2950,7 +2950,7 @@ async function askLLM(text){
       if(r)setAIPill(true);
       if(!r){
         // LLM 回了但 JSON 解析失败或 intent 不合法 —— 静默回退会让用户以为没接 LLM
-        if(!askLLM._warned){askLLM._warned=true;toast("大模型回复没接住，已用离线引擎兜底。检查 Key / 模型名 / Base URL 是否正确。");}
+        if(!askLLM._warned){askLLM._warned=true;toast("大模型回复没接住，已用离线模式兜底。检查 Key / 模型名 / Base URL 是否正确。");}
       }
       return r;
     }catch(e){
@@ -3361,7 +3361,7 @@ async function handleUser(v){
 
   const slot=push("ai",stepsHTML(0,"chat"));
   const j=await askLLM(v);
-  /* 没接上大模型就明说「离线引擎」，不让用户以为那头有个模型在思考 */
+  /* 没接上大模型就明说「离线模式」，不让用户以为那头有个模型在思考 */
   if(!j){setMsg(slot.id,replyTo(v)+`<span class="src">离线模式 · 未接大模型</span>`);return;}
   setMsg(slot.id,stepsHTML(1,j.intent==="schedule"?"schedule":"chat"));
   await routeLLM(j,slot.id,v);
@@ -3387,7 +3387,7 @@ function understandCard(j){
   if(j.subject&&!evs.length)
     rows.push(`<span class="uc-k">待补</span><span class="uc-v">${esc(j.subject)}（缺开始/结束时间）</span>`);
   if(!rows.length)return "";
-  return `<details class="ucard" open><summary>模型理解${j.source==="llm"?" · AI 在线":" · 离线解析"}（${rows.length} 项）</summary><div class="uc-body">${rows.join("<br>")}</div></details>`;
+  return `<details class="ucard" open><summary>模型理解${j.source==="llm"?" · AI 在线":" · 离线模式"}（${rows.length} 项）</summary><div class="uc-body">${rows.join("<br>")}</div></details>`;
 }
 /* 只让最新一张理解卡展开，历史记录不堆一屏 */
 function keepLatestUCardOpen(){
@@ -3444,7 +3444,7 @@ async function routeLLM(j,slotId,v){
   if(j.intent==="schedule"){
     let evs=(Array.isArray(j.events)&&j.events.length)?j.events.slice(0,4):(j.event?[j.event]:[]);
     if(!evs.length){
-      // 大模型一件都没凑齐，但用户原话里明明有时间——离线引擎兜底，别让用户重说一遍
+      // 大模型一件都没凑齐，但用户原话里明明有时间——离线模式兜底，别让用户重说一遍
       const local=parseEventsFromText(v);
       if(local.length)evs=local.slice(0,4);
     }
@@ -3870,7 +3870,7 @@ function toast(msg){
   clearTimeout(toast._t);
   toast._t=setTimeout(()=>t.classList.remove("on"),5200);
 }
-/* 429 不能静默降级：评审看到「离线引擎」会以为没接模型，这里明确说是额度用尽 */
+/* 429 不能静默降级：评审看到「离线模式」会以为没接模型，这里明确说是额度用尽 */
 function quotaNotice(){
   setAIPill(false);
   let b=document.getElementById("quotaNotice");
@@ -3880,7 +3880,7 @@ function quotaNotice(){
     b.style.cssText="position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:9999;max-width:92vw;padding:10px 16px;border-radius:12px;background:#FFF4E5;color:#7A4A00;border:1px solid #F2C27B;font-size:13px;line-height:1.5;box-shadow:0 8px 24px rgba(0,0,0,.15)";
     document.body.appendChild(b);
   }
-  b.textContent="今日体验额度已用尽，已切到离线引擎（本地确定性计算，功能完整）；语音与大模型效果见演示视频。";
+  b.textContent="今日体验额度已用尽，已切到离线模式（本地确定性计算，功能完整）；语音与大模型效果见演示视频。";
   clearTimeout(b._t);
   b._t=setTimeout(()=>{if(b.parentNode)b.remove();},20000);
 }
