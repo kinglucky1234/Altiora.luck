@@ -2946,12 +2946,14 @@ async function askLLM(text){
   if(USERLLM.key){
     try{
       const r=await withTimeout(directUnderstand(text),12000);
+      if(r)setAIPill(true);
       if(!r){
         // LLM 回了但 JSON 解析失败或 intent 不合法 —— 静默回退会让用户以为没接 LLM
         if(!askLLM._warned){askLLM._warned=true;toast("大模型回复没接住，已用离线引擎兜底。检查 Key / 模型名 / Base URL 是否正确。");}
       }
       return r;
     }catch(e){
+      if(e&&e.status===429)setAIPill(false);
       const reason=e&&e.status?"http_"+e.status:(e&&e.message==="bad_base"?"unsafe_base":"network");
       if(!askLLM._warned){askLLM._warned=true;toast(llmErr(reason));}
       return null;
@@ -2970,12 +2972,13 @@ async function askLLM(text){
     clearTimeout(t);
     if(!r.ok){if(r.status===429)quotaNotice();if(r.status===404||r.status===405)API_DOWN=true;return null;}
     const j=await r.json();
-    return (j&&j.ok&&j.source==="llm")?j:null;
+    if(j&&j.ok&&j.source==="llm"){setAIPill(true);return j;}
+    return null;
   }catch(e){clearTimeout(t);return null;}
 }
 async function askSay(facts){
   if(USERLLM.key){
-    try{return await withTimeout(directSay(facts),12000);}catch(e){return "";}
+    try{const s=await withTimeout(directSay(facts),12000);if(s)setAIPill(true);return s;}catch(e){if(e&&e.status===429)setAIPill(false);return "";}
   }
   if(API_DOWN)return "";
   const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),20000);
@@ -2987,7 +2990,8 @@ async function askSay(facts){
     clearTimeout(t);
     if(!r.ok){if(r.status===429)quotaNotice();if(r.status===404||r.status===405)API_DOWN=true;return "";}
     const j=await r.json();
-    return j&&j.ok&&j.text?j.text:"";
+    if(j&&j.ok&&j.text){setAIPill(true);return j.text;}
+    return "";
   }catch(e){clearTimeout(t);return "";}
 }
 // 最近说过的三句不再重复，避免「背稿感」
@@ -3861,6 +3865,7 @@ function toast(msg){
 }
 /* 429 不能静默降级：评审看到「本地规则」会以为没接模型，这里明确说是额度用尽 */
 function quotaNotice(){
+  setAIPill(false);
   let b=document.getElementById("quotaNotice");
   if(!b){
     b=document.createElement("div");

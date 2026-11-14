@@ -71,8 +71,8 @@ footer code{color:var(--t2)}
   <div class="meta">
     <span class="chip">10 条实证</span>
     <span class="chip">全部可在网页里复现</span>
-    <span class="chip">截至 2026-11-14</span>
-    <span class="chip">无 API Key 也能验（走本地规则）</span>
+    <span class="chip">截至 2026-11-15</span>
+    <span class="chip">无 API Key 也能验（走离线模式）</span>
   </div>
 
   <div class="legend">
@@ -176,23 +176,23 @@ footer code{color:var(--t2)}
       <div class="pane before"><div class="tag">改前</div><div class="say">右上角点「模型」→ 粘贴 API Key → 刷新，才有 AI。<span class="dim">（多数评委在这一步就放弃，等于没看到 AI）</span></div></div>
       <div class="pane after"><div class="tag">改后</div><div class="say">打开在线地址直接对话，AI 已在线；接口与页面同源，不走浏览器直连，所以既没有混合内容拦截，也不把 Key 暴露给前端。</div></div>
     </div>
-    <div class="check"><b>判据</b>：<code>GET /api/health</code> 返回 <code>"llm":true</code>；连续请求超限后返回 429，前端自动回退本地规则而不报错。</div>
+    <div class="check"><b>判据</b>：<code>GET /api/health</code> 返回 <code>"llm":true</code>；连续请求超限后返回 429，前端切到离线引擎并显示额度横幅。</div>
   </div>
 
   <!-- 10 -->
   <div class="card">
-    <div class="head"><span class="idx">10</span><span class="name">换了入口就「失忆」</span><span class="why">数据兜底与镜像同步</span></div>
+    <div class="head"><span class="idx">10</span><span class="name">换了入口，改了没生效</span><span class="why">数据兜底与单一成品</span></div>
     <div class="said">场景：从另一个链接打开，发现所有记录都没了</div>
     <div class="pair">
       <div class="pane before"><div class="tag">改前</div><div class="say">打开的是旧版页面／不同入口，看到空白的自己，以为数据丢了。</div></div>
-      <div class="pane after"><div class="tag">改后</div><div class="say">每天自动留一份本地备份，画像页可「恢复今天的自动备份」；仓库内五份 HTML 镜像 md5 一致，任何入口都是同一版。</div></div>
+      <div class="pane after"><div class="tag">改后</div><div class="say">每天自动留一份本地备份，画像页可「恢复今天的自动备份」；历史上曾有 5 份副本，2026-11-15 已收成 1 份，这个坑已消除。</div></div>
     </div>
-    <div class="check"><b>判据</b>：五份文件 <code>md5sum</code> 去重后只有 1 个值；画像页能看到备份并可一键恢复。</div>
+    <div class="check"><b>判据</b>：仓库只有 1 份 <code>Altiora-未来的我.html</code>；<code>curl -s &lt;线上地址&gt;/ | md5sum</code> 与本地文件相同；画像页能看到备份并可一键恢复。</div>
   </div>
 
   <footer>
     <b>自己验一遍</b>：打开 <code>/</code> → 依次输入上面每条「你说」里的句子 → 对照右侧文字。
-    全部功能在没有 API Key 的情况下也能验证（走本地规则），所以不消耗任何模型额度。
+    全部功能在没有 API Key 的情况下也能验证（走离线模式），所以不消耗任何模型额度。
   </footer>
 
 </div>
