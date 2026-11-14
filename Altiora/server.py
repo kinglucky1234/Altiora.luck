@@ -18,7 +18,7 @@ from contextlib import asynccontextmanager
 from datetime import date
 from pathlib import Path
 
-from fastapi import Body, FastAPI, Request, UploadFile, File
+from fastapi import Body, FastAPI, Request, UploadFile, File, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
@@ -145,6 +145,12 @@ def get_model():
 @app.get("/")
 def index():
     return FileResponse(HTML, media_type="text/html; charset=utf-8")
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    """浏览器默认会来要图标。返回 204，控制台别留一条红字 404。"""
+    return Response(status_code=204)
 
 
 @app.get("/{name}")
