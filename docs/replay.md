@@ -59,6 +59,6 @@ python3 server.py        # 或直接双击 Altiora-未来的我.html（文字功
 本作品有**两段真实、可逐条核对**的提交历史：
 
 - **`history` 分支**：2026-10-22 → 10-30 的 28 次原始提交，从 `init: 项目骨架 + README`、`77d99c5 单文件原型 v1`、`e982820 接入大模型`、`d57fe86 三层记忆` 到 `42d03ca 浏览器直连厂商`。查看：`git log --oneline origin/history`。
-- **`main` 分支**：2026-11-14 的 23 次赛期打磨提交。查看：`git log --oneline main`。
+- **`main` 分支**：2026-11-14 起的赛期打磨提交（当前 24 次，以 `git log` 为准）。查看：`git log --oneline main`。
 
 两段不连续的原因：11-14 把作品迁入现仓库时旧历史未随迁，之后已按原样恢复为 `history` 分支；**没有任何提交被改写或补造**。第 3 节列出的哈希均可用 `git show <hash>` 逐条核对，六个迭代的过程细节另以 `prompt-snapshots/` 的 11 张真实对话截图与 [AI协同对话历史.md](../AI协同对话历史.md) 相互印证。

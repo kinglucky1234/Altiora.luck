@@ -7,6 +7,7 @@ Altiora 一键自检
 
 退出码：0 全部通过；1 有 FAIL。
 """
+import hashlib
 import json
 import os
 import re
@@ -121,6 +122,24 @@ def check_js_syntax():
         ok("前端脚本语法", f"{len(scripts)} 段内联脚本语法正常")
 
 
+def check_html_copies():
+    """5 份同源 HTML 必须逐字节一致，改一份要同步全部。"""
+    files = ["app.html", "index.html", "Altiora-未来的我.html",
+             "Altiora/index.html", "Altiora/Altiora-未来的我.html"]
+    sums = {}
+    for f in files:
+        p = BASE / f
+        if not p.exists():
+            fail("HTML 副本", f"缺少 {f}")
+            return
+        sums[f] = hashlib.md5(p.read_bytes()).hexdigest()
+    if len(set(sums.values())) != 1:
+        detail = "；".join(f"{k}={v[:8]}" for k, v in sums.items())
+        fail("HTML 副本", "不一致，改一份要同步全部：" + detail)
+    else:
+        ok("HTML 副本", f"5 份一致 {list(sums.values())[0][:8]}")
+
+
 def free_port():
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
@@ -203,7 +222,7 @@ def check_server():
 def main():
     print("Altiora 自检\n" + "=" * 48)
     for fn in (check_python, check_deps, check_model, check_frontend,
-               check_js_syntax, check_server):
+               check_js_syntax, check_html_copies, check_server):
         try:
             fn()
         except Exception as e:

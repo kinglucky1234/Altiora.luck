@@ -261,7 +261,7 @@ Altiora.luck/
 ├── 自检.py                          # 复现自检
 ├── requirements.txt
 ├── .env.example                    # 环境变量模板
-├── Altiora-技术文档.pdf              # 技术文档（23 页，≤30；可复跑 python3 scripts/gen_tech_doc.py 重新生成）
+├── Altiora-技术文档.pdf              # 技术文档（24 页，≤30；可复跑 python3 scripts/gen_tech_doc.py 重新生成）
 ├── AI协同对话历史.md                # Prompt 链文字版（6 迭代 + 5 次 Bug 修复）
 ├── docs/
 │   └── replay.md                    # 演进脚本：六迭代 + 三 Bug 的四段式复现步骤
@@ -298,7 +298,7 @@ Altiora.luck/
 | 比赛要求 | 仓库位置 | 状态 |
 |---|---|---|
 | 代码仓库 Public | 本仓库 | ✅ |
-| Git 提交历史（细粒度，逐条可查） | `main` 分支 23 次（2026-11-14 赛期打磨）+ `history` 分支 **28 次原始开发提交**（2026-10-22 → 10-30）：`git log --oneline origin/history`；说明见 `docs/replay.md` 第 4 节 | ✅ |
+| Git 提交历史（细粒度，逐条可查） | `main` 分支为 2026-11-14 起的赛期提交（当前 24 次，以 `git log` 为准）+ `history` 分支 **28 次原始开发提交**（2026-10-22 → 10-30）：`git log --oneline origin/history`；说明见 `docs/replay.md` 第 4 节 | ✅ |
 | AI Prompt 历史快照（≥3 组迭代） | `prompt-snapshots/` | ✅ |
 | 10 分钟复现指南 | 本文档第 3 节（含「复现成功的三个标志」） | ✅ |
 | 演进脚本（Prompt → 建议 → 引导修复 → 验证） | `docs/replay.md` | ✅ |
@@ -307,7 +307,7 @@ Altiora.luck/
 | 10 段对话改前 / 改后对照 | `Altiora-改前改后.html`（在线地址同名路径） | ✅ |
 | 演示视频（5-8 分钟，含 ≥2 分钟 AI 协同复现） | 分镜脚本已完成，录制中 | ⏳ |
 | 公网体验地址（打开即 AI 在线，无需配 Key） | <http://82.157.162.252:8000/>，验收记录见技术文档 11.5 | ✅ |
-| 技术文档 PDF（23 页，≤30） | 仓库根目录 `Altiora-技术文档.pdf`；可复跑 `python3 scripts/gen_tech_doc.py` 重新生成 | ✅ |
+| 技术文档 PDF（24 页，≤30） | 仓库根目录 `Altiora-技术文档.pdf`；可复跑 `python3 scripts/gen_tech_doc.py` 重新生成 | ✅ |
 
 ## 8. 设计原则（为什么这样做）
 

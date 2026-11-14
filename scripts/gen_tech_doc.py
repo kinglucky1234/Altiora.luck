@@ -574,7 +574,7 @@ story.append(B("<b>修复</b>：判断词「是」加进剥离列表，归一后
 story.append(B("<b>回归</b>：9 个用例全过，正常 case 结果不变。"))
 
 story += H2("6.4 提交与快照对照")
-story.append(P("评委抽查时可将 Git 提交与 Prompt 快照逐一对号。本作品全部开发历史已完整保留：<b><code>history</code> 分支</b>是 2026-10-22 至 10-30 的 28 次原始提交（项目骨架 → v1 原型 → 大模型接入 → 三层记忆 → 浏览器直连），<b><code>main</code> 分支</b>是 2026-11-14 的 23 次赛期打磨提交；两者合计 51 次，均可 <code>git show</code> 逐条核对。下表为代表性节选："))
+story.append(P("评委抽查时可将 Git 提交与 Prompt 快照逐一对号。本作品全部开发历史已完整保留：<b><code>history</code> 分支</b>是 2026-10-22 至 10-30 的 28 次原始提交（项目骨架 → v1 原型 → 大模型接入 → 三层记忆 → 浏览器直连），<b><code>main</code> 分支</b>是 2026-11-14 起的赛期打磨提交（当前 24 次，以 <code>git log</code> 为准）；两者合计五十余次，均可 <code>git show</code> 逐条核对。下表为代表性节选："))
 map_tbl = [
     ["改动", "代表提交", "佐证位置"],
     ["服务端限流 + BACKEND 路径修复", "05a5cb2", "7.6 节"],
@@ -588,7 +588,7 @@ map_tbl = [
     ["演进脚本与复现性声明", "8fb982a", "9.5 节、docs/replay.md"],
 ]
 story.append(TBL(map_tbl, [70*mm, 30*mm, 60*mm]))
-story.append(CAP("表 6-2 真实提交与证据对照（两分支合计 51 次，此为代表性节选）"))
+story.append(CAP("表 6-2 真实提交与证据对照（两分支合计五十余次，此为代表性节选）"))
 
 # ════════════════════════════════════════
 # 7. 工程质量与安全
@@ -720,7 +720,7 @@ story.append(CAP("表 9-1 官方提交要求与本作品交付物对照"))
 story.append(P("以下从四个维度展开论证。"))
 
 story += H2("9.1 细粒度 Git 提交历史")
-story.append(P("赛题禁止「initial commit 包含全部功能」。本作品有<b>两段真实、可逐条核对</b>的提交历史：<b>完整开发历史</b>在 <code>history</code> 分支（28 次，2026-10-22 → 2026-10-30，从项目骨架、单文件原型 v1、后端三段式、大模型接入、三层记忆，到时间轴按天分开、浏览器直连厂商）；<b>赛期打磨历史</b>在 <code>main</code> 分支（23 次，2026-11-14，含双限流、歧义时间反问、三步状态条、线上验收）。两段合计 51 次。查看命令：<code>git log --oneline origin/history</code> 与 <code>git log --oneline main</code>。"))
+story.append(P("赛题禁止「initial commit 包含全部功能」。本作品有<b>两段真实、可逐条核对</b>的提交历史：<b>完整开发历史</b>在 <code>history</code> 分支（28 次，2026-10-22 → 2026-10-30，从项目骨架、单文件原型 v1、后端三段式、大模型接入、三层记忆，到时间轴按天分开、浏览器直连厂商）；<b>赛期打磨历史</b>在 <code>main</code> 分支（2026-11-14 起，当前 24 次，含双限流、歧义时间反问、三步状态条、线上验收）。两段合计五十余次（以 <code>git log</code> 为准）。查看命令：<code>git log --oneline origin/history</code> 与 <code>git log --oneline main</code>。"))
 git_tbl = [
     ["提交哈希", "分支", "说明"],
     ["3f5e460", "history", "init: 项目骨架 + README"],
@@ -769,7 +769,7 @@ story.append(P("排程核心可脱离浏览器环境单独断言。同一输入�
 story += H2("9.5 演进脚本：照着走就能复现")
 story.append(P("赛题要求「通过 Prompt 记录和演进脚本进行确定性复现」。仓库 <code>docs/replay.md</code> 把六个迭代与三条关键 Bug 写成可执行步骤，每条固定四段：<b>我提了什么 → AI 给了什么建议 → 我怎么判断与引导 → 怎么验证它真的修好了</b>，并给出可复跑的输入与期望输出。"))
 story.append(P("复现入口只有三步：<code>git clone</code> → <code>python3 自检.py</code>（退出码 0）→ <code>python3 server.py</code>（或直接双击 HTML）。随后用三个成功标志判断环境是否正常：右上角显示「AI 在线」或「本地规则」；发「今天有点累」得到一句情绪接住且不弹表格；发「周五下午3点开会」与「周五下午3点半做家教，两小时」分别得到时间轴事件与 A/B/C 代价卡片。"))
-story.append(P("提交历史的边界如实说明：2026-10-22 至 10-30 的 28 次原始提交完整保留在 <code>history</code> 分支（<code>git log --oneline origin/history</code> 可逐条核对，含最早的 init 骨架与 v1 原型）；2026-11-14 的 23 次赛期打磨提交在 <code>main</code> 分支。两段历史不连续，原因是 11-14 将作品迁入现仓库时旧历史未随迁，随后已按原样恢复为分支；除此之外没有任何提交被改写或补造。六个核心迭代的过程细节另以 <code>prompt-snapshots/</code> 的 11 张真实对话截图与 AI协同对话历史.md 相互印证，赛期十次改动的验证清单见 replay.md 第 3 节。"))
+story.append(P("提交历史的边界如实说明：2026-10-22 至 10-30 的 28 次原始提交完整保留在 <code>history</code> 分支（<code>git log --oneline origin/history</code> 可逐条核对，含最早的 init 骨架与 v1 原型）；2026-11-14 起的赛期打磨提交（当前 24 次）在 <code>main</code> 分支。两段历史不连续，原因是 11-14 将作品迁入现仓库时旧历史未随迁，随后已按原样恢复为分支；除此之外没有任何提交被改写或补造。六个核心迭代的过程细节另以 <code>prompt-snapshots/</code> 的 11 张真实对话截图与 AI协同对话历史.md 相互印证，赛期十次改动的验证清单见 replay.md 第 3 节。"))
 
 # ════════════════════════════════════════
 # 10. 创新点小结
