@@ -1288,7 +1288,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
         <div class="goal-col" id="goalShort"></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;margin-top:12px;font-size:12px;color:var(--t3);flex-wrap:wrap">
-        <span>最近一个截止日期</span>
+        <span>长期目标的日期</span>
         <input type="date" id="goalDeadline" onchange="setGoalDeadline(this.value)"
           style="font:inherit;padding:4px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--t1)">
         <span id="goalDeadlineHint"></span>
@@ -4658,8 +4658,9 @@ function renderMe(){
   const goalCell=(id,key,lab)=>{
     const el=document.getElementById(id);if(!el)return;
     el.innerHTML=`<i>${lab}</i><b>${p[key]?esc(p[key]):'<span class="dash">还没说</span>'}</b>`;
-    // 有目标就能选节奏：单次 = 做完就完；重复 = 天天要碰它（分身靠这个判断"好几天没画上勾"）
-    if(p[key]){
+    // 长期目标就是名字 + 一个日期（考研 / 12月19日），不挂节奏。
+    // 「单次 / 重复 + 每次多久」属于要反复排进日程的那种目标
+    if(p[key]&&key!=="long_term_goal"){
       const fr=DATA.profile.goal_freq||{};
       const cur=fr[key]||"once";
       el.innerHTML+=`<div class="goal-freq"><span>节奏</span><button class="gf${cur==="once"?" on":""}" onclick="setGoalFreq('${key}','once')">单次</button><button class="gf${cur==="daily"?" on":""}" onclick="setGoalFreq('${key}','daily')">重复</button></div>`;
