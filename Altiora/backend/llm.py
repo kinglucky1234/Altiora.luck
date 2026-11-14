@@ -258,9 +258,11 @@ def _clean_event(raw) -> dict | None:
     if not name or not start:
         return None
     # 用户本来就没说结束时间：按 1 小时先摆着，别把整条事件丢掉
+    assumed = False
     if not end:
         e = min(_to_minutes(start) + 60, 23 * 60 + 59)
         end = f"{e // 60:02d}:{e % 60:02d}"
+        assumed = True
     # 只校验区间合法，不做任何时长/代价推导
     if _to_minutes(end) <= _to_minutes(start):
         return None
@@ -270,6 +272,8 @@ def _clean_event(raw) -> dict | None:
         "end": end,
         "loc": str(raw.get("loc") or "").strip()[:20],
     }
+    if assumed:
+        out["endAssumed"] = True
     date = _norm_date(raw.get("date"))
     if date:
         out["date"] = date
@@ -469,6 +473,8 @@ def understand(text: str, profile: dict | None = None,
             if legacy:
                 events = [legacy]
     event = events[0] if events else None
+    # 哪些事件的结束时间是兜底补的：前端要把这句话说出来，不能悄悄替用户定死
+    end_assumed = any([e.pop("endAssumed", False) for e in events])
     # 裸小时：模型判「分不清上午下午」时只收候选，前端据此决定反问还是按候选排
     ambiguity = _clean_ambiguity(obj.get("ambiguity"))
     # 时间不全时仍保留主题，前端会追问时间，而不是替用户编一个
@@ -514,6 +520,7 @@ def understand(text: str, profile: dict | None = None,
         "emotion_intensity": emotion_intensity,
         "event": event,
         "events": events,
+        "endAssumed": end_assumed,
         "ambiguity": ambiguity,
         "subject": subject,
         "memory": memory,

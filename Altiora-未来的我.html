@@ -3500,6 +3500,8 @@ async function routeLLM(j,slotId,v){
       if(local.length)evs=local.slice(0,4);
     }
     if(evs.length){
+      const assumed=!!j.endAssumed||evs.some(e=>e&&e.guess);
+      const assumedTxt=assumed?"（你只说了开始，先按 1 小时算，要改说一声）":"";
       const added=[],dups=[];
       let totalDelta=0,conflictInfo=null,targetDate=null;
       for(const ev of evs){
@@ -3528,9 +3530,9 @@ async function routeLLM(j,slotId,v){
         首个冲突:conflictInfo
       });
       const brief=added.map(e=>`「${esc(e.name)} ${e.start}-${e.end}」`).join("、");
-      setMsgU(slotId,line||(totalDelta>0
+      setMsgU(slotId,(line||(totalDelta>0
         ?`${brief}排进去了，撞了 <b>${totalDelta}</b> 处。代价算好了，去时间轴页看。`
-        :`${brief}排进去了，没撞。`),j);
+        :`${brief}排进去了，没撞。`))+assumedTxt,j);
       return;
     }
     // 听懂了，但用户没说结束时间 —— 不编，问一句；记住它，等下补时间
