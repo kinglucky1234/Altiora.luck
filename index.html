@@ -1361,6 +1361,15 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
     <h3 id="schedTitle">导入课表</h3>
     <div class="sub" id="schedSub">把课表复制进来，一行一门课。</div>
     <textarea id="schedIn" placeholder="例：周一 08:00-09:40 高等数学 教A101"></textarea>
+    <div class="goal-freq" id="schedFreqRow">
+      <span>这件</span>
+      <button class="gf on" data-fr="once" onclick="pickSchedFreq('once')">只这一次</button>
+      <button class="gf" data-fr="weekly" onclick="pickSchedFreq('weekly')">每周重复</button>
+      <button class="gf" data-fr="times" onclick="pickSchedFreq('times')">重复几次</button>
+      <input type="number" id="schedTimes" min="2" max="30" value="4" onchange="setSchedTimes(this.value)"
+        style="display:none;width:58px;font:inherit;font-size:11px;padding:2px 6px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--t1)">
+      <span id="schedTimesUnit" style="display:none">次</span>
+    </div>
     <div id="schedPrev"></div>
     <div class="result" id="schedRes"></div>
     <div class="sheet-act">
@@ -4100,7 +4109,31 @@ function savePeriods(){
 }
 
 /* ════════ 导入课表 ════════ */
-let schedPreview=null, schedMode="week";
+let schedPreview=null, schedMode="week", schedFreq="once", schedTimes=4;
+/* 导入日程时要问「这件做几次」，导入课表不用问——课表本来就是每周重复的 */
+function pickSchedFreq(v){
+  schedFreq=v;
+  document.querySelectorAll("#schedFreqRow .gf").forEach(b=>b.classList.toggle("on",b.dataset.fr===v));
+  document.getElementById("schedTimes").style.display=v==="times"?"":"none";
+  document.getElementById("schedTimesUnit").style.display=v==="times"?"":"none";
+  schedPreview=null;
+  document.getElementById("schedPrev").innerHTML="";
+  document.getElementById("schedRes").className="result";
+  const T=SCHED_TXT[schedMode];
+  document.getElementById("schedActBtn").textContent=T.parse;
+}
+function setSchedTimes(v){
+  const n=Math.max(2,Math.min(30,parseInt(v,10)||4));
+  schedTimes=n;
+  document.getElementById("schedTimes").value=n;
+}
+/* 周几 → 今天起最近的那个日期（含今天） */
+function nextDateOfWeekday(wd){
+  const t=new Date(todayStr()+"T00:00:00");
+  const cur=t.getDay()===0?7:t.getDay();
+  const diff=(wd-cur+7)%7;
+  return addDays(todayStr(),diff);
+}
 const SCHED_TXT={
   week:{title:"导入课表",
     sub:"把教务系统的课表复制进来，一行一门课。支持「周一 08:00-09:40 高数 教A101」，也支持「周一 第1-2节 高等数学」。",
@@ -4108,7 +4141,7 @@ const SCHED_TXT={
     parse:"解析课表", row:"课程", unit:"门课", empty:"先粘点课表进来。",
     none:"格式参考：<b>周一 08:30-10:10 高等数学 教A101</b>，或者 <b>周一 第1-2节 高等数学</b>。"},
   day:{title:"导入日程",
-    sub:"把日程一行一条粘进来，我帮你排进时间轴。每行「周几 + 时间 + 做什么」，例如「周一 15:00-17:00 家教」。",
+    sub:"把日程一行一条粘进来。每行「周几 + 时间 + 做什么」，下面的频率决定它只排一次、每周重复，还是排几次。",
     ph:"例：\n周一 08:30-10:10 高等数学\n周一 15:00-17:00 家教\n周二 20:00-21:30 健身",
     parse:"解析日程", row:"日程", unit:"条日程", empty:"先粘点日程进来。",
     none:"一行都没认出来。格式参考：<b>周一 15:00-17:00 家教</b>。"}
@@ -4120,6 +4153,9 @@ function openScheduleSheet(mode){
   document.getElementById("schedSheet").classList.add("on");
   document.getElementById("schedTitle").textContent=T.title;
   document.getElementById("schedSub").textContent=T.sub;
+  /* 频率只对「导入日程」有意义：课表本身每周重复，不需要问 */
+  document.getElementById("schedFreqRow").style.display=schedMode==="day"?"":"none";
+  if(schedMode==="day")pickSchedFreq(schedFreq);
   const inp=document.getElementById("schedIn");
   inp.placeholder=T.ph;
   document.getElementById("schedPrev").innerHTML="";
@@ -4172,8 +4208,8 @@ function parseScheduleLine(line){
   // 「高等数学（教A101）」把括号里的当地点
   const bm=name.match(/^(.+?)[（(](.+?)[）)]$/);
   if(bm){name=bm[1];loc=bm[2];parts.shift();}
-  // 找地点段：带楼/教/室/馆/场/栋，或以数字开头、纯房间号
-  const isLoc=p=>/[楼教室馆场栋]|^\d|^[A-Za-z]\d|\d{3,4}$/.test(p);
+  // 找地点段：带楼/馆/场/栋、教室、或者房间号；「教」单字不当地点，否则「家教」会被吃掉
+  const isLoc=p=>/楼|馆|场|栋|教室|实验室|^\d|^[A-Za-z]\d|\d{3,4}$/.test(p);
   const isTeacher=p=>/老师|教授|讲师|助教/.test(p);
   const li=parts.findIndex(p=>!isTeacher(p)&&isLoc(p));
   if(li>0){
@@ -4187,9 +4223,9 @@ function parseScheduleLine(line){
     const after=parts.slice(li+1).join(" ");
     if(after)teacher=teacher?teacher+" "+after:after;
   }else if(li===0&&!bm){
-    // 第一段就是地点，说明名字在后面
-    loc=parts[0];
-    name=parts.slice(1).join(" ")||"课程";
+    // 第一段就是地点，说明名字在后面；只有一段时它其实是「做什么」，别当地点
+    if(parts.length===1){name=parts[0];}
+    else{loc=parts[0];name=parts.slice(1).join(" ")||"课程";}
   }else if(!bm){
     if(parts.length>=2&&isTeacher(parts[parts.length-1])){
       teacher=parts[parts.length-1];
@@ -4235,12 +4271,35 @@ function saveSchedule(){
       ${bad.map(b=>`<tr><td class="bad" colspan="5">第 ${b.no} 行没认出：${esc(b.text.slice(0,40))}</td></tr>`).join("")}
       </tbody></table></div>`;
     res.className="result on";
-    res.innerHTML=`<span class="lbl">识别结果</span>共 <b>${ok.length}</b> ${T.unit}${bad.length?`，<b class="bad">${bad.length}</b> 行没认出（会跳过）`:""}。确认无误就点下面的按钮载入。`;
+    res.innerHTML=`<span class="lbl">识别结果</span>共 <b>${ok.length}</b> ${T.unit}${bad.length?`，<b class="bad">${bad.length}</b> 行没认出（会跳过）`:""}。
+      ${schedMode==="day"?`频率：<b>${schedFreq==="once"?"只这一次":schedFreq==="weekly"?"每周重复 8 周":`每周一次，共 ${schedTimes} 次`}</b>。`:""}确认无误就点下面的按钮载入。`;
     act.textContent="确认载入 "+ok.length+" "+T.unit;
     return;
   }
 
   // 第二步：真正载入
+  // 课表 → 每周循环；日程 → 按你选的「只这一次 / 每周 / 重复几次」落成具体日期
+  if(schedMode==="day"){
+    const span=schedFreq==="times"?schedTimes:(schedFreq==="weekly"?8:1);
+    let add=0,dup=0;
+    schedPreview.ok.forEach(p=>{
+      const base=nextDateOfWeekday(p.day);
+      for(let i=0;i<span;i++){
+        const date=addDays(base,7*i);
+        const r=addStructuredEvent({name:p.name,type:"work",date,start:p.start,end:p.end,loc:p.loc});
+        if(r.dup)dup++;else add++;
+      }
+    });
+    schedPreview=null;
+    saveData();
+    res.className="result on";
+    res.innerHTML=`<span class="lbl">载入完成</span>新加 <b>${add}</b> ${T.unit}${dup?`，${dup} 条重复已跳过`:""}。
+      ${schedFreq==="weekly"?"按每周重复，已经铺进未来 8 周。":schedFreq==="times"?`每条排了 <b>${span}</b> 次，在时间轴上每周一次。`:""}
+      到日子在时间轴上画个勾。`;
+    act.textContent=T.parse;
+    setTimeout(closeSchedSheet,2400);
+    return;
+  }
   let add=0,dup=0;
   schedPreview.ok.forEach(p=>{
     const same=DATA.week.courses.find(c=>c.day===p.day&&c.name===p.name&&c.start===p.start&&c.end===p.end);
@@ -4268,16 +4327,6 @@ function saveSchedule(){
 /* ── 分身主动关心：翻情绪记录和打勾记录，低落或重复目标断档才开口 ── */
 const LOW_TAGS={"sad":1,"tired":1,"anxious":1,"selfblame":1,"relapse":1,"lonely":1,"numb":1};
 const LOW_LINE={"sad":"我看你这几天一直不太高。","anxious":"我看你这几天一直悬着心。","tired":"我看你这几天一直很累。","selfblame":"我看你这几天一直在怪自己。","lonely":"我看你这几天一直一个人扛着。","numb":"我看你这几天提不起劲。","relapse":"我看你这几天又滑了一下。"};
-function setGoalFreq(key,v){
-  DATA.profile.goal_freq=DATA.profile.goal_freq||{};
-  DATA.profile.goal_freq[key]=v;saveData();renderMe();
-  toast(v==="daily"?"好，这事我天天帮你盯着，有空当就先问你。":"好，这件做完就算。");
-}
-function setGoalMin(key,m){
-  DATA.profile.goal_min=DATA.profile.goal_min||{};
-  DATA.profile.goal_min[key]=m;saveData();renderMe();
-  toast("好，每次给它 "+m+" 分钟。");
-}
 /* 从原话里读出「一次多久」，认不全就返回 0（宁可不猜，也不编一个数） */
 function parseDuration(text){
   const t=String(text||"");
@@ -4654,22 +4703,11 @@ function renderMe(){
   if(pTxt)pTxt.textContent=pfDone===pfItems.length
     ?"档案齐了，排程全部用得上"
     :`档案 ${pfDone}/${pfItems.length}，还差：${pfItems.filter(x=>!x[1]).map(x=>x[0]).join("、")}`;
-  // 三档目标：长期 / 中期 / 短期
+  // 三档目标只记名字：目标是你自己定的，不是待办。
+  // 「做几次」在导入日程时选，不在目标这里问。
   const goalCell=(id,key,lab)=>{
     const el=document.getElementById(id);if(!el)return;
     el.innerHTML=`<i>${lab}</i><b>${p[key]?esc(p[key]):'<span class="dash">还没说</span>'}</b>`;
-    // 长期目标就是名字 + 一个日期（考研 / 12月19日），不挂节奏。
-    // 「单次 / 重复 + 每次多久」属于要反复排进日程的那种目标
-    if(p[key]&&key!=="long_term_goal"){
-      const fr=DATA.profile.goal_freq||{};
-      const cur=fr[key]||"once";
-      el.innerHTML+=`<div class="goal-freq"><span>节奏</span><button class="gf${cur==="once"?" on":""}" onclick="setGoalFreq('${key}','once')">单次</button><button class="gf${cur==="daily"?" on":""}" onclick="setGoalFreq('${key}','daily')">重复</button></div>`;
-      /* 重复的事才问「一次多久」——分身按这个长度找空当，提议具体时段 */
-      if(cur==="daily"){
-        const gm=(DATA.profile.goal_min||{})[key]||60;
-        el.innerHTML+=`<div class="goal-freq"><span>每次</span>${[[30,"30分"],[60,"1时"],[90,"1.5时"],[120,"2时"]].map(([m,t])=>`<button class="gf${gm===m?" on":""}" onclick="setGoalMin('${key}',${m})">${t}</button>`).join("")}</div>`;
-      }
-    }
   };
   goalCell("goalLong","long_term_goal","长期");
   goalCell("goalMid","mid_term_goal","中期");
