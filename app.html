@@ -2949,7 +2949,7 @@ async function askLLM(text){
       signal:ctl.signal
     });
     clearTimeout(t);
-    if(!r.ok){if(r.status===404||r.status===405)API_DOWN=true;return null;}
+    if(!r.ok){if(r.status===429)quotaNotice();if(r.status===404||r.status===405)API_DOWN=true;return null;}
     const j=await r.json();
     return (j&&j.ok&&j.source==="llm")?j:null;
   }catch(e){clearTimeout(t);return null;}
@@ -2966,7 +2966,7 @@ async function askSay(facts){
       body:JSON.stringify({facts,profile:DATA.profile}),signal:ctl.signal
     });
     clearTimeout(t);
-    if(!r.ok){if(r.status===404||r.status===405)API_DOWN=true;return "";}
+    if(!r.ok){if(r.status===429)quotaNotice();if(r.status===404||r.status===405)API_DOWN=true;return "";}
     const j=await r.json();
     return j&&j.ok&&j.text?j.text:"";
   }catch(e){clearTimeout(t);return "";}
@@ -3840,6 +3840,19 @@ function toast(msg){
   clearTimeout(toast._t);
   toast._t=setTimeout(()=>t.classList.remove("on"),5200);
 }
+/* 429 不能静默降级：评审看到「本地规则」会以为没接模型，这里明确说是额度用尽 */
+function quotaNotice(){
+  let b=document.getElementById("quotaNotice");
+  if(!b){
+    b=document.createElement("div");
+    b.id="quotaNotice";
+    b.style.cssText="position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:9999;max-width:92vw;padding:10px 16px;border-radius:12px;background:#FFF4E5;color:#7A4A00;border:1px solid #F2C27B;font-size:13px;line-height:1.5;box-shadow:0 8px 24px rgba(0,0,0,.15)";
+    document.body.appendChild(b);
+  }
+  b.textContent="今日体验额度已用尽，已切到离线引擎（本地确定性计算，功能完整）；语音与大模型效果见演示视频。";
+  clearTimeout(b._t);
+  b._t=setTimeout(()=>{if(b.parentNode)b.remove();},20000);
+}
 /* 开始/结束各响一声，让你知道它真的在录 */
 function blip(freq,dur){
   try{
@@ -3860,6 +3873,10 @@ async function startVoice(btn,inp,cb){
     return;
   }
   if(!MIC_SERVER){
+    if(!window.isSecureContext){
+      toast("当前地址不是 https / localhost，浏览器不开放麦克风。语音请在电脑上运行 python server.py 后开 http://localhost:8000；在线体验版直接用文字即可。");
+      return;
+    }
     if(webSpeechCtor()){startWebSpeech(btn,inp,cb);return;}
     toast("当前浏览器不支持语音输入，直接打字就行。");
     return;
@@ -4982,10 +4999,10 @@ function saveNote(){
     const r=stripPunct(t.replace(/^(以后|记住|必须|别再)/,""));
     DATA.profile.known_weakness.push(r);renderMe();updStats();saveData();
     res.className="result on warn";
-    res.innerHTML=`<span class="lbl">记为规矩</span>「${r}」已写进画像。<b>以后排日程我替你守这条。</b>`;
+    res.innerHTML=`<span class="lbl">记为规矩</span>「${esc(r)}」已写进画像。<b>以后排日程我替你守这条。</b>`;
   }else{
     renderNotes();updStats();
-    res.innerHTML=`<span class="lbl">先攒着</span>「${t.slice(0,26)}」已进记忆流。攒够几条我一起提炼成你的规矩。`;
+    res.innerHTML=`<span class="lbl">先攒着</span>「${esc(t.slice(0,26))}」已进记忆流。攒够几条我一起提炼成你的规矩。`;
   }
   el.value="";NOTE_TY=null;NOTE_TY_MANUAL=false;syncNoteTyRow();
 }

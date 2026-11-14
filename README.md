@@ -3,11 +3,11 @@
 > 用你的历史数据算出代价的私人助理 ——「数字孪生」在此指**可计算的你**（课表、精力、软肋、目标节奏），不做拟人仿真
 > 赛道：传智杯大赛 · Vibe Coding 挑战赛 · B 组 · 赛道 8 个人效能与数字孪生具身仿真
 
-> ⚠️ **评审提示**：所有代码、Bug 修复、AI 协同对话历史、Prompt 快照都在 `main` 分支，直接看即可，无需切换分支。**完整开发历史也在 `main`**：从 2026-10-22 起连续提交、无 merge，条数以 `git rev-list --count main` 为准，`git log --oneline main` 可逐条 `git show` 核对（`history` 分支只是 10-30 前的历史备份，内容已全部包含在 `main` 中）。
+> ⚠️ **评审提示**：所有代码、Bug 修复、AI 协同对话历史、Prompt 快照都在 `main` 分支，直接看即可，无需切换分支。**完整开发历史也在 `main`**：无 merge，提交条数以 `git rev-list --count main` 为准，逐日分布用 `git log --date=short --format=%ad main | sort | uniq -c` 自查，`git log --oneline main` 可逐条 `git show` 核对（`history` 分支只是 10-30 前的历史备份，内容已全部包含在 `main` 中）。
 
 > **在线体验（评委可直接打开，无需任何配置）**：<http://82.157.162.252:8000/>
-> 服务端已配好模型，打开页面右上角即显示「AI 在线」。每 IP 每日 50 次、全局 1000 次限流，超限时前端自动回退本地规则，页面功能不受影响。
-> 部署自检（2026-11-14 实测）：首页 200、`/favicon.ico` 204、`/api/health` 返回 `llm:true`（`deepseek-ai/DeepSeek-V3`）、线上页面 md5 与仓库成品一致、systemd 自启为 `active` / `enabled`。复跑命令见技术文档 11.5。
+> 服务端已配好模型，打开页面右上角即显示「AI 在线」。服务有每日额度限制，超限时页面会明确提示「已切到离线引擎」，功能完整；如遇限流，语音与大模型效果见演示视频。
+> 部署自检（2026-11-14 实测）：首页 200、`/favicon.ico` 204、`/api/health` 返回 `llm:true`（`deepseek-ai/DeepSeek-V3`）、systemd 自启为 `active` / `enabled`；页面一致性用 `curl -s <地址>/ | md5sum` 与本地 `md5sum index.html` 对照。复跑命令见技术文档 11.5。
 
 ## 目录
 
@@ -86,7 +86,7 @@ LLM 的边界被写死在代码里（`Altiora/backend/llm.py`）：
 
 | 方式 | 操作 | 适合 |
 |---|---|---|
-| 看演示视频 | 提交的 5-8 分钟视频里有 AI 在线模式的完整链路 | 最快，零配置 |
+| 看演示视频 | 5-8 分钟成片录制中，完成后随提交物一并提交；成片含 AI 在线模式的完整链路 | 稍后可用 |
 | 自己配 | 点右上角状态标签，30 秒填完自己的 Key | 想亲手验 |
 
 > 仓库里**不含任何 API Key**。作者的 Key 只存在本机浏览器（localStorage），用于录制演示视频，不进提交物。
@@ -121,7 +121,7 @@ LLM 的边界被写死在代码里（`Altiora/backend/llm.py`）：
 2. **没有隐藏服务。** 文字功能零依赖：双击 HTML 就能跑完整个闭环，不需要注册、不需要数据库、不需要联网。
 3. **仓库不含任何 Key。** `.env.example` 只有占位符；线上体验地址的 Key 只在服务器 `.env` 中，不下发浏览器、不进日志。
 4. **可一键自检。** `python3 自检.py` 检查依赖、模型、前端控件、Key 泄漏、脚本语法、5 份 HTML 副本一致性与接口；线上可用 `/api/health` 看 `llm` 是否为 `true`。
-5. **演进过程可查。** `main` 分支从 2026-10-22 起连续提交、无 merge（条数以 `git rev-list --count main` 为准），可逐条 `git show`；Prompt 快照见 `prompt-snapshots/`，完整文字版见 [AI协同对话历史.md](AI协同对话历史.md)，按步骤照着走的演进脚本见 [docs/replay.md](docs/replay.md)，改前/改后对照见 [Altiora-改前改后.html](Altiora-改前改后.html)。
+5. **演进过程可查。** `main` 分支无 merge（条数以 `git rev-list --count main` 为准，逐日分布用 `git log --date=short --format=%ad main | sort | uniq -c`），可逐条 `git show`；Prompt 快照见 `prompt-snapshots/`，完整文字版见 [AI协同对话历史.md](AI协同对话历史.md)，按步骤照着走的演进脚本见 [docs/replay.md](docs/replay.md)，改前/改后对照见 [Altiora-改前改后.html](Altiora-改前改后.html)。
 
 ### 复现成功的三个标志（先记住这三个，再往下做）
 
@@ -191,7 +191,7 @@ python3 自检.py
 
 | # | 操作 | 预期结果 |
 |---|---|---|
-| 1 | 点麦克风，说「今天没睡好」 | 约 1-3 秒后出现汉字气泡，AI 用一句话接住情绪 |
+| 1 | 打字「今天没睡好」 | 一句话接住情绪；在线体验版走 http，浏览器不开放麦克风，语音需在 `localhost` 运行 `python server.py` |
 | 2 | 打字「我明天下午要和导师讨论」 | 听懂意图，但时间不全 → 追问「几点到几点」，不替你编时间 |
 | 3 | 打字「周五下午3点到5点去家教」 | 抽成事件排进时间轴，并算出撞了几处、代价在哪一页 |
 | 4 | 打字「记住，我晚上容易刷手机」 | 一句话确认，写入本地画像 |
@@ -298,7 +298,7 @@ Altiora.luck/
 | 比赛要求 | 仓库位置 | 状态 |
 |---|---|---|
 | 代码仓库 Public | 本仓库 | ✅ |
-| Git 提交历史（细粒度，逐条可查） | `main` 分支从 2026-10-22 起连续提交、无 merge（9 个开发日），条数以 `git rev-list --count main` 为准：`git log --oneline main`；说明见 `docs/replay.md` 第 4 节 | ✅ |
+| Git 提交历史（细粒度，逐条可查） | `main` 分支无 merge，条数以 `git rev-list --count main` 为准，逐日分布用 `git log --date=short --format=%ad main | sort | uniq -c`：`git log --oneline main`；说明见 `docs/replay.md` 第 4 节 | ✅ |
 | AI Prompt 历史快照（≥3 组迭代） | `prompt-snapshots/` | ✅ |
 | 10 分钟复现指南 | 本文档第 3 节（含「复现成功的三个标志」） | ✅ |
 | 演进脚本（Prompt → 建议 → 引导修复 → 验证） | `docs/replay.md` | ✅ |
