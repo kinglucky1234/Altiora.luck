@@ -6,7 +6,7 @@
 > 仓库结构：成品是 `Altiora-未来的我.html`，后端 `server.py`，LLM 在 `Altiora/backend/llm.py`，演进记录在 `docs/replay.md`。
 
 > **在线体验（评委可直接打开，无需任何配置）**：<http://82.157.162.252:8000/>
-> 服务端已配好模型，打开页面右上角即显示「AI 在线」。服务有每日额度限制，超限时页面会明确提示「已切到离线模式」，功能完整；如遇限流，语音与大模型效果见演示视频。
+> 服务端已配好模型，打开页面右上角即显示「AI 在线」。服务有每日额度限制，超限时页面会明确提示「已切到离线模式」，功能完整。语音为可选能力，需在 https 或 localhost 下运行；在线体验版为文字模式。
 > 部署自检（2026-11-14 实测）：首页 200、`/favicon.ico` 204、`/api/health` 返回 `llm:true`（`deepseek-ai/DeepSeek-V3`）、systemd 自启为 `active` / `enabled`；页面一致性用 `curl -s <地址>/ | md5sum` 与本地 `md5sum Altiora-未来的我.html` 对照。复跑命令见技术文档 11.5。
 
 ## 目录
