@@ -306,6 +306,11 @@ body[data-tab="home"] .fab{display:none}
 .chip{padding:4px 11px;border-radius:20px;background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.3);
   color:#FDBA74;font-size:11.5px}
 .chip.g{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.3);color:#6EE7B7}
+/* 缺点标签可删：记错了能自己撤，不用来找我 */
+.weak-chip{cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.weak-chip b{font-weight:400;opacity:.45;font-size:13px;line-height:1}
+.weak-chip:hover{border-color:rgba(239,68,68,.45);color:#FCA5A5}
+.weak-chip:hover b{color:var(--red);opacity:1}
 pre.json{
   background:#0A0E1C;border:1px solid var(--line);border-radius:10px;padding:14px;
   font-size:11.5px;line-height:1.7;color:#8FA3C0;overflow-x:auto;
@@ -355,6 +360,12 @@ pre.json .n{color:#FDBA74}
   outline:none;resize:vertical;line-height:1.65;margin-top:4px}
 #p-diary textarea:focus{border-color:rgba(59,130,246,.5)}
 .sn-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+/* 一块记录都没有时，别只留一片空白：告诉他能说什么、说了会落到哪 */
+.sn-empty{
+  margin-top:14px;padding:16px 18px;border:1px dashed var(--line);border-radius:12px;
+  font-size:12.5px;line-height:2;color:var(--t3);
+}
+.sn-empty b{color:var(--t2);font-weight:600}
 .sn-item{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px 6px;text-align:center;cursor:pointer;transition:border-color .15s}
 .sn-item:hover{border-color:var(--hue)}
 .sn-item b{display:block;font-size:22px;margin-bottom:2px}
@@ -1212,6 +1223,10 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
         <div class="sn-item" onclick="showSnack('snNotes')"><b id="dsrcNotes">0</b><span>随手记</span></div>
         <div class="sn-item" onclick="showSnack('snSocial')"><b id="dsrcSocial">0</b><span>我的生活圈</span></div>
       </div>
+      <div class="sn-empty" id="snEmpty">
+        还没记过东西。三种说法都能直接用：<br>
+        <b>「明天 8 点跑步」</b> → 进时间轴 · <b>「以后不熬夜」</b> → 记成规矩 · <b>「今天有点累」</b> → 记成一件小事
+      </div>
     </div>
 
     <div id="snDiary" style="display:none">
@@ -1291,17 +1306,18 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
     </div>
 
     <div class="card">
-      <div class="ttl">目标 <small>长期 · 中期 · 短期，各记一个</small></div>
+      <div class="ttl">目标 <small>长期 · 中期 · 短期，各记一个；跟我说一句就能改</small></div>
       <div class="goal-grid">
         <div class="goal-col" id="goalLong"></div>
         <div class="goal-col" id="goalMid"></div>
         <div class="goal-col" id="goalShort"></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;margin-top:12px;font-size:12px;color:var(--t3);flex-wrap:wrap">
-        <span>长期目标的日期</span>
+        <span>考试 / 截止日期</span>
         <input type="date" id="goalDeadline" onchange="setGoalDeadline(this.value)"
           style="font:inherit;padding:4px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--t1)">
         <span id="goalDeadlineHint"></span>
+        <span style="color:var(--t3)" id="goalDeadlineWhy">填了才能算倒计时、才能「排到考前」</span>
       </div>
       </div>
 
@@ -4773,7 +4789,8 @@ function renderTrace(){
   }
   g.innerHTML=html;
   const f=document.getElementById("traceFact");
-  if(f)f.innerHTML=`回来过 <b>${cameCnt}</b> 天 · 画了 <b>${doneCnt}</b> 个勾 · 排了 <b>${planCnt}</b> 场`;
+  if(f)f.innerHTML=`回来过 <b>${cameCnt}</b> 天 · 画了 <b>${doneCnt}</b> 个勾 · 排了 <b>${planCnt}</b> 场`
+    +(planCnt?"":"<span style=\"color:var(--t3)\">　用几天，格子会一天天填起来</span>");
 }
 /* 你反复说的话：本地数词频，一个字都不经过模型。
    中文没有空格，就两字一组滑窗数；挡掉「今天/觉得」这类口水词，
@@ -4812,7 +4829,7 @@ function renderMe(){
   const kv=document.getElementById("kv");if(!kv)return;
   const dash=v=>v?esc(v):'<span class="dash">还没说</span>';
   const weak=p.known_weakness.length
-    ?p.known_weakness.map(w=>`<span class="chip">${esc(w)}</span>`).join("")
+    ?p.known_weakness.map((w,i)=>`<span class="chip weak-chip" onclick="delWeak(${i})" title="点一下删掉这条">${esc(w)}<b>×</b></span>`).join("")
     :'<span class="dash">还没说</span>';
   // 顶部头像 + 名字
   const av=document.getElementById("meAvatar");
@@ -4846,6 +4863,8 @@ function renderMe(){
     const n=daysUntil(p.goal_deadline);
     gh.textContent=n===null?"":(n>0?`还有 ${n} 天`:n===0?"就是今天":`已过 ${-n} 天`);
   }
+  const gw=document.getElementById("goalDeadlineWhy");
+  if(gw)gw.style.display=p.goal_deadline?"none":"";
   // 我眼里的你（事实）
   kv.innerHTML=`
     <div>睡眠底线</div><div>${p.hard_sleep_deadline?"不晚于 "+esc(p.hard_sleep_deadline):'<span class="dash">还没说</span>'}</div>
@@ -4860,9 +4879,17 @@ function renderMe(){
   if(nn)nn.textContent=DATA.notes.length;
   const ss=document.getElementById("dsrcSocial");
   if(ss)ss.textContent=p.social_insights.length;
+  const se=document.getElementById("snEmpty");
+  if(se)se.style.display=(DATA.diary.length+DATA.notes.length+p.social_insights.length)?"none":"";
   // 原始数据
   const jb=document.getElementById("jsonBox");
   if(jb)jb.innerHTML=syntax(JSON.stringify(p,null,2));
+}
+function delWeak(i){
+  const w=DATA.profile.known_weakness[i];if(!w)return;
+  DATA.profile.known_weakness.splice(i,1);
+  renderMe();updStats();saveData();
+  toast(`删掉了「${w}」。以后不拿它说事了。`);
 }
 function syntax(s){
   return s.replace(/&/g,"&amp;").replace(/</g,"&lt;")
