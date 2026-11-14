@@ -921,6 +921,8 @@ button,.btn,.tab,.chip,.tag,.ai-pill,.hint,.ttl,.opt-name,.io div,.legend span,
 .trace-cell.today{outline:1px solid rgba(255,255,255,.5);outline-offset:1px}
 .trace-fact{margin-top:12px;font-size:12.5px;color:var(--t2);font-variant-numeric:tabular-nums}
 .trace-fact b{color:var(--t1);font-weight:600}
+.word-chip{display:inline-flex;align-items:baseline;gap:5px}
+.word-chip i{font-style:normal;font-size:10px;color:var(--t3);font-variant-numeric:tabular-nums}
 .goal-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .goal-col{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 12px 14px;min-width:0}
 .goal-col i{display:block;font-style:normal;font-size:11px;color:var(--t3);margin-bottom:7px}
@@ -1266,6 +1268,11 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
       <div class="ttl">这 30 天 <small>只摆事实，不打分</small></div>
       <div class="trace-grid" id="traceGrid"></div>
       <div class="trace-fact" id="traceFact"></div>
+    </div>
+
+    <div class="card" id="wordCard" style="display:none">
+      <div class="ttl">你反复说的话 <small>从你自己的日记和随手记里数的，没经过模型</small></div>
+      <div class="chips" id="wordChips"></div>
     </div>
 
     <div class="card">
@@ -4556,9 +4563,40 @@ function renderTrace(){
   const f=document.getElementById("traceFact");
   if(f)f.innerHTML=`回来过 <b>${cameCnt}</b> 天 · 画了 <b>${doneCnt}</b> 个勾 · 排了 <b>${planCnt}</b> 场`;
 }
+/* 你反复说的话：本地数词频，一个字都不经过模型。
+   中文没有空格，就两字一组滑窗数；挡掉「今天/觉得」这类口水词，
+   同一句里来回出现的碎片也过不了 3 次的门槛 */
+const WORD_STOP=new Set(("今天 明天 昨天 后天 现在 时候 一个 一下 一点 什么 怎么 这样 那样 这个 那个 这种 那种 "+
+  "就是 还是 但是 因为 所以 而且 然后 觉得 感觉 知道 想要 需要 应该 可能 已经 真的 其实 自己 我们 你们 他们 她们 "+
+  "大家 有点 很多 一些 没有 不是 不能 不会 不要 可以 不过 要是 如果 虽然 好像 大概 一样 之后 之前 的话 "+
+  "我的 你的 他的 她的 东西 事情 问题 地方 一直 总是 比较 特别 非常 一起 突然 心里 时间 还是 已经 自己").split(/\s+/));
+function topWords(n){
+  const texts=[].concat(DATA.diary.map(d=>d&&d.t||""),DATA.notes.map(x=>x&&x.text||""));
+  const cnt={};
+  texts.forEach(txt=>{
+    String(txt).replace(/[^\u4e00-\u9fa5]+/g,"|").split("|").forEach(seg=>{
+      for(let i=0;i+2<=seg.length;i++){
+        const w=seg.slice(i,i+2);
+        if(w[0]===w[1]||WORD_STOP.has(w))continue;
+        cnt[w]=(cnt[w]||0)+1;
+      }
+    });
+  });
+  return Object.keys(cnt).map(w=>[w,cnt[w]]).filter(x=>x[1]>=3)
+    .sort((a,b)=>b[1]-a[1]).slice(0,n||8);
+}
+function renderWords(){
+  const card=document.getElementById("wordCard"),box=document.getElementById("wordChips");
+  if(!card||!box)return;
+  const list=topWords(8);
+  if(list.length<2){card.style.display="none";box.innerHTML="";return;}
+  card.style.display="";
+  box.innerHTML=list.map(([w,c])=>`<span class="chip word-chip">${esc(w)}<i>${c}</i></span>`).join("");
+}
 function renderMe(){
   const p=DATA.profile;
   renderTrace();
+  renderWords();
   const kv=document.getElementById("kv");if(!kv)return;
   const dash=v=>v?esc(v):'<span class="dash">还没说</span>';
   const weak=p.known_weakness.length
