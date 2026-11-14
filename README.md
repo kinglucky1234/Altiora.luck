@@ -7,6 +7,7 @@
 
 > **在线体验（评委可直接打开，无需任何配置）**：<http://82.157.162.252:8000/>
 > 服务端已配好模型，打开页面右上角即显示「AI 在线」。每 IP 每日 50 次、全局 1000 次限流，超限时前端自动回退本地规则，页面功能不受影响。
+> 部署自检（2026-11-14 实测）：首页 200、`/favicon.ico` 204、`/api/health` 返回 `llm:true`（`deepseek-ai/DeepSeek-V3`）、线上页面 md5 与仓库成品一致、systemd 自启为 `active` / `enabled`。复跑命令见技术文档 11.5。
 
 ## 目录
 
@@ -68,6 +69,7 @@ LLM 的边界被写死在代码里（`Altiora/backend/llm.py`）：
 | 功能 | 怎么来的 |
 |---|---|
 | 打字对话、排日程、算冲突代价、刷新不丢 | 双击就能用，全部在前端完成 |
+| 看得见的状态 | 理解 → 算空档 → 组织回话，三段按真实进度推进；走本地规则时直接标「本地规则」，不假装有模型 |
 | 语音输入 | 浏览器自带识别：用 Chrome / Edge 打开 `http://localhost` 或 https 页面，点麦克风即可，不装 Python、不下模型 |
 | AI 在线（口语理解更准、话术更像人） | 点右上角状态标签，30 秒填自己的 Key，浏览器直连厂商 |
 
@@ -243,7 +245,7 @@ Altiora.luck/
 ├── 自检.py                          # 复现自检
 ├── requirements.txt
 ├── .env.example                    # 环境变量模板
-├── Altiora-技术文档.pdf              # 技术文档（≤30 页，本地生成：python3 scripts/gen_tech_doc.py；随作品提交，不进 Git）
+├── Altiora-技术文档.pdf              # 技术文档（23 页，≤30；可复跑 python3 scripts/gen_tech_doc.py 重新生成）
 ├── AI协同对话历史.md                # Prompt 链文字版（6 迭代 + 5 次 Bug 修复）
 ├── scripts/
 │   └── download_vosk.py            # 下载 Vosk 中文离线模型（约 66 MB）
@@ -284,8 +286,9 @@ Altiora.luck/
 | 环境变量模板 | `.env.example` | ✅ |
 | 可复现性自检（依赖/模型/控件/接口） | `python3 自检.py` | ✅ |
 | 10 段对话改前 / 改后对照 | `Altiora-改前改后.html`（在线地址同名路径） | ✅ |
-| 演示视频（5-8 分钟，含 ≥2 分钟 AI 协同复现） | 待补 | ⏳ |
-| 技术文档 PDF（≤30 页） | 本地运行 `python3 scripts/gen_tech_doc.py` 生成，随作品提交（不进 Git） | ✅ |
+| 演示视频（5-8 分钟，含 ≥2 分钟 AI 协同复现） | 分镜脚本已完成，录制中 | ⏳ |
+| 公网体验地址（打开即 AI 在线，无需配 Key） | <http://82.157.162.252:8000/>，验收记录见技术文档 11.5 | ✅ |
+| 技术文档 PDF（23 页，≤30） | 仓库根目录 `Altiora-技术文档.pdf`；可复跑 `python3 scripts/gen_tech_doc.py` 重新生成 | ✅ |
 
 ## 8. 设计原则（为什么这样做）
 

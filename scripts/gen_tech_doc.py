@@ -477,11 +477,12 @@ story.append(P("护栏的作用不是限制理解，而是把「理解」和「�
 story.append(P("前端会把本次抽取结果折叠成一张「模型理解」卡片附在回复下方，用户点开即可核对意图、情绪、目标、软肋与事件，理解错了能立刻看见——这是可解释性，也是答辩时最直观的证据。"))
 
 story += H2("5.6 产品精细度：状态可见、主动关心、成长可见")
-story.append(P("这一节对应「用户体验与产品精细度」维度。我们只做三件能被看见、且不撒谎的事："))
+story.append(P("这一节对应「用户体验与产品精细度」维度。我们只做四件能被看见、且不撒谎的事："))
 story.append(B("<b>状态可见</b>：等待时不是一句笼统的「正在思考」，而是三个阶段条——理解这句话 › 落进日程算代价 › 组织回话。阶段按真实进度推进；走本地规则时直接标「本地规则」，不假装那头有个模型。占位气泡不进聊天记忆、不被朗读。"))
 story.append(B("<b>主动关心有由头</b>：只在四种情况下开口——超过 3 天没来（翻日记回访）、当天有排好的事没画勾、近期有大段空档、中长期目标临近截止（如「离『六级』还有 35 天」）。没有由头就不打扰，避免变成又一个推送器。"))
 story.append(B("<b>成长可见，但不打分</b>：画像页的「这 30 天」用 30 个格子只摆事实（回来过几天、画了几个勾、排了几场），不折算成分数；「你反复说的话」完全在本地用两字滑窗统计词频，不经过模型，也不做情绪判断。"))
-story.append(P("这三处都不增加新的能力，只把已有的确定性结果如实展示出来——用户体验分不靠动画堆，而靠「它说的和它做的一致」。"))
+story.append(B("<b>用户能纠错，空白有引导</b>：画像里记错的软肋点一下就删（「以后不拿它说事了」），不必忍受一个错标签；碎碎念页没有记录时给三种可直接照说的句子（进时间轴 / 记成规矩 / 记成小事），30 天格子全空时说明「用几天会一天天填起来」，而不是让用户面对一片灰格猜。"))
+story.append(P("这四处都不增加新的能力，只把已有的确定性结果如实展示出来——用户体验分不靠动画堆，而靠「它说的和它做的一致」。"))
 
 # ════════════════════════════════════════
 # 6. AI 协同与演进链路（重点）
@@ -852,6 +853,31 @@ story.append(B("<b>启动目录是硬约束</b>：<code>BASE = Path(__file__).re
 story.append(B("<b>端口</b>：默认 8000，需在云厂商安全组放行入站 TCP 8000；换端口改 <code>PORT</code> 环境变量。"))
 story.append(B("<b>日志与重启</b>：日志 <code>~/Altiora.luck/server.log</code>（nohup 方式）或 <code>journalctl -u altiora -f</code>（systemd 方式）。"))
 story.append(B("<b>实测</b>：首页 200、<code>/api/health</code> 返回 <code>llm:true</code>、<code>/api/understand</code> 返回 <code>source:\"llm\"</code>、日程落地与刷新持久化均通过；单轮耗时约 5 秒（DeepSeek-V3）。"))
+
+story += H2("11.5 线上验收记录（2026-11-14）")
+story.append(P("部署完成后，从异地网络对公网地址做了一次只读验收，命令与结果如下，评委可原样复跑："))
+story.append(CODE("""$ curl -s -o /dev/null -w "%{http_code}" http://82.157.162.252:8000/
+200
+$ curl -s -o /dev/null -w "%{http_code}" http://82.157.162.252:8000/favicon.ico
+204
+$ curl -s http://82.157.162.252:8000/api/health
+{"ok":true,"llm":true,"model":"deepseek-ai/DeepSeek-V3","asr":false}
+$ curl -s http://82.157.162.252:8000/ | md5sum      # 与仓库根目录成品一致
+d8f1ed60da18e70f91ed43aa44777ea1  -
+$ systemctl is-active altiora && systemctl is-enabled altiora
+active
+enabled"""))
+verify_tbl = [
+    ["检查项", "判据", "本次结果"],
+    ["页面可访问", "HTTP 200", "通过"],
+    ["与仓库成品一致", "线上页面 md5 = 仓库 Altiora-未来的我.html 的 md5", "通过（d8f1ed60…）"],
+    ["模型已接通", "/api/health 的 llm 为 true，model 为配置值", "通过（DeepSeek-V3）"],
+    ["无控制台 404", "/favicon.ico 返回 204（浏览器不会为缺图标刷红字）", "通过"],
+    ["重启后自动拉起", "systemctl is-active / is-enabled 均为 active / enabled", "通过"],
+]
+story.append(TBL(verify_tbl, [40*mm, 85*mm, 50*mm]))
+story.append(CAP("表 11-1 公网部署验收项"))
+story.append(P("说明：模型对「只说了起点、未说终点」的句子会返回空事件（服务端校验要求起止齐全，宁可丢也不编时长），前端随即用本地规则按 1 小时补全并明说，因此用户侧结果不受影响——这是「宁可问一句也不瞎编」的取舍，不是故障。"))
 
 # ════════════════════════════════════════
 # 12. 不足与展望
