@@ -1,5 +1,5 @@
-"""极简 Markdown → PDF（支持标题/段落/列表/表格/代码块/粗体）"""
-import re, sys
+"""极简 Markdown → PDF（支持标题/段落/列表/表格/代码块/粗体/图片）"""
+import os, re, sys
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.lib.styles import ParagraphStyle
@@ -7,7 +7,8 @@ from reportlab.lib.colors import HexColor, black
 from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
+from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table,
+                                TableStyle, PageBreak, Image)
 
 FONT_TTC = "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc"
 pdfmetrics.registerFont(TTFont("CJK", FONT_TTC, subfontIndex=0))
@@ -40,7 +41,11 @@ S = {
                backColor=HexColor("#1e293b"), leftIndent=6, rightIndent=6, spaceBefore=3, spaceAfter=6),
     "cell": st("cell", fontSize=9, leading=14, spaceAfter=0),
     "cellh": st("cellh", fontName="CJKB", fontSize=9.5, leading=14, textColor=PRIMARY, spaceAfter=0),
+    "cap": st("cap", fontSize=9, leading=14, textColor=GRAY, alignment=TA_CENTER,
+              spaceBefore=2, spaceAfter=10),
 }
+
+IMG_RE = re.compile(r"^!\[(.*?)\]\((.+?)\)(?:\{width=([\d.]+)in\})?$")
 
 
 def inline(t):
@@ -52,7 +57,9 @@ def inline(t):
 
 def build(md_path, pdf_path):
     lines = open(md_path, encoding="utf-8").read().splitlines()
+    base_dir = os.path.dirname(os.path.abspath(md_path))
     story, i, in_code, code_buf = [], 0, False, []
+    max_h = A4[1] - 40 * mm
 
     while i < len(lines):
         ln = lines[i]
@@ -74,7 +81,29 @@ def build(md_path, pdf_path):
         if not s:
             i += 1
             continue
-        if s.startswith("# "):
+        img = IMG_RE.match(s)
+        if img:
+            path = img.group(2)
+            if not os.path.isabs(path):
+                path = os.path.join(base_dir, path)
+            if os.path.exists(path):
+                from PIL import Image as PILImage
+                iw, ih = PILImage.open(path).size
+                w = float(img.group(3)) * 72 if img.group(3) else CW
+                w = min(w, CW)
+                h = ih * w / iw
+                if h > max_h:
+                    h, w = max_h, iw * max_h / ih
+                # 单图不超过版心高度的 45%，保证一页能放两张，避免半页空白
+                cap = max_h * 0.45
+                if h > cap:
+                    h, w = cap, iw * cap / ih
+                story.append(Image(path, width=w, height=h))
+            else:
+                story.append(Paragraph(inline(s), S["body"]))
+        elif s.startswith("图 ") and "·" in s:
+            story.append(Paragraph(inline(s), S["cap"]))
+        elif s.startswith("# "):
             story.append(Paragraph(inline(s[2:]), S["h1"]))
         elif s.startswith("## "):
             story.append(Paragraph(inline(s[3:]), S["h2"]))
