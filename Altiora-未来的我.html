@@ -3096,7 +3096,7 @@ function parseTimeRange(t){
    不猜，先反问一句；用户回「下午」由 tryFillPending 补全。 */
 function ambiguousHour(t){
   const s=String(t||"");
-  if(/(凌晨|早上|上午|中午|下午|晚上|夜里)/.test(s))return null;   // 已经说清是哪个半天
+  if(/(凌晨|早上|上午|中午|下午|晚上|夜里|今晚|明晚|今早|明早)/.test(s))return null;   // 已经说清是哪个半天
   if(/(\d{1,2})[:：]\d{2}/.test(s))return null;                   // 15:00 本身就是 24 小时制
   if(/(?:到|至|~|—|－|-)\s*[零〇一二三四五六七八九十两\d]{1,3}/.test(s))return null;
   const m=s.match(/([零〇一二三四五六七八九十两\d]{1,2})\s*[点时]/);
