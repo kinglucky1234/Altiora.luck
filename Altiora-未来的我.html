@@ -2875,6 +2875,13 @@ function normDate(v){
   if(v<today||v>limitIso)return null;
   return v;
 }
+/* 模型日期只做兜底：原话里有「今天/明天/周X」这类相对说法时，一律以本地 resolveDate 为准。
+   模型偶尔把周五算成周二（2026-11-15 实测），不纠就会排到别的天。 */
+function pickDate(text,modelDate){
+  const hit=/大后天|后天|明天|明早|明晚|明儿|今天|今早|今晚|待会|一会儿|等下|(下下个?周|下个?周|下个?星期|周|星期)[一二三四五六日天]/.test(String(text||""));
+  if(hit)return resolveDate(text);
+  return normDate(modelDate)||resolveDate(text);
+}
 function cleanMemory(raw){
   if(!raw||typeof raw!=="object")return null;
   const text=stripPunct(raw.text).slice(0,60);
@@ -2937,7 +2944,7 @@ async function directUnderstand(text){
     ?(String((obj.event&&obj.event.name)||obj.subject||"").trim().slice(0,20)||null):null;
   const memory=intent==="memory"?cleanMemory(obj.memory):null;
   // 目标不再只认 goal 意图：倾诉里顺带提一句「我想考研」也算数，规则模板给不了
-  const goal=stripPunct(obj.goal).slice(0,60)||null;
+  const goal=stripPunct(obj.goal).slice(0,20)||null;
   const goal_horizon=GOAL_HORIZONS.includes(obj.goal_horizon)?obj.goal_horizon:null;
   const weakness=cleanWeakness(obj.weakness);
   const social=intent==="social"?(String(obj.social||"").trim().slice(0,40)||null):null;
@@ -2982,7 +2989,7 @@ async function askLLM(text){
   }
   /* ② 没 Key：问本地服务（服务端 .env 里可能配了 Key），失败就回本地兜底 */
   if(API_DOWN)return null;
-  const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),20000);
+  const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),14000);
   try{
     const r=await fetch("/api/understand",{
       method:"POST",
@@ -3312,7 +3319,7 @@ async function handleUser(v){
   /* 一句长话里夹了「记住：…」：不管后半句还要排计划，先把这些脾气和弱项收下，并给一句回执 */
   const memorized=rememberInline(v);
   if(memorized.length){
-    push("ai",`记住了：${memorized.map(s=>`「${esc(s)}」`).join("、")}。`);
+    push("ai",`记的是：${memorized.map(s=>`「${esc(s)}」`).join("、")}（已写进画像）。`);
   }
 
   // 「每天两个半小时」：这不是一条日程，是目标的节奏。本地算、直接摆时段，绝不再反问「几点到几点」
@@ -3616,7 +3623,7 @@ async function routeLLM(j,slotId,v){
       const added=[],dups=[];
       let totalDelta=0,conflictInfo=null,targetDate=null;
       for(const ev of evs){
-        const r=addStructuredEvent({...ev,date:ev.date||resolveDate(v)});
+        const r=addStructuredEvent({...ev,date:pickDate(v,ev.date)});
         if(r.dup){dups.push(r.ev.name);continue;}
         added.push(r.ev);totalDelta+=r.delta;
         if(!conflictInfo){
@@ -3652,10 +3659,21 @@ async function routeLLM(j,slotId,v){
     setMsgU(slotId,talkOrFallback(j.reply,"schedule",`${sub}我听懂了。但要进时间轴还差个开始和结束时间——几点到几点？`),j);
     return;
   }
-  // 2) 明确要求记住的规矩
-  if(j.intent==="memory"&&j.memory){
-    DATA.profile.known_weakness.push(j.memory.text);renderMe();updStats();saveData();
-    setMsgU(slotId,talkOrFallback(j.reply,"memory",`行，记住了：「${esc(j.memory.text)}」。下次快撞上去，我先摆代价。`),j);
+  // 2) 明确要求记住的规矩：模型漏给正文时用原话兜底，并回显到底存了什么
+  if(j.intent==="memory"){
+    let mem=j.memory;
+    if(!mem||!mem.text){
+      const t=stripPunct(v).replace(/^(请|帮我)?(记住|记一下|记下来|记着|以后|下次)[，,、：:\s]*/,"").slice(0,60);
+      if(t.length>=2)mem={kind:"rule",text:t};
+    }
+    if(mem&&mem.text){
+      DATA.profile.known_weakness.push(mem.text);renderMe();updStats();saveData();
+      const echo=`记的是：「${esc(mem.text)}」`;
+      setMsgU(slotId,(j.reply?esc(j.reply)+"<br>":"")+`<small>${echo}</small>`,j);
+      return;
+    }
+    /* 连兜底都拿不到正文（比如只说「记住」），就反问，别假装记住了 */
+    setMsgU(slotId,"记住什么？说一句具体的，我原样存下来。",j);
     return;
   }
   // 3) 目标（长期 / 中期 / 短期）

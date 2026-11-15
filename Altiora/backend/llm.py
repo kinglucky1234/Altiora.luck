@@ -250,7 +250,35 @@ def _norm_date(v) -> str | None:
     return s
 
 
-def _clean_event(raw) -> dict | None:
+_WEEK_CN = {"一": 0, "二": 1, "三": 2, "四": 3, "五": 4, "六": 5, "日": 6, "天": 6}
+
+
+def _date_from_text(text: str) -> "datetime.date | None":
+    """从原话里取「今天/明天/后天/周X」指向的日期，没提到就 None。
+    规则与前端 resolveDate 保持一致（周一=0）。"""
+    today = datetime.date.today()
+    if re.search(r"大后天", text):
+        return today + datetime.timedelta(days=3)
+    if re.search(r"后天", text):
+        return today + datetime.timedelta(days=2)
+    if re.search(r"明天|明早|明晚|明儿", text):
+        return today + datetime.timedelta(days=1)
+    if re.search(r"今天|今早|今晚|待会|一会儿|等下", text):
+        return today
+    m = re.search(r"(下下个?周|下个?周|下个?星期|周|星期)([一二三四五六日天])", text)
+    if not m:
+        return None
+    tgt, cur = _WEEK_CN[m.group(2)], today.weekday()
+    if m.group(1).startswith("下下"):
+        diff = (7 - cur) + tgt + 7
+    elif m.group(1).startswith("下"):
+        diff = (7 - cur) + tgt
+    else:
+        diff = (tgt - cur) % 7
+    return today + datetime.timedelta(days=diff)
+
+
+def _clean_event(raw, text: str | None = None) -> dict | None:
     if not isinstance(raw, dict):
         return None
     name = str(raw.get("name") or "").strip()[:20]
@@ -276,6 +304,11 @@ def _clean_event(raw) -> dict | None:
     if assumed:
         out["endAssumed"] = True
     date = _norm_date(raw.get("date"))
+    if date:
+        want = _date_from_text(text or "")
+        if want and want.isoformat() != date:
+            logger.info("drop model date %s, text implies %s", date, want.isoformat())
+            date = None          # 不信模型的日期，交给前端 resolveDate 复算
     if date:
         out["date"] = date
     return out
@@ -468,9 +501,9 @@ def understand(text: str, profile: dict | None = None,
     if intent == "schedule":
         raw_events = obj.get("events")
         if isinstance(raw_events, list):
-            events = [e for e in (_clean_event(x) for x in raw_events[:4]) if e]
+            events = [e for e in (_clean_event(x, text) for x in raw_events[:4]) if e]
         if not events:
-            legacy = _clean_event(obj.get("event"))
+            legacy = _clean_event(obj.get("event"), text)
             if legacy:
                 events = [legacy]
     event = events[0] if events else None
@@ -487,6 +520,12 @@ def understand(text: str, profile: dict | None = None,
         raw_subject = raw_subject or obj.get("subject")
         subject = str(raw_subject or "").strip()[:20] or None
     memory = _clean_memory(obj.get("memory")) if intent == "memory" else None
+    if intent == "memory" and not memory:
+        # 模型判成「要记住」却没给正文：用原话兜底，不许出现「说记住了但没记」
+        fb = re.sub(r"^(请|帮我)?(记住|记一下|记下来|记着|以后|下次)[，,、：:\s]*", "", text.strip())
+        fb = re.sub(r"\s+", " ", fb).strip("，,、；;：:。！!？?\"'「」“”")[:60]
+        if len(fb) >= 2:
+            memory = {"kind": "rule", "text": fb}
     # 目标不再只认 goal 意图：倾诉里顺带提一句「我想考研」也算数
     goal = str(obj.get("goal") or "").strip()
     if len(goal) > 20 or _GOAL_BAD.search(goal):
