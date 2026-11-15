@@ -39,7 +39,7 @@ Altiora 只做一件事：把每个选择的代价算清楚，选哪个你自己
 
 差异在理解与表达，不在计算。联网与离线对极少数歧义句的理解可能不同，这是有意的取舍，不是降级缺陷。
 
-**材料怎么读（评审建议顺序）**：先看本文件（10 分钟能跑起来）→ 再看 [Altiora-改前改后.html](Altiora-改前改后.html)（10 条实证，直观）→ 技术文档 PDF 与协同对话历史作为附录，需要细节时再翻。
+**材料怎么读（评审建议顺序）**：先看本文件（10 分钟能跑起来）→ 再看 [Altiora-改前改后.html](Altiora-改前改后.html)（10 组改前/改后实证）→ 要细节再翻三份附录：`docs/replay.md`（演进日志，唯一的「怎么改的」主线）、`AI协同对话历史.md`（Prompt 与对话原文，只存原文不做二次解读）、`Altiora-技术文档.pdf`（技术细节，单独提交）。同一件事只在一份材料里展开，其余只做索引。
 
 ## 2. 三段式架构
 
@@ -269,28 +269,38 @@ python3 server.py
 
 ```
 Altiora.luck/
-├── Altiora-未来的我.html           # ★ 单文件成品，双击即用
+├── Altiora-未来的我.html           # ★ 唯一成品，双击即用
 ├── server.py                       # 唯一后端入口：语音识别 + 可选 LLM 代理
-├── 自检.py                          # 复现自检
+├── 自检.py                          # 可复现性自检（8 项）
 ├── requirements.txt
 ├── .env.example                    # 环境变量模板
-├── Altiora-技术文档.pdf              # 技术文档（24 页，≤30；可复跑 python3 scripts/gen_tech_doc.py 重新生成）
-├── AI协同对话历史.md                # Prompt 链文字版（6 迭代 + 5 次 Bug 修复）
-├── docs/
-│   └── replay.md                    # 演进脚本：六迭代 + 三 Bug 的四段式复现步骤
 ├── scripts/
+│   ├── check_quality.py            # 5 条质量断言
+│   ├── gen_tech_doc.py             # 生成技术文档 PDF（交付物，不入库）
+│   ├── gen_intro_doc.py            # 生成作品介绍（交付物，不入库）
+│   ├── md2pdf.py
 │   └── download_vosk.py            # 下载 Vosk 中文离线模型（约 66 MB）
 ├── Altiora/                        # 后端与模型（不含成品 HTML）
 │   └── backend/
 │       ├── llm.py                  # AI 翻译官：只抽取、只说话，不做计算
-│       └── model/                  # Vosk 模型（不进 git，用 scripts/download_vosk.py 下载）
-├── Altiora-需求文档.docx            # 需求与设计文档
-├── Altiora-给老师看.html            # 一页版作品说明
+│       └── model/                  # Vosk 模型（不进 git）
+├── docs/
+│   └── replay.md                   # 演进日志：六迭代 + 三 Bug 的四段式复现步骤
+├── Altiora-改前改后.html            # 10 组改前/改后对照（证据）
+├── AI协同对话历史.md                # Prompt 与对话原文（原始材料）
+├── PROMPT_LOG.md                   # Prompt 迭代索引
+├── prompt-snapshots/               # 每轮 Prompt 截图（6 组）
+├── Altiora-视频分镜.md              # 演示分镜
+├── Altiora-作品介绍文档.md          # 作品介绍正文（PDF 由此生成，单独提交）
+├── screenshots/c01–c06.png         # 作品介绍用图（早期 01–06 不入库）
+├── Altiora-需求文档.docx            # 需求与设计初稿（归档）
+├── Altiora-产品定位.md              # 赛道定位稿（归档）
+├── Altiora-给老师看.html            # 一页版说明（归档）
 ├── avatar-preview.html             # 分身单独预览
-├── prompt-snapshots/               # AI 对话历史快照（6 组迭代）
-├── PROMPT_LOG.md                   # Prompt 迭代日志
 └── archive/altiora-v0/             # 早期版本，仅存档
 ```
+
+标注「归档」的三份是定稿前的过渡材料，内容已被 README 与作品介绍覆盖，保留只为交代过程，不需要重复阅读。
 
 ## 6. 常见问题
 
@@ -308,7 +318,7 @@ Altiora.luck/
 | 比赛要求 | 仓库位置 | 状态 |
 |---|---|---|
 | 代码仓库 Public | 本仓库 | ✅ |
-| Git 提交历史（细粒度，逐条可查） | `main` 分支无 merge，条数以 `git rev-list --count main` 为准，逐日分布用 `git log --date=short --format=%ad main | sort | uniq -c`：`git log --oneline main`；说明见 `docs/replay.md` 第 4 节 | ✅ |
+| Git 提交历史（细粒度，逐条可查） | `main` 分支无 merge；逐日分布与 10-22 首日骨架的说明见 `docs/replay.md` 第 4 节 | ✅ |
 | AI Prompt 历史快照（≥3 组迭代） | `prompt-snapshots/` | ✅ |
 | 10 分钟复现指南 | 本文档第 3 节（含「复现成功的三个标志」） | ✅ |
 | 演进脚本（Prompt → 建议 → 引导修复 → 验证） | `docs/replay.md` | ✅ |
@@ -317,8 +327,8 @@ Altiora.luck/
 | 质量断言（排程/冲突/日期兜底/Key 泄漏/单一成品） | `python3 scripts/check_quality.py` | ✅ |
 | 10 段对话改前 / 改后对照 | `Altiora-改前改后.html`（在线地址同名路径） | ✅ |
 | 演示视频（5-8 分钟，含 ≥2 分钟 AI 协同复现） | 分镜脚本已完成，录制中 | ⏳ |
-| 公网体验地址（打开即 AI 在线，无需配 Key） | <http://82.157.162.252:8000/>，验收记录见技术文档 11.5 | ✅ |
-| 技术文档 PDF（24 页，≤30） | 仓库根目录 `Altiora-技术文档.pdf`（PDF 为 11-14 版式快照，术语与实现以仓库当前代码为准）；可复跑 `python3 scripts/gen_tech_doc.py` 重新生成 | ✅ |
+| 公网体验地址（打开即 AI 在线，无需配 Key） | <http://82.157.162.252:8000/> | ✅ |
+| 技术文档 PDF（24 页，≤30） | 不入库，单独提交；本地可 `python3 scripts/gen_tech_doc.py` 重新生成 | ✅ |
 
 ## 8. 已知限制
 
