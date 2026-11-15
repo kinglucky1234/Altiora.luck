@@ -3099,7 +3099,7 @@ function ambiguousHour(t){
   if(/(凌晨|早上|上午|中午|下午|晚上|夜里|今晚|明晚|今早|明早)/.test(s))return null;   // 已经说清是哪个半天
   if(/(\d{1,2})[:：]\d{2}/.test(s))return null;                   // 15:00 本身就是 24 小时制
   if(/(?:到|至|~|—|－|-)\s*[零〇一二三四五六七八九十两\d]{1,3}/.test(s))return null;
-  const m=s.match(/([零〇一二三四五六七八九十两\d]{1,2})\s*[点时]/);
+  const m=s.match(/([零〇一二三四五六七八九十两\d]{1,2})\s*[点时]\s*(半)?/);
   if(!m)return null;
   const h=cnHour(m[1]);
   if(!(h>=1&&h<=12))return null;                                  // 0 点／23 点没有歧义
@@ -3109,7 +3109,38 @@ function ambiguousHour(t){
     .replace(/[，,。.、！!？?\s]+/g," ").trim().slice(0,12);
   if(!name)return null;
   if(/醒|睡|起床|到家|下班|迟到/.test(name))return null;          // 已经发生的事不是日程
-  return {name,hour:h,date:resolveDate(s)};
+  return {name,hour:h,minute:m[2]?30:0,date:resolveDate(s)};
+}
+/* 只说了「上午 / 下午 / 晚上」、没说几点：先看空档，再问要不要 */
+const PERIOD_PAT=/(凌晨|早上|上午|中午|下午|晚上|今晚|明晚|今早|明早)/;
+const PERIOD_WIN={"凌晨":[0,6],"早上":[7,9],"上午":[9,12],"中午":[12,14],"下午":[14,18],"晚上":[19,22],"今晚":[19,22],"明晚":[19,22],"今早":[7,9],"明早":[7,9]};
+const hm2min=s=>{const m=String(s||"").match(/^(\d{1,2}):(\d{2})$/);return m?+m[1]*60+ +m[2]:NaN;};
+const min2hm=n=>pad2(Math.floor(n/60))+":"+pad2(n%60);
+function vaguePeriod(t){
+  const s=String(t||"");
+  if(/[点时]/.test(s))return null;                                // 说了钟点，走正常解析
+  if(/\d{1,2}[:：]\d{2}/.test(s))return null;
+  if(/[一二两三四五六七八九十\d]\s*个?\s*半?\s*小时/.test(s))return null;
+  if(/(到|至|~|—|－|-)/.test(s))return null;
+  const m=s.match(PERIOD_PAT);
+  if(!m)return null;
+  const name=s.replace(PERIOD_PAT,"")
+    .replace(/^(?:(?:大后天|后天|明天|今天|下个?周|下个?星期|周|星期)[一二三四五六日天]?\s*)+/,"")
+    .replace(/[，,。.、！!？?\s]+/g," ").trim().slice(0,12);
+  if(!name)return null;
+  return {period:m[1],name:name,date:resolveDate(s)};
+}
+/* 在这天的这个半天里，找第一个连续 1 小时没被占的窗口 */
+function findFreeSlot(period,date){
+  const w=PERIOD_WIN[period];
+  if(!w)return null;
+  const busy=DATA.events.filter(e=>e&&e.date===date)
+    .map(e=>({s:hm2min(e.start),e:hm2min(e.end)}))
+    .filter(x=>!isNaN(x.s)&&!isNaN(x.e));
+  for(let t=w[0]*60;t+60<=w[1]*60;t+=30){
+    if(!busy.some(x=>t<x.e&&t+60>x.s))return {start:min2hm(t),end:min2hm(t+60)};
+  }
+  return null;
 }
 /* 一句话可能说好几件事：按标点/连接词切开，每段单独抠时间和名字 */
 const TIME_PAT=/(上午|早上|中午|下午|晚上|夜里)?\s*[零〇一二三四五六七八九十两\d]{1,3}\s*[点时]?\s*(半)?\s*(?:到|至|~|—|－|-)\s*(上午|早上|中午|下午|晚上|夜里)?\s*[零〇一二三四五六七八九十两\d]{1,3}\s*[点时]?\s*(半)?/g;
@@ -3141,18 +3172,71 @@ function tryFillPending(t){
   const p=DATA.memory.pending;
   if(!p)return "";
   if(Date.now()-p.ts>30*60000){DATA.memory.pending=null;saveData();return "";}
+  /* 只说了上午/下午：程序给了一个空档，用户在确认或改时间 */
+  if(p.type==="confirm"){
+    const s=String(t).trim();
+    if(/^(行|可以|好的?|嗯|就这个|排吧|行吧|对|是的|ok)$/i.test(s.replace(/[。.!！,，\s]/g,""))){
+      const date=p.date||todayStr();
+      DATA.memory.pending=null;saveData();
+      const res=addStructuredEvent({name:p.name,start:p.start,end:p.end,date});
+      const tag=date!==todayStr()
+        ?`「${dayTag(date)} ${esc(res.ev.name)} ${p.start}-${p.end}」`
+        :`「${esc(res.ev.name)} ${p.start}-${p.end}」`;
+      if(res.dup)return `${tag}时间轴里已经有这条了，我没重复加。`;
+      if(date!==VIEW_DATE){VIEW_DATE=date;refreshDay();}
+      return res.delta>0
+        ?`${tag}排进去了，撞了 <b>${res.delta}</b> 处。代价在时间轴页。`
+        :`${tag}排进去了，那天没撞。`;
+    }
+    /* 换一个半天：重新找空档再问一次 */
+    const pm=s.match(/^(凌晨|早上|上午|中午|下午|晚上|今晚|明晚|今早|明早)/);
+    if(pm&&!/[点时]/.test(s)&&s.length<=6){
+      const date=p.date||todayStr();
+      const slot=findFreeSlot(pm[1],date);
+      if(!slot){DATA.memory.pending=null;saveData();return `${pm[1]}没有整小时的空档了，说个具体时间？`;}
+      DATA.memory.pending={type:"confirm",name:p.name,date:date,period:pm[1],start:slot.start,end:slot.end,ts:Date.now()};
+      saveData();
+      return `${pm[1]} ${slot.start}-${slot.end} 空着。排这个？回「行」，或者说个具体时间。`;
+    }
+    /* 直接给一个时间：「十点半」「10:30」「改到三点」 */
+    if(s.length<=12&&!/今天|今早|今晚|明天|明早|明晚|后天|大后天|周[一二三四五六日天]|星期/.test(s)){
+      let hh=NaN,mm=0;
+      const t24=s.match(/(\d{1,2})[:：](\d{2})/);
+      const tcn=s.match(/([零〇一二三四五六七八九十两\d]{1,2})\s*[点时]\s*(半)?/);
+      if(t24){hh=+t24[1];mm=+t24[2];}
+      else if(tcn){hh=cnHour(tcn[1]);mm=tcn[2]?30:0;}
+      if(hh>=0&&hh<=23&&hh*60+mm+60<=24*60){
+        const per=(s.match(PERIOD_PAT)||[])[1]||p.period;
+        if(hh<12&&/下午|晚上|今晚|明晚|夜里/.test(per))hh+=12;
+        if(hh===12&&/凌晨|早上|今早|明早/.test(per))hh=0;
+        const st=pad2(hh)+":"+pad2(mm),en=min2hm(hh*60+mm+60);
+        const date=p.date||todayStr();
+        DATA.memory.pending=null;saveData();
+        const res=addStructuredEvent({name:p.name,start:st,end:en,date});
+        const tag=date!==todayStr()
+          ?`「${dayTag(date)} ${esc(res.ev.name)} ${st}-${en}」`
+          :`「${esc(res.ev.name)} ${st}-${en}」`;
+        if(res.dup)return `${tag}时间轴里已经有这条了，我没重复加。`;
+        if(date!==VIEW_DATE){VIEW_DATE=date;refreshDay();}
+        return res.delta>0
+          ?`${tag}排进去了，撞了 <b>${res.delta}</b> 处。代价在时间轴页。`
+          :`${tag}排进去了，那天没撞。`;
+      }
+    }
+    return "";
+  }
   /* 上半句只说了「3 点」，这句补「下午」——就地补全，不让他把整句再说一遍 */
   if(p.needPeriod){
     const pm=String(t).match(/^(凌晨|早上|上午|中午|下午|晚上|夜里)/);
     if(!pm)return "";
-    const per=pm[1];let h=p.hour;
+    const per=pm[1];const mi=p.minute||0;let h=p.hour;
     if(per==="凌晨"||per==="早上"||per==="上午")h=(h===12?0:h);
     else if(per==="中午")h=(h===12?12:h+12);
     else if(per==="下午")h=(h===12?12:(h<12?h+12:h));
     else h=(h===12?0:(h<12?h+12:h));          // 晚上 / 夜里
-    const e=h*60+60;
+    const e=h*60+mi+60;
     if(h>=24||e>24*60)return "";
-    const start=pad2(h)+":00",end=pad2(Math.floor(e/60))+":"+pad2(e%60);
+    const start=pad2(h)+":"+pad2(mi),end=pad2(Math.floor(e/60))+":"+pad2(e%60);
     const date=p.date||todayStr();
     DATA.memory.pending=null;saveData();
     const res=addStructuredEvent({name:p.name,start,end,date});
@@ -3388,6 +3472,20 @@ async function handleUser(v){
   const j=await askLLM(v);
   /* 模型在线且高置信判定这是裸小时：按它给的候选时间排，不反问 */
   const mA=j&&j.ambiguity&&typeof j.ambiguity.confidence==="number"?j.ambiguity:null;
+  /* 1–6 点不会有人排到凌晨：直接按下午算，不问 */
+  if(amb&&amb.hour<=6){
+    const mi=amb.minute||0;
+    const st=pad2(amb.hour+12)+":"+pad2(mi);
+    const en=min2hm((amb.hour+12)*60+mi+60);
+    const date=amb.date||todayStr();
+    const r=addStructuredEvent({name:amb.name,start:st,end:en,date});
+    if(date!==VIEW_DATE){VIEW_DATE=date;refreshDay();}
+    const tag=date!==todayStr()?`「${dayTag(date)} ${esc(r.ev.name)} ${st}-${en}」`:`「${esc(r.ev.name)} ${st}-${en}」`;
+    const msg=r.dup?`${tag}时间轴里已经有这条了，我没重复加。`
+      :`${tag}按下午 ${amb.hour} 点排的（1–6 点不按凌晨算），要改说一声${r.delta>0?`；撞了 <b>${r.delta}</b> 处，代价在时间轴页`:"；那天没撞"}。`;
+    if(j)setMsgU(slot.id,msg,j);else setMsg(slot.id,msg);
+    return;
+  }
   const cand=mA&&Array.isArray(mA.candidates)&&typeof mA.candidates[0]==="string"?mA.candidates[0].slice(0,5):"";
   const cmin=cand?Number(cand.slice(0,2))*60+Number(cand.slice(3,5)):NaN;
   if(mA&&mA.confidence>=0.85&&cmin>=0&&cmin<23*60){
@@ -3402,11 +3500,24 @@ async function handleUser(v){
       :`${tag}排进去了。钟点按模型选的 ${cand}，不对就改一下${r.delta>0?`；撞了 <b>${r.delta}</b> 处，代价在时间轴页`:"；那天没撞"}。`,j);
     return;
   }
-  /* 离线、或模型自己也没把握：仍然反问一句，原逻辑不改；回「下午」由 tryFillPending 补全 */
+  /* 只说了上午/下午、没说几点：先看空档，再问要不要 */
+  if(j&&j.intent==="schedule"){
+    const vp=vaguePeriod(v);
+    if(vp){
+      const free=findFreeSlot(vp.period,vp.date);
+      if(free){
+        DATA.memory.pending={type:"confirm",name:vp.name,date:vp.date,period:vp.period,start:free.start,end:free.end,ts:Date.now()};
+        saveData();
+        setMsg(slot.id,`${vp.date!==todayStr()?dayTag(vp.date)+" ":""}${vp.period} ${free.start}-${free.end} 空着。排这个？回「行」，或者说个具体时间。`);
+        return;
+      }
+    }
+  }
+  /* 离线、或模型自己也没把握：仍然反问一句，回「晚上」由 tryFillPending 补全 */
   if(amb){
-    DATA.memory.pending={name:amb.name,hour:amb.hour,date:amb.date,needPeriod:true,ts:Date.now()};
+    DATA.memory.pending={name:amb.name,hour:amb.hour,minute:amb.minute||0,date:amb.date,needPeriod:true,ts:Date.now()};
     saveData();
-    const q=`「${esc(amb.name)}」——${amb.hour} 点，是凌晨还是下午？回一句「下午」或「上午」，我就排进去。`;
+    const q=`「${esc(amb.name)}」——${amb.hour} 点${amb.minute?"半":""}，是上午还是晚上？回一句「上午」或「晚上」，我就排进去。`;
     if(j)setMsgU(slot.id,q,j);else setMsg(slot.id,q);
     return;
   }
