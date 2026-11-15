@@ -105,16 +105,24 @@ body::before{
 body[data-tab="home"] .fab{display:none}
 .orb-stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 0 0}
 .hero-avatar{
-  width:168px;height:168px;border-radius:50%;display:grid;place-items:center;position:relative;
-  box-shadow:0 0 70px 16px var(--glow,rgba(239,68,68,.35));
+  width:132px;height:132px;border-radius:50%;display:grid;place-items:center;position:relative;
+  box-shadow:0 0 56px 12px var(--glow,rgba(239,68,68,.35));
   animation:breathe 3.6s ease-in-out infinite;
 }
 .hero-avatar svg{width:88%;height:88%;display:block}
 @keyframes breathe{0%,100%{transform:scale(1);opacity:.95}50%{transform:scale(1.045);opacity:1}}
-.hero-name{font-size:14px;font-weight:500;margin-top:30px;letter-spacing:1.5px;color:var(--t3)}
+.hero-name{font-size:14px;font-weight:500;margin-top:22px;letter-spacing:1.5px;color:var(--t3)}
 .hero-state{font-size:12.5px;color:var(--red);margin-top:9px;text-align:center;opacity:.9}
 .hero-state.green{color:var(--green)}
 .hero-state.blue{color:var(--blue)}
+.hero-claim{margin-top:10px;font-size:13px;color:var(--t2);letter-spacing:.4px;text-align:center}
+.hero-claim b{color:var(--t1);font-weight:600}
+.hero-entry{
+  margin-top:12px;padding:6px 15px;border-radius:20px;cursor:pointer;
+  border:1px solid var(--line-hi);background:transparent;color:var(--t3);
+  font-size:12px;font-family:inherit;transition:.15s;
+}
+.hero-entry:hover{border-color:var(--blue);color:var(--blue)}
 
 /* ── 聊天气泡（仅全屏） ── */
 .msg{max-width:74%;animation:fade .22s}
@@ -1050,8 +1058,8 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
   .tabs::-webkit-scrollbar{display:none}
   .tab{padding:8px 15px;font-size:12.5px}
   #p-home.on{min-height:calc(100vh - 150px);min-height:calc(100dvh - 150px)}
-  .hero-avatar{width:140px;height:140px}
-  .hero-name{margin-top:22px}
+  .hero-avatar{width:112px;height:112px}
+  .hero-name{margin-top:18px}
   .msg{max-width:88%}
   .wx-bar{gap:7px}
   .wx-bar input{padding:11px 14px;font-size:13px}
@@ -1075,7 +1083,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
   .fullchat-input input{font-size:13px}
 }
 @media(max-width:400px){
-  .hero-avatar{width:124px;height:124px}
+  .hero-avatar{width:96px;height:96px}
   .wx-bar input{font-size:12.5px}
   .tab{padding:8px 12px}
   .gaze-msg{font-size:11px}
@@ -1138,6 +1146,8 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
       <div class="hero-avatar" id="bigAvatar"></div>
       <div class="hero-name" id="ovName">未来的你</div>
       <div class="hero-state" id="ovState"></div>
+      <div class="hero-claim"><b>冲突不标红</b>，算代价</div>
+      <button class="hero-entry" onclick="goConflicts()">看今天的冲突 →</button>
     </div>
 
     <div class="quick-start" id="quickStart">
@@ -5269,6 +5279,13 @@ function go(p){
   if(p==="diary"){showSnack("snMenu");updStats();}
 }
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>go(t.dataset.p));
+/* 首页直达冲突卡：切到时间轴日视图，把代价卡滚到眼前 */
+function goConflicts(){
+  go("timeline");
+  setTLView("day");
+  const el=document.getElementById("cfWrap");
+  if(el)setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"center"}),80);
+}
 
 /* ════════ 碎碎念：菜单 ↔ 子页面 ════════ */
 function showSnack(id){
