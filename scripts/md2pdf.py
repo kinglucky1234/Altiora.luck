@@ -8,7 +8,7 @@ from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table,
-                                TableStyle, PageBreak, Image)
+                                TableStyle, PageBreak, Image, KeepTogether)
 
 FONT_CANDIDATES = [
     "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
@@ -59,16 +59,16 @@ def st(name, **kw):
 
 S = {
     "title": st("title", fontName="CJKB", fontSize=20, leading=30, textColor=PRIMARY,
-                alignment=TA_CENTER, spaceBefore=0, spaceAfter=14),
-    "h1": st("h1", fontName="CJKB", fontSize=17, leading=25, textColor=PRIMARY, spaceBefore=14, spaceAfter=8),
-    "h2": st("h2", fontName="CJKB", fontSize=13, leading=20, textColor=ACCENT, spaceBefore=10, spaceAfter=5),
-    "h3": st("h3", fontName="CJKB", fontSize=11.5, leading=18, textColor=PRIMARY, spaceBefore=8, spaceAfter=4),
+                alignment=TA_CENTER, spaceBefore=0, spaceAfter=14, keepWithNext=1),
+    "h1": st("h1", fontName="CJKB", fontSize=17, leading=25, textColor=PRIMARY, spaceBefore=14, spaceAfter=8, keepWithNext=1),
+    "h2": st("h2", fontName="CJKB", fontSize=14, leading=21, textColor=ACCENT, spaceBefore=10, spaceAfter=5, keepWithNext=1),
+    "h3": st("h3", fontName="CJKB", fontSize=12.5, leading=19, textColor=PRIMARY, spaceBefore=9, spaceAfter=4, keepWithNext=1),
     "body": st("b"),
     "quote": st("q", textColor=GRAY, leftIndent=10, fontSize=9.5, leading=15),
     "bullet": st("bu", leftIndent=16, bulletIndent=4, spaceAfter=2),
     "code": st("code", fontName="CJK", fontSize=8.2, leading=13, textColor=HexColor("#e2e8f0"),
                backColor=HexColor("#1e293b"), leftIndent=6, rightIndent=6, spaceBefore=3, spaceAfter=6),
-    "cell": st("cell", fontSize=9, leading=14, spaceAfter=0),
+    "cell": st("cell", fontSize=9, leading=13, spaceAfter=0),
     "cellh": st("cellh", fontName="CJKB", fontSize=9.5, leading=14, textColor=PRIMARY, spaceAfter=0),
     "cap": st("cap", fontSize=9, leading=14, textColor=GRAY, alignment=TA_CENTER,
               spaceBefore=2, spaceAfter=10),
@@ -124,11 +124,16 @@ def build(md_path, pdf_path):
                 h = ih * w / iw
                 if h > max_h:
                     h, w = max_h, iw * max_h / ih
-                # 单图不超过版心高度的 45%，保证一页能放两张，避免半页空白
-                cap = max_h * 0.45
-                if h > cap:
-                    h, w = cap, iw * cap / ih
-                story.append(Image(path, width=w, height=h))
+                flow = [Image(path, width=w, height=h)]
+                j = i + 1
+                while j < len(lines) and not lines[j].strip():
+                    j += 1
+                if j < len(lines):
+                    nxt = lines[j].strip()
+                    if nxt.startswith("图 ") and "·" in nxt:
+                        flow.append(Paragraph(inline(nxt), S["cap"]))
+                        i = j
+                story.append(KeepTogether(flow))
             else:
                 story.append(Paragraph(inline(s), S["body"]))
         elif s.startswith("图 ") and "·" in s:
@@ -160,16 +165,20 @@ def build(md_path, pdf_path):
                     ("VALIGN", (0, 0), (-1, -1), "TOP"),
                     ("LEFTPADDING", (0, 0), (-1, -1), 6),
                     ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-                    ("TOPPADDING", (0, 0), (-1, -1), 4),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                    ("TOPPADDING", (0, 0), (-1, -1), 3),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
                 ]))
-                story.append(tbl)
-                story.append(Spacer(1, 8))
+                block = [tbl, Spacer(1, 8)]
+                if story and getattr(getattr(story[-1], "style", None), "name", "") in ("h2", "h3"):
+                    block.insert(0, story.pop())
+                story.append(KeepTogether(block))
             continue
         elif s.startswith(("- ", "* ")):
             story.append(Paragraph("• " + inline(s[2:]), S["bullet"]))
         elif re.match(r"^\d+\.\s", s):
             story.append(Paragraph(s[:s.index(".")] + "." + inline(s[s.index(".") + 1:]), S["bullet"]))
+        elif s == "<!-- pagebreak -->":
+            story.append(PageBreak())
         elif s == "---":
             story.append(Spacer(1, 6))
         else:
