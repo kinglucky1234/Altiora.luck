@@ -39,7 +39,7 @@ Altiora 只做一件事：把每个选择的代价算清楚，选哪个你自己
 
 差异在理解与表达，不在计算。联网与离线对极少数歧义句的理解可能不同，这是有意的取舍，不是降级缺陷。
 
-**材料怎么读（评审建议顺序）**：先看本文件（10 分钟能跑起来）→ 再看 [Altiora-改前改后.html](Altiora-改前改后.html)（10 组改前/改后实证）→ 要细节再翻三份附录：`docs/replay.md`（演进日志，唯一的「怎么改的」主线）、`AI协同对话历史.md`（Prompt 与对话原文，只存原文不做二次解读）、`Altiora-技术文档.pdf`（技术细节，单独提交）。同一件事只在一份材料里展开，其余只做索引。
+**材料怎么读（评审建议顺序）**：先看本文件（10 分钟能跑起来）→ 再看 [Altiora-改前改后.html](Altiora-改前改后.html)（10 组改前/改后实证）→ 要细节再翻三份附录：`docs/replay.md`（演进日志，唯一的「怎么改的」主线）、`docs/AI协同对话历史.md`（Prompt 与对话原文，只存原文不做二次解读）、`Altiora-技术文档.pdf`（技术细节，单独提交）。同一件事只在一份材料里展开，其余只做索引。
 
 ## 2. 三段式架构
 
@@ -128,7 +128,7 @@ LLM 的边界被写死在代码里（`Altiora/backend/llm.py`）：
 2. **没有隐藏服务。** 文字功能零依赖：双击 HTML 就能跑完整个闭环，不需要注册、不需要数据库、不需要联网。
 3. **仓库不含任何 Key。** `.env.example` 只有占位符；线上体验地址的 Key 只在服务器 `.env` 中，不下发浏览器、不进日志。
 4. **可一键自检。** `python3 自检.py` 检查依赖、模型、前端控件、Key 泄漏、脚本语法、单一成品守卫与接口；线上可用 `/api/health` 看 `llm` 是否为 `true`。
-5. **演进过程可查。** `main` 分支无 merge（条数以 `git rev-list --count main` 为准，逐日分布用 `git log --date=short --format=%ad main | sort | uniq -c`），可逐条 `git show`；Prompt 快照见 `prompt-snapshots/`，完整文字版见 [AI协同对话历史.md](AI协同对话历史.md)，按步骤照着走的演进脚本见 [docs/replay.md](docs/replay.md)，改前/改后对照见 [Altiora-改前改后.html](Altiora-改前改后.html)。
+5. **演进过程可查。** `main` 分支无 merge（条数以 `git rev-list --count main` 为准，逐日分布用 `git log --date=short --format=%ad main | sort | uniq -c`），可逐条 `git show`；Prompt 快照见 `prompt-snapshots/`，完整文字版见 [AI协同对话历史.md](docs/AI协同对话历史.md)，按步骤照着走的演进脚本见 [docs/replay.md](docs/replay.md)，改前/改后对照见 [Altiora-改前改后.html](Altiora-改前改后.html)。
 
 ### 复现成功的三个标志（先记住这三个，再往下做）
 
@@ -285,18 +285,18 @@ Altiora.luck/
 │       ├── llm.py                  # AI 翻译官：只抽取、只说话，不做计算
 │       └── model/                  # Vosk 模型（不进 git）
 ├── docs/
-│   └── replay.md                   # 演进日志：六迭代 + 三 Bug 的四段式复现步骤
-├── Altiora-解析引擎演进说明.md      # 解析链路 V1→V4 的技术展开（replay 的附录）
+│   ├── replay.md                   # 演进日志：六迭代 + 三 Bug 的四段式复现步骤
+│   ├── AI协同对话历史.md             # Prompt 与对话原文（原始材料）
+│   ├── PROMPT_LOG.md               # Prompt 迭代索引
+│   ├── Altiora-解析引擎演进说明.md   # 解析链路 V1→V4 的技术展开（replay 的附录）
+│   ├── Altiora-作品介绍文档.md       # 作品介绍正文（PDF 由此生成，单独提交）
+│   └── Altiora-产品定位.md          # 赛道定位稿（归档）
 ├── Altiora-改前改后.html            # 10 组改前/改后对照（证据）
-├── AI协同对话历史.md                # Prompt 与对话原文（原始材料）
-├── PROMPT_LOG.md                   # Prompt 迭代索引
+├── Altiora-给老师看.html            # 一页版说明（归档）
+├── Altiora-需求文档.docx            # 需求与设计初稿（归档）
 ├── prompt-snapshots/               # 每轮 Prompt 截图（6 组，11 张）
 ├── scripts/                        # 自检/文档生成/PDF 转换/语音模型下载
-├── Altiora-作品介绍文档.md          # 作品介绍正文（PDF 由此生成，单独提交）
 ├── screenshots/                    # 作品介绍用图
-├── Altiora-需求文档.docx            # 需求与设计初稿（归档）
-├── Altiora-产品定位.md              # 赛道定位稿（归档）
-├── Altiora-给老师看.html            # 一页版说明（归档）
 └── archive/                        # 历史存档：altiora-v0（当时代号 AI 小宝）+ preview/
 ```
 

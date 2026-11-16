@@ -2,7 +2,7 @@
 
 > 用途：赛题要求「通过 Prompt 记录和演进脚本进行确定性复现」。本文件把六个迭代与三个关键 Bug 的协作过程，写成**照着做就能复现**的步骤。
 > 每条都含四段：**我提了什么 → AI 给了什么建议 → 我怎么判断/引导 → 怎么验证它真的修好了**。
-> 对话原文见 [AI协同对话历史.md](../AI协同对话历史.md)，截图见 `prompt-snapshots/`，代码位置按函数名可在 [Altiora-未来的我.html](../Altiora-未来的我.html) 中搜到。
+> 对话原文见 [AI协同对话历史.md](AI协同对话历史.md)，截图见 `prompt-snapshots/`，代码位置按函数名可在 [Altiora-未来的我.html](../Altiora-未来的我.html) 中搜到。
 
 ## 0. 复现前置（3 分钟）
 
@@ -75,4 +75,4 @@ python3 server.py        # 或直接双击 Altiora-未来的我.html（文字功
 - **逐日分布（截至 2026-11-16，共 219 次）**：10-22×7、10-24×16、10-25×1、10-27×3、10-30×15、10-31×51、11-10×13、11-11×30、11-14×36、11-15×38，其余为 11-16 当日提交。此后的提交会让总数继续增长，**以 `git rev-list --count main` 的实测值为准**，本文不把它当固定常量。复跑命令：`git log --date=iso --format=%ad main | cut -c1-10 | sort | uniq -c`。
 - **`history` 分支**：2026-10-30 前的历史备份（28 次），内容已全部包含在 `main` 中。
 
-查看方式：`git log --oneline main`（条数以 `git rev-list --count main` 为准），任取一条 `git show <hash>` 都能看到当时真实的改动。**没有任何提交被改写、压缩或补造**。第 3 节列出的哈希均可用 `git show <hash>` 逐条核对，六个迭代的过程细节另以 `prompt-snapshots/` 的 11 张真实对话截图与 [AI协同对话历史.md](../AI协同对话历史.md) 相互印证。
+查看方式：`git log --oneline main`（条数以 `git rev-list --count main` 为准），任取一条 `git show <hash>` 都能看到当时真实的改动。**没有任何提交被改写、压缩或补造**。第 3 节列出的哈希均可用 `git show <hash>` 逐条核对，六个迭代的过程细节另以 `prompt-snapshots/` 的 11 张真实对话截图与 [AI协同对话历史.md](AI协同对话历史.md) 相互印证。
