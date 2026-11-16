@@ -31,6 +31,8 @@ def st(name, **kw):
 
 
 S = {
+    "title": st("title", fontName="CJKB", fontSize=20, leading=30, textColor=PRIMARY,
+                alignment=TA_CENTER, spaceBefore=0, spaceAfter=14),
     "h1": st("h1", fontName="CJKB", fontSize=17, leading=25, textColor=PRIMARY, spaceBefore=14, spaceAfter=8),
     "h2": st("h2", fontName="CJKB", fontSize=13, leading=20, textColor=ACCENT, spaceBefore=10, spaceAfter=5),
     "h3": st("h3", fontName="CJKB", fontSize=11.5, leading=18, textColor=PRIMARY, spaceBefore=8, spaceAfter=4),
@@ -59,6 +61,7 @@ def build(md_path, pdf_path):
     lines = open(md_path, encoding="utf-8").read().splitlines()
     base_dir = os.path.dirname(os.path.abspath(md_path))
     story, i, in_code, code_buf = [], 0, False, []
+    seen_title = False
     max_h = A4[1] - 40 * mm
 
     while i < len(lines):
@@ -104,7 +107,9 @@ def build(md_path, pdf_path):
         elif s.startswith("图 ") and "·" in s:
             story.append(Paragraph(inline(s), S["cap"]))
         elif s.startswith("# "):
-            story.append(Paragraph(inline(s[2:]), S["h1"]))
+            style = S["h1"] if seen_title else S["title"]
+            seen_title = True
+            story.append(Paragraph(inline(s[2:]), style))
         elif s.startswith("## "):
             story.append(Paragraph(inline(s[3:]), S["h2"]))
         elif s.startswith("### "):
