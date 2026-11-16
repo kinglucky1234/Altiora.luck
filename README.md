@@ -7,7 +7,7 @@
 
 > **在线体验（评委可直接打开，无需任何配置）**：<http://82.157.162.252:8000/>
 > 服务端已配好模型，打开页面右上角即显示「AI 在线」。服务有每日额度限制，超限时页面会明确提示「已切到离线模式」，功能完整。语音为可选能力，需在 https 或 localhost 下运行；在线体验版为文字模式。
-> 部署自检（2026-11-15 复验）：首页 200、`/favicon.ico` 204、`/api/health` 返回 `llm:true`（`deepseek-ai/DeepSeek-V3`）、systemd 自启为 `active` / `enabled`；页面一致性用 `curl -s <地址>/ | md5sum` 与本地 `md5sum Altiora-未来的我.html` 对照，两端均为 `47ea2df9…`。复跑命令见技术文档 11.5。
+> 部署自检（2026-11-16 复验）：首页 200、`/favicon.ico` 204、`/api/health` 返回 `llm:true`（`deepseek-ai/DeepSeek-V3`）、systemd 自启为 `active` / `enabled`。页面一致性用 `curl -s <地址>/ | md5sum` 与本地 `md5sum "Altiora-未来的我.html"` 对照，两次取到的值应相同（不要写死哈希——任何一次提交都会让它变旧，按命令实测为准）。复跑命令见技术文档 11.5。
 
 ## 目录
 
@@ -93,7 +93,7 @@ LLM 的边界被写死在代码里（`Altiora/backend/llm.py`）：
 
 | 方式 | 操作 | 适合 |
 |---|---|---|
-| 看演示视频 | 5-8 分钟；分镜脚本见 `Altiora-视频分镜.md`，成片链接随提交表单附上 | 分镜可读 |
+| 看演示视频 | 5-8 分钟；分镜脚本不入库，随提交表单附上，成片链接同表单提交 | 看完整链路 |
 | 自己配 | 点右上角状态标签，30 秒填完自己的 Key | 想亲手验 |
 
 > 仓库里**不含任何 API Key**。作者的 Key 只存在本机浏览器（localStorage），用于录制演示视频，不进提交物。
@@ -271,7 +271,7 @@ python3 server.py
 Altiora.luck/
 ├── Altiora-未来的我.html           # ★ 唯一成品，双击即用
 ├── server.py                       # 唯一后端入口：语音识别 + 可选 LLM 代理
-├── 自检.py                          # 可复现性自检（11 项）
+├── 自检.py                          # 可复现性自检（12 项）
 ├── requirements.txt
 ├── .env.example                    # 环境变量模板
 ├── scripts/
@@ -290,15 +290,14 @@ Altiora.luck/
 ├── Altiora-改前改后.html            # 10 组改前/改后对照（证据）
 ├── AI协同对话历史.md                # Prompt 与对话原文（原始材料）
 ├── PROMPT_LOG.md                   # Prompt 迭代索引
-├── prompt-snapshots/               # 每轮 Prompt 截图（6 组）
-├── Altiora-视频分镜.md              # 演示分镜
+├── prompt-snapshots/               # 每轮 Prompt 截图（6 组，11 张）
+├── scripts/                        # 自检/文档生成/PDF 转换/语音模型下载
 ├── Altiora-作品介绍文档.md          # 作品介绍正文（PDF 由此生成，单独提交）
-├── screenshots/c01–c06.png         # 作品介绍用图（早期 01–06 不入库）
+├── screenshots/                    # 作品介绍用图
 ├── Altiora-需求文档.docx            # 需求与设计初稿（归档）
 ├── Altiora-产品定位.md              # 赛道定位稿（归档）
 ├── Altiora-给老师看.html            # 一页版说明（归档）
-├── avatar-preview.html             # 分身单独预览
-└── archive/altiora-v0/             # 早期版本，仅存档
+└── archive/                        # 历史存档：altiora-v0（当时代号 AI 小宝）+ preview/
 ```
 
 标注「归档」的三份是定稿前的过渡材料，内容已被 README 与作品介绍覆盖，保留只为交代过程，不需要重复阅读。
@@ -327,7 +326,7 @@ Altiora.luck/
 | 可复现性自检（依赖/模型/控件/接口） | `python3 自检.py` | ✅ |
 | 质量断言（排程/冲突/日期兜底/Key 泄漏/单一成品） | `python3 scripts/check_quality.py` | ✅ |
 | 10 段对话改前 / 改后对照 | `Altiora-改前改后.html`（在线地址同名路径） | ✅ |
-| 演示视频（5-8 分钟，含 ≥2 分钟 AI 协同复现） | `Altiora-视频分镜.md`；成片链接随提交表单附上 | 提交时附链接 |
+| 演示视频（5-8 分钟，含 ≥2 分钟 AI 协同复现） | 分镜脚本不入库；成片链接随提交表单附上 | 提交时附链接 |
 | 公网体验地址（打开即 AI 在线，无需配 Key） | <http://82.157.162.252:8000/> | ✅ |
 | 技术文档 PDF（24 页，≤30） | 不入库，单独提交；本地可 `python3 scripts/gen_tech_doc.py` 重新生成 | ✅ |
 
