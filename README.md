@@ -7,7 +7,7 @@
 
 > **在线体验（评委可直接打开，无需任何配置）**：<http://82.157.162.252:8000/>
 > 服务端已配好模型，打开页面右上角即显示「AI 在线」。服务有每日额度限制，超限时页面会明确提示「已切到离线引擎」，功能完整；如遇限流，语音与大模型效果见演示视频。
-> 部署自检（2026-11-14 实测）：首页 200、`/favicon.ico` 204、`/api/health` 返回 `llm:true`（`deepseek-ai/DeepSeek-V3`）、systemd 自启为 `active` / `enabled`；页面一致性用 `curl -s <地址>/ | md5sum` 与本地 `md5sum index.html` 对照。复跑命令见技术文档 11.5。
+> 部署自检（2026-11-14 实测）：首页 200、`/favicon.ico` 204、`/api/health` 返回 `llm:true`（`deepseek-ai/DeepSeek-V3`）、systemd 自启为 `active` / `enabled`；页面一致性用 `curl -s <地址>/ | md5sum` 与本地 `md5sum "Altiora-未来的我.html"` 对照。复跑命令见技术文档 11.5。
 
 ## 目录
 
@@ -86,7 +86,7 @@ LLM 的边界被写死在代码里（`Altiora/backend/llm.py`）：
 
 | 方式 | 操作 | 适合 |
 |---|---|---|
-| 看演示视频 | 5-8 分钟成片录制中，完成后随提交物一并提交；成片含 AI 在线模式的完整链路 | 稍后可用 |
+| 看演示视频 | 5-8 分钟成片，含 AI 在线模式的完整链路与 ≥2 分钟协同复现，随提交物一并提交 | 已完成 |
 | 自己配 | 点右上角状态标签，30 秒填完自己的 Key | 想亲手验 |
 
 > 仓库里**不含任何 API Key**。作者的 Key 只存在本机浏览器（localStorage），用于录制演示视频，不进提交物。
@@ -254,18 +254,16 @@ python3 server.py
 
 ```
 Altiora.luck/
-├── Altiora-未来的我.html           # ★ 单文件成品，双击即用
-├── index.html                      # 同源副本（部署用）
-├── app.html                        # 同源副本
+├── Altiora-未来的我.html           # ★ 单文件成品，双击即用（线上部署同一份）
 ├── server.py                       # 唯一后端入口：语音识别 + 可选 LLM 代理
 ├── 自检.py                          # 复现自检
 ├── requirements.txt
 ├── .env.example                    # 环境变量模板
-├── Altiora-技术文档.pdf              # 技术文档（24 页，≤30；可复跑 python3 scripts/gen_tech_doc.py 重新生成）
-├── AI协同对话历史.md                # Prompt 链文字版（6 迭代 + 5 次 Bug 修复）
+├── AI协同对话历史.md                # Prompt 链文字版（6 轮迭代 + 5 个 Bug 修复）
 ├── docs/
-│   └── replay.md                    # 演进脚本：六迭代 + 三 Bug 的四段式复现步骤
+│   └── replay.md                    # 演进脚本：六轮迭代 + 三条完整 Bug 复现链
 ├── scripts/
+│   ├── gen_tech_doc.py             # 技术文档生成脚本（PDF 随提交物单独上传，不入仓库）
 │   └── download_vosk.py            # 下载 Vosk 中文离线模型（约 66 MB）
 ├── Altiora/                        # 可运行版本（与根目录同源）
 │   ├── server.py                   # 与根目录同一份
@@ -288,7 +286,7 @@ Altiora.luck/
 |---|---|---|
 | `python: command not found` | 未装 Python 或未加 PATH | 重装并勾选 Add Python to PATH，或用 `python3` |
 | `ModuleNotFoundError: fastapi` | 依赖没装到当前解释器 | `python -m pip install -r requirements.txt` |
-| 端口被占用 (`Address already in use`) | 8000 已被其它程序占用 | `set PORT=8001` 后重启，或 Windows `netstat -ano | findstr :8000` |
+| 端口被占用 (`Address already in use`) | 8000 已被其它程序占用 | `set PORT=8001` 后重启，或 Windows `netstat -ano \| findstr :8000` |
 | 页面能开，点麦克风没反应 | 浏览器不允许麦克风 / 非 localhost | 用 Chrome 打开 `http://localhost:8000`，并在地址栏允许麦克风 |
 | 语音一直返回空文本 | 模型目录缺失 | 运行 `python3 scripts/download_vosk.py` 下载模型（约 66 MB） |
 | 识别很慢（>5 秒） | 首次加载模型 | 第一次识别会加载模型，之后每次约 1-3 秒 |
@@ -298,16 +296,16 @@ Altiora.luck/
 | 比赛要求 | 仓库位置 | 状态 |
 |---|---|---|
 | 代码仓库 Public | 本仓库 | ✅ |
-| Git 提交历史（细粒度，逐条可查） | `main` 分支无 merge，条数以 `git rev-list --count main` 为准，逐日分布用 `git log --date=short --format=%ad main | sort | uniq -c`：`git log --oneline main`；说明见 `docs/replay.md` 第 4 节 | ✅ |
+| Git 提交历史（细粒度，逐条可查） | `main` 分支无 merge，条数以 `git rev-list --count main` 为准，逐日分布用 `git log --date=short --format=%ad main \| sort \| uniq -c`：`git log --oneline main`；说明见 `docs/replay.md` 第 4 节 | ✅ |
 | AI Prompt 历史快照（≥3 组迭代） | `prompt-snapshots/` | ✅ |
 | 10 分钟复现指南 | 本文档第 3 节（含「复现成功的三个标志」） | ✅ |
 | 演进脚本（Prompt → 建议 → 引导修复 → 验证） | `docs/replay.md` | ✅ |
 | 环境变量模板 | `.env.example` | ✅ |
 | 可复现性自检（依赖/模型/控件/接口） | `python3 自检.py` | ✅ |
 | 10 段对话改前 / 改后对照 | `Altiora-改前改后.html`（在线地址同名路径） | ✅ |
-| 演示视频（5-8 分钟，含 ≥2 分钟 AI 协同复现） | 分镜脚本已完成，录制中 | ⏳ |
+| 演示视频（5-8 分钟，含 ≥2 分钟 AI 协同复现） | 已录制完成，随提交物一并提交 | ✅ |
 | 公网体验地址（打开即 AI 在线，无需配 Key） | <http://82.157.162.252:8000/>，验收记录见技术文档 11.5 | ✅ |
-| 技术文档 PDF（24 页，≤30） | 仓库根目录 `Altiora-技术文档.pdf`；可复跑 `python3 scripts/gen_tech_doc.py` 重新生成 | ✅ |
+| 技术文档 PDF（24 页，≤30） | 随提交物单独上传（`.gitignore` 排除，不入仓库）；可复跑 `python3 scripts/gen_tech_doc.py` 重新生成 | ✅ |
 
 ## 8. 设计原则（为什么这样做）
 
