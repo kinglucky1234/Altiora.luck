@@ -401,8 +401,8 @@ pre.json .n{color:#FDBA74}
 .note-item .ty.rule{background:rgba(249,115,22,.13);border-color:rgba(249,115,22,.3);color:#FDBA74}
 .note-item .ty.event{background:rgba(16,185,129,.13);border-color:rgba(16,185,129,.3);color:#6EE7B7}
 .note-item .tx{flex:1;font-size:12.5px;line-height:1.6}
-.note-item .del{flex:none;color:var(--t3);cursor:pointer;font-size:15px;line-height:1;padding:2px 4px}
-.note-item .del:hover{color:var(--red)}
+.note-item .del{flex:none;color:var(--t3);cursor:pointer;font-size:15px;line-height:1;padding:2px 7px;border-radius:4px}
+.note-item .del:hover{color:var(--red);background:rgba(239,68,68,.1)}
 .empty{font-size:12px;color:var(--t3);padding:14px 0;text-align:center}
 .dash{color:var(--t3)}
 .kv small{color:var(--t3);font-size:11px;margin-left:6px}
@@ -428,9 +428,11 @@ pre.json .n{color:#FDBA74}
 /* 弹窗内的小清单 */
 .note-list,.soc-list{max-height:180px;overflow:auto;display:none;margin-bottom:12px}
 .note-list.on,.soc-list.on{display:block}
-.soc-item{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin-bottom:8px}
+.soc-item{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 30px 9px 12px;margin-bottom:8px;position:relative}
 .soc-item .soc-tx{font-size:12.5px;color:var(--t1);line-height:1.6}
 .soc-item .soc-src{font-size:11px;color:var(--t3);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.soc-item .soc-del{position:absolute;top:8px;right:10px;color:var(--t3);cursor:pointer;font-size:14px;line-height:1;padding:2px 5px;border-radius:4px}
+.soc-item .soc-del:hover{color:var(--red);background:rgba(239,68,68,.1)}
 /* 日记日历 */
 .cal-head{display:flex;align-items:center;justify-content:space-between;margin:2px 0 10px}
 .cal-m{font-size:13px;font-weight:600;color:var(--t1)}
@@ -5214,8 +5216,20 @@ function renderSocialList(){
   const list=DATA.profile.social_insights;
   if(!list.length){box.classList.remove("on");box.innerHTML="";return;}
   box.classList.add("on");
-  box.innerHTML=list.slice(-6).reverse().map(x=>
-    `<div class="soc-item"><div class="soc-tx">${esc(x.text)}</div><div class="soc-src">${esc(x.src||"")}</div></div>`).join("");
+  const start=Math.max(0,list.length-6);
+  box.innerHTML=list.slice(start).map((x,k)=>
+    `<div class="soc-item"><div class="soc-tx">${esc(x.text)}</div><div class="soc-src">${esc(x.src||"")}</div>
+      <span class="soc-del" onclick="delSocial(${start+k})">×</span></div>`).reverse().join("");
+}
+/* 生活圈：删掉的条目同时从档案里抹掉，别只藏起来 */
+function delSocial(i){
+  const list=DATA.profile.social_insights;
+  if(i<0||i>=list.length)return;
+  const gone=list.splice(i,1)[0];
+  const t=String(gone&&gone.text||"");
+  if(t){const w=DATA.profile.known_weakness||[],j=w.indexOf(t);if(j>=0)w.splice(j,1);}
+  saveData();renderSocialList();renderMe();updStats();
+  toast(`已删掉「${t.slice(0,12)}」`);
 }
 
 function updStats(){
