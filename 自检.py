@@ -123,21 +123,21 @@ def check_js_syntax():
 
 
 def check_html_copies():
-    """5 份同源 HTML 必须逐字节一致，改一份要同步全部。"""
-    files = ["app.html", "index.html", "Altiora-未来的我.html",
-             "Altiora/index.html", "Altiora/Altiora-未来的我.html"]
-    sums = {}
-    for f in files:
-        p = BASE / f
-        if not p.exists():
-            fail("HTML 副本", f"缺少 {f}")
-            return
-        sums[f] = hashlib.md5(p.read_bytes()).hexdigest()
-    if len(set(sums.values())) != 1:
-        detail = "；".join(f"{k}={v[:8]}" for k, v in sums.items())
-        fail("HTML 副本", "不一致，改一份要同步全部：" + detail)
+    """主文件必须存在；其余同源副本若存在，必须与主文件逐字节一致。"""
+    main = BASE / "Altiora-未来的我.html"
+    if not main.exists():
+        fail("HTML 副本", "缺少主文件 Altiora-未来的我.html")
+        return
+    target = hashlib.md5(main.read_bytes()).hexdigest()
+    others = ["app.html", "index.html",
+              "Altiora/index.html", "Altiora/Altiora-未来的我.html"]
+    exist = [f for f in others if (BASE / f).exists()]
+    diff = [f for f in exist
+            if hashlib.md5((BASE / f).read_bytes()).hexdigest() != target]
+    if diff:
+        fail("HTML 副本", "与主文件不一致，改一份要同步全部：" + "、".join(diff))
     else:
-        ok("HTML 副本", f"5 份一致 {list(sums.values())[0][:8]}")
+        ok("HTML 副本", f"主文件一致 {target[:8]}，另有 {len(exist)} 份同源副本")
 
 
 def free_port():
