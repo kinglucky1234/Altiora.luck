@@ -98,27 +98,27 @@
 
 以下截图均取自线上体验地址 <http://82.157.162.252:8000/>，右上角「AI 在线」表示服务端模型已接入。
 
-![](screenshots/c01-首页.png){width=5.6in}
+![](../screenshots/c01-首页.png){width=5.6in}
 
 图 1 · 首页：打开即用，不用配 Key；首屏给三句示例，减少评委的输入成本。
 
-![](screenshots/c02-理解卡.png){width=5.6in}
+![](../screenshots/c02-理解卡.png){width=5.6in}
 
 图 2 · 模型理解：一句话抽成意图、事件、时间，摊开给用户核对，模型理解得对不对看得见。
 
-![](screenshots/c03-冲突代价.png){width=5.6in}
+![](../screenshots/c03-冲突代价.png){width=5.6in}
 
 图 3 · 冲突与代价：两件事重叠 30 分钟，A/B/C 三个选项各自要付什么代价写在卡里，程序不替用户选。
 
-![](screenshots/c04-今日方案.png){width=5.6in}
+![](../screenshots/c04-今日方案.png){width=5.6in}
 
 图 4 · 今日方案：目标由模型拆成每天练什么，底部标注「拆解来源：服务端模型」；时间仍由本地计算。
 
-![](screenshots/c05-我的画像.png){width=5.6in}
+![](../screenshots/c05-我的画像.png){width=5.6in}
 
 图 5 · 我的画像：长期目标、睡眠底线、精力高峰、软肋都在这页，缺哪项直接标出来（档案 4/5）。
 
-![](screenshots/c06-碎碎念.png){width=5.6in}
+![](../screenshots/c06-碎碎念.png){width=5.6in}
 
 图 6 · 生活碎碎念：日记由分身自动记录，隔几天回来会主动回访上次那件事。
 

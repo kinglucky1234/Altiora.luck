@@ -288,7 +288,7 @@ Altiora.luck/
 │   ├── replay.md                   # 演进日志：六迭代 + 三 Bug 的四段式复现步骤
 │   ├── AI协同对话历史.md             # Prompt 与对话原文（原始材料）
 │   ├── PROMPT_LOG.md               # Prompt 迭代索引
-│   ├── Altiora-解析引擎演进说明.md   # 解析链路 V1→V4 的技术展开（replay 的附录）
+│   ├── Altiora-解析引擎演进说明.md   # 解析链路 V1→V5 的技术展开（replay 的附录）
 │   ├── Altiora-作品介绍文档.md       # 作品介绍正文（PDF 由此生成，单独提交）
 │   └── Altiora-产品定位.md          # 赛道定位稿（归档）
 ├── Altiora-改前改后.html            # 10 组改前/改后对照（证据）
