@@ -10,9 +10,36 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table,
                                 TableStyle, PageBreak, Image)
 
-FONT_TTC = "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc"
-pdfmetrics.registerFont(TTFont("CJK", FONT_TTC, subfontIndex=0))
-pdfmetrics.registerFont(TTFont("CJKB", FONT_TTC, subfontIndex=0))
+FONT_CANDIDATES = [
+    "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+    "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+    "C:/Windows/Fonts/msyh.ttc",
+    "C:/Windows/Fonts/simhei.ttf",
+    "/System/Library/Fonts/PingFang.ttc",
+]
+
+
+def register_cjk_fonts():
+    """按平台依次尝试中文字体；都没有就明确报错，而不是抛一堆 traceback。"""
+    for path in FONT_CANDIDATES:
+        if not os.path.exists(path):
+            continue
+        try:
+            pdfmetrics.registerFont(TTFont("CJK", path, subfontIndex=0))
+            pdfmetrics.registerFont(TTFont("CJKB", path, subfontIndex=0))
+            return
+        except Exception:
+            continue
+    raise SystemExit(
+        "未找到可用的中文字体。\n"
+        "  Linux:   sudo apt install fonts-wqy-microhei\n"
+        "  macOS:   安装任意中文字体（如 PingFang / 思源黑体）\n"
+        "  Windows: 确认 C:/Windows/Fonts/msyh.ttc 存在（系统自带微软雅黑）\n"
+        "也可以把字体绝对路径加到 FONT_CANDIDATES 列表里。"
+    )
+
+
+register_cjk_fonts()
 
 PRIMARY = HexColor("#1a365d")
 ACCENT = HexColor("#2b6cb0")

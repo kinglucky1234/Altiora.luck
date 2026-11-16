@@ -3,7 +3,7 @@
 正文唯一来源是仓库 `docs/Altiora-作品介绍文档.md`，这里只做 Markdown → PDF。
 不再手写第二份正文，避免 PDF 与仓库说明两处口径漂移。
 
-依赖 reportlab 与系统字体 wqy-microhei（Debian/Ubuntu：apt install fonts-wqy-microhei）。
+依赖 reportlab 与任一中文字体（优先 wqy-microhei，Windows 自动用微软雅黑，找不到会给出安装提示）。
 """
 import sys
 from pathlib import Path

@@ -3,22 +3,23 @@
 重点：意图控制策略 / 架构设计 / 可复现性论证 / AI 协同演进链路
 """
 import os
+import sys
+from pathlib import Path
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.colors import HexColor, black, white
 from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_JUSTIFY
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, PageBreak, Table, TableStyle,
     Preformatted, KeepTogether, Flowable,
 )
 
-# ── 字体：用 wqy-microhei.ttc（TrueType 轮廓，reportlab 支持）──
-FONT_TTC = "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc"
-pdfmetrics.registerFont(TTFont("CJK", FONT_TTC, subfontIndex=0))
-pdfmetrics.registerFont(TTFont("CJKB", FONT_TTC, subfontIndex=0))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from md2pdf import register_cjk_fonts
+
+# ── 字体：按平台自动寻找中文字体；找不到时给出安装提示 ──
+register_cjk_fonts()
 CJK = "CJK"
 CJKB = "CJKB"
 
