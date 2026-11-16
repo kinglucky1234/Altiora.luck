@@ -121,7 +121,7 @@ LLM 的边界被写死在代码里（`Altiora/backend/llm.py`）：
 2. **没有隐藏服务。** 文字功能零依赖：双击 HTML 就能跑完整个闭环，不需要注册、不需要数据库、不需要联网。
 3. **仓库不含任何 Key。** `.env.example` 只有占位符；线上体验地址的 Key 只在服务器 `.env` 中，不下发浏览器、不进日志。
 4. **可一键自检。** `python3 自检.py` 检查依赖、模型、前端控件、Key 泄漏、脚本语法、同源 HTML 副本一致性与接口；线上可用 `/api/health` 看 `llm` 是否为 `true`。
-5. **演进过程可查。** `main` 分支无 merge（条数以 `git rev-list --count main` 为准，逐日分布用 `git log --date=short --format=%ad main | sort | uniq -c`），可逐条 `git show`；Prompt 快照见 `prompt-snapshots/`，完整文字版见 [AI协同对话历史.md](AI协同对话历史.md)，按步骤照着走的演进脚本见 [docs/replay.md](docs/replay.md)，改前/改后对照见 [Altiora-改前改后.html](Altiora-改前改后.html)。
+5. **演进过程可查。** `main` 分支无 merge（条数以 `git rev-list --count main` 为准，逐日分布用 `git log --date=short --format=%ad main | sort | uniq -c`），可逐条 `git show`；Prompt 快照见 `prompt-snapshots/`，完整文字版见 [docs/AI协同对话历史.md](docs/AI协同对话历史.md)，按步骤照着走的演进脚本见 [docs/replay.md](docs/replay.md)，改前/改后对照见 [Altiora-改前改后.html](Altiora-改前改后.html)。
 
 ### 复现成功的三个标志（先记住这三个，再往下做）
 
@@ -259,9 +259,13 @@ Altiora.luck/
 ├── 自检.py                          # 复现自检
 ├── requirements.txt
 ├── .env.example                    # 环境变量模板
-├── AI协同对话历史.md                # Prompt 链文字版（6 轮迭代 + 5 次 Bug 修复）
 ├── docs/
-│   └── replay.md                    # 演进脚本：六轮迭代 + 5 次 Bug 修复（其中三条写成完整复现链）
+│   ├── replay.md                    # 演进脚本：六轮迭代 + 5 次 Bug 修复（其中三条写成完整复现链）
+│   ├── AI协同对话历史.md             # Prompt 链文字版（6 轮迭代 + 5 次 Bug 修复）
+│   ├── PROMPT_LOG.md                # 开发期 Prompt 演进日志
+│   ├── Altiora-产品定位.md           # 定位与差异
+│   ├── Altiora-作品介绍文档.md        # 作品说明文档版
+│   └── Altiora-解析引擎演进说明.md     # 解析引擎三代演进
 ├── scripts/
 │   ├── gen_tech_doc.py             # 技术文档生成脚本（PDF 随提交物单独上传，不入仓库）
 │   └── download_vosk.py            # 下载 Vosk 中文离线模型（约 66 MB）
@@ -274,10 +278,11 @@ Altiora.luck/
 │       └── model/                  # Vosk 模型（不进 git，用 scripts/download_vosk.py 下载）
 ├── Altiora-需求文档.docx            # 需求与设计文档
 ├── Altiora-给老师看.html            # 一页版作品说明
-├── avatar-preview.html             # 分身单独预览
-├── prompt-snapshots/               # AI 对话历史快照（6 组迭代）
-├── PROMPT_LOG.md                   # Prompt 迭代日志
-└── archive/altiora-v0/             # 早期版本，仅存档
+├── Altiora-改前改后.html            # 10 组改前 / 改后对照
+├── prompt-snapshots/               # AI 对话历史快照（6 轮迭代，11 张）
+└── archive/                        # 历史存档，不参与部署
+    ├── altiora-v0/                 # v0 原型（当时代号 AI 小宝）
+    └── preview/avatar-preview.html # 分身形象预演页
 ```
 
 ## 6. 常见问题
@@ -307,17 +312,17 @@ Altiora.luck/
 | 公网体验地址（打开即 AI 在线，无需配 Key） | <http://82.157.162.252:8000/>，验收记录见技术文档 11.5 | ✅ |
 | 技术文档 PDF（24 页，≤30） | 随提交物单独上传（`.gitignore` 排除，不入仓库）；可复跑 `python3 scripts/gen_tech_doc.py` 重新生成 | ✅ |
 
-### 7.1 根目录文档导航
+### 7.1 文档导航
 
 | 文件 | 一句话说明 | 主要面向 |
 |---|---|---|
 | `README.md` | 总入口：定位、10 分钟复现、材料索引 | 评委 |
-| `AI协同对话历史.md` | 6 轮迭代 + 5 次 Bug 修复的 Prompt 链文字版 | 评委 |
-| `PROMPT_LOG.md` | 开发期 Prompt 演进日志，按时间排列 | 评委 |
+| `docs/AI协同对话历史.md` | 6 轮迭代 + 5 次 Bug 修复的 Prompt 链文字版 | 评委 |
+| `docs/PROMPT_LOG.md` | 开发期 Prompt 演进日志，按时间排列 | 评委 |
 | `docs/replay.md` | 演进脚本：照着走可复现每个迭代与修复 | 评委 |
-| `Altiora-产品定位.md` | 给谁用、解决什么、与同类产品的差异 | 设计 |
-| `Altiora-作品介绍文档.md` | 作品说明文档版 | 提交物 |
-| `Altiora-解析引擎演进说明.md` | 解析引擎三代演进与每代决策依据 | 技术 |
+| `docs/Altiora-产品定位.md` | 给谁用、解决什么、与同类产品的差异 | 设计 |
+| `docs/Altiora-作品介绍文档.md` | 作品说明文档版 | 提交物 |
+| `docs/Altiora-解析引擎演进说明.md` | 解析引擎三代演进与每代决策依据 | 技术 |
 | `Altiora-给老师看.html` | 一页版作品说明，双击即开 | 展示 |
 | `Altiora-改前改后.html` | 10 组改前 / 改后对照，可现场复现 | 佐证 |
 | `Altiora-需求文档.docx` | 需求与设计文档 | 提交物 |
